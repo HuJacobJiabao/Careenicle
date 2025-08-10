@@ -1,0 +1,62 @@
+import { type NextRequest, NextResponse } from "next/server"
+import pool from "@/lib/database"
+
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const body = await request.json()
+    const jobId = Number.parseInt(params.id)
+
+    if (isNaN(jobId)) {
+      return NextResponse.json({ error: "Invalid job ID" }, { status: 400 })
+    }
+
+    const { company, position, jobUrl, applicationDate, status, notes } = body
+
+    const result = await pool.query(
+      `
+      UPDATE jobs 
+      SET 
+        company = COALESCE($1, company),
+        position = COALESCE($2, position),
+        job_url = COALESCE($3, job_url),
+        application_date = COALESCE($4, application_date),
+        status = COALESCE($5, status),
+        notes = COALESCE($6, notes)
+      WHERE id = $7
+      RETURNING id
+    `,
+      [company, position, jobUrl, applicationDate, status, notes, jobId],
+    )
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: "Job updated successfully" })
+  } catch (error) {
+    console.error("Database error:", error)
+    return NextResponse.json({ error: "Failed to update job" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const jobId = Number.parseInt(params.id)
+
+    if (isNaN(jobId)) {
+      return NextResponse.json({ error: "Invalid job ID" }, { status: 400 })
+    }
+
+    await pool.query("DELETE FROM interviews WHERE job_id = $1", [jobId])
+    const result = await pool.query("DELETE FROM jobs WHERE id = $1 RETURNING id", [jobId])
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: "Job deleted successfully" })
+  } catch (error) {
+    console.error("Database error:", error)
+    return NextResponse.json({ error: "Failed to delete job" }, { status: 500 })
+  }
+}
