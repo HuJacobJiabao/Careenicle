@@ -23,6 +23,9 @@ export default function TimelinePage() {
               >
                 Timeline
               </a>
+              <a href="/map" className="text-gray-600 hover:text-gray-700 font-medium">
+                Map View
+              </a>
             </div>
           </div>
         </div>

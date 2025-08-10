@@ -2,10 +2,11 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import type { Job, Interview } from "@/lib/types"
+import type { Job, Interview, UpcomingInterviewJob } from "@/lib/types"
 import InterviewModal from "./InterviewModal"
 import AddJobModal from "./AddJobModal"
 import EditJobModal from "./EditJobModal"
+import UpcomingInterviewsTable from "./UpcomingInterviewsTable"
 import {
   Building2,
   Calendar,
@@ -16,8 +17,11 @@ import {
   Settings,
   Filter,
   MapPin,
-  Clock,
   Edit,
+  Search,
+  Heart,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 const JobTable: React.FC = () => {
@@ -29,18 +33,34 @@ const JobTable: React.FC = () => {
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  })
 
   useEffect(() => {
     fetchJobs()
     fetchInterviews()
-  }, [])
+  }, [pagination.page, statusFilter, searchTerm, showFavorites])
 
   const fetchJobs = async () => {
     try {
-      const response = await fetch("/api/jobs")
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+        search: searchTerm,
+        status: statusFilter,
+        favorites: showFavorites.toString(),
+      })
+
+      const response = await fetch(`/api/jobs?${params}`)
       const data = await response.json()
-      setJobs(data)
+      setJobs(data.jobs)
+      setPagination(data.pagination)
     } catch (error) {
       console.error("Failed to fetch jobs:", error)
     } finally {
@@ -71,6 +91,19 @@ const JobTable: React.FC = () => {
     }
   }
 
+  const toggleFavorite = async (jobId: number, isFavorite: boolean) => {
+    try {
+      await fetch(`/api/jobs/${jobId}/favorite`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorite: !isFavorite }),
+      })
+      fetchJobs()
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error)
+    }
+  }
+
   const deleteJob = async (jobId: number) => {
     if (confirm("Are you sure you want to delete this job application?")) {
       try {
@@ -95,27 +128,31 @@ const JobTable: React.FC = () => {
       .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())[0]
   }
 
-  const getUpcomingInterviewJobs = () => {
-    const now = new Date()
-    const upcomingJobs = jobs
+  const getUpcomingInterviewJobs = (): UpcomingInterviewJob[] => {
+    const allJobs = [...jobs] // Include all jobs, not just current page
+    const upcomingJobs = allJobs
       .map((job) => ({
         ...job,
         upcomingInterview: getUpcomingInterview(job.id!),
       }))
-      .filter((job) => job.upcomingInterview)
-      .sort(
-        (a, b) =>
-          new Date(a.upcomingInterview!.scheduledDate).getTime() -
-          new Date(b.upcomingInterview!.scheduledDate).getTime(),
-      )
+      .filter((job) => job.upcomingInterview) as UpcomingInterviewJob[]
 
-    return upcomingJobs
+    return upcomingJobs.sort(
+      (a, b) =>
+        new Date(a.upcomingInterview.scheduledDate).getTime() - new Date(b.upcomingInterview.scheduledDate).getTime(),
+    )
   }
 
-  const filteredJobs = jobs.filter((job) => {
-    if (statusFilter === "all") return true
-    return job.status === statusFilter
-  })
+  const getCompanyLogo = (company: string) => {
+    const domain = company.toLowerCase().replace(/\s+/g, "")
+    return `https://logo.clearbit.com/${domain}.com`
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPagination({ ...pagination, page: 1 })
+    fetchJobs()
+  }
 
   const getStatusConfig = (status: Job["status"]) => {
     const configs = {
@@ -180,97 +217,90 @@ const JobTable: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">Job Applications</h1>
             <p className="mt-2 text-gray-600">Track your job applications and interview progress</p>
           </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+            {/* Search */}
+            <form onSubmit={handleSearch} className="flex">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search company or position..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors"
               >
-                <option value="all">All Status</option>
-                <option value="applied">Applied</option>
-                <option value="interview">Interview</option>
-                <option value="rejected">Rejected</option>
-                <option value="offer">Offer</option>
-                <option value="accepted">Accepted</option>
-              </select>
+                Search
+              </button>
+            </form>
+
+            {/* Filters */}
+            <div className="flex space-x-3">
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                    setPagination({ ...pagination, page: 1 })
+                  }}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="all">All Status</option>
+                  <option value="applied">Applied</option>
+                  <option value="interview">Interview</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="offer">Offer</option>
+                  <option value="accepted">Accepted</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowFavorites(!showFavorites)
+                  setPagination({ ...pagination, page: 1 })
+                }}
+                className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                  showFavorites
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <Heart className={`w-4 h-4 mr-2 ${showFavorites ? "fill-current" : ""}`} />
+                Favorites
+              </button>
+
+              <button
+                onClick={() => setShowAddJobModal(true)}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add Job
+              </button>
             </div>
-            <button
-              onClick={() => setShowAddJobModal(true)}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Job
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Upcoming Interviews Section */}
+      {/* Upcoming Interviews Table */}
       {upcomingInterviewJobs.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <Clock className="w-5 h-5 mr-2 text-amber-500" />
-            Upcoming Interviews
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {upcomingInterviewJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{job.company}</h3>
-                    <p className="text-sm text-gray-600">{job.position}</p>
-                    {job.location && (
-                      <p className="text-xs text-gray-500 flex items-center mt-1">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {job.location}
-                      </p>
-                    )}
-                  </div>
-                  <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-                    Round {job.upcomingInterview!.round}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">
-                    <p className="font-medium text-gray-900">
-                      {new Date(job.upcomingInterview!.scheduledDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        weekday: "short",
-                      })}
-                    </p>
-                    <p className="text-gray-600">
-                      {new Date(job.upcomingInterview!.scheduledDate).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedJob(job)
-                      setShowInterviewModal(true)
-                    }}
-                    className="text-amber-600 hover:text-amber-800 text-sm font-medium"
-                  >
-                    Manage
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <UpcomingInterviewsTable
+          jobs={upcomingInterviewJobs}
+          onManageInterview={(job) => {
+            setSelectedJob(job)
+            setShowInterviewModal(true)
+          }}
+        />
       )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {[
-          { label: "Total Applications", value: jobs.length, color: "bg-blue-500", icon: "📊" },
+          { label: "Total Applications", value: pagination.total, color: "bg-blue-500", icon: "📊" },
           {
             label: "Active Interviews",
             value: jobs.filter((j) => j.status === "interview").length,
@@ -284,10 +314,10 @@ const JobTable: React.FC = () => {
             icon: "🎉",
           },
           {
-            label: "Success Rate",
-            value: `${Math.round((jobs.filter((j) => j.status === "offer" || j.status === "accepted").length / Math.max(jobs.length, 1)) * 100)}%`,
-            color: "bg-purple-500",
-            icon: "📈",
+            label: "Favorites",
+            value: jobs.filter((j) => j.isFavorite).length,
+            color: "bg-red-500",
+            icon: "❤️",
           },
         ].map((stat, index) => (
           <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -326,25 +356,26 @@ const JobTable: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredJobs.map((job) => {
+              {jobs.map((job) => {
                 const jobInterviews = getJobInterviews(job.id!)
                 const statusConfig = getStatusConfig(job.status)
                 const interviewSummary = getInterviewSummary(jobInterviews)
                 const upcomingInterview = getUpcomingInterview(job.id!)
 
                 return (
-                  <tr
-                    key={job.id}
-                    className="hover:bg-gray-50 transition-colors duration-150 relative"
-                    onMouseEnter={() => setHoveredRow(job.id!)}
-                    onMouseLeave={() => setHoveredRow(null)}
-                  >
+                  <tr key={job.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-white" />
-                          </div>
+                          <img
+                            src={getCompanyLogo(job.company) || "/placeholder.svg"}
+                            alt={`${job.company} logo`}
+                            className="w-10 h-10 rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = "/placeholder.svg?height=40&width=40&text=" + job.company.charAt(0)
+                            }}
+                          />
                         </div>
                         <div className="ml-4">
                           <div className="flex items-center">
@@ -357,6 +388,14 @@ const JobTable: React.FC = () => {
                               {job.position}
                               <ExternalLink className="w-3 h-3 ml-1" />
                             </a>
+                            <button
+                              onClick={() => toggleFavorite(job.id!, job.isFavorite!)}
+                              className="ml-2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                              <Heart
+                                className={`w-4 h-4 ${job.isFavorite ? "fill-red-500 text-red-500" : "text-gray-400"}`}
+                              />
+                            </button>
                           </div>
                           <div className="text-sm text-gray-900 font-medium">{job.company}</div>
                           {job.location && (
@@ -367,14 +406,6 @@ const JobTable: React.FC = () => {
                           )}
                         </div>
                       </div>
-
-                      {/* Tooltip for notes */}
-                      {hoveredRow === job.id && job.notes && (
-                        <div className="absolute z-10 bg-gray-900 text-white text-sm rounded-lg px-3 py-2 shadow-lg max-w-xs left-6 top-full mt-2">
-                          {job.notes}
-                          <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center text-sm text-gray-900">
@@ -457,18 +488,80 @@ const JobTable: React.FC = () => {
           </table>
         </div>
 
-        {filteredJobs.length === 0 && (
+        {/* Pagination */}
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
+              disabled={pagination.page === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
+              disabled={pagination.page === pagination.totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}
+                <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{" "}
+                <span className="font-medium">{pagination.total}</span> results
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
+                  disabled={pagination.page === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setPagination({ ...pagination, page })}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      page === pagination.page
+                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                        : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+
+        {jobs.length === 0 && (
           <div className="text-center py-12">
             <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {statusFilter === "all" ? "No job applications yet" : `No ${statusFilter} applications`}
+              {statusFilter === "all" && !searchTerm && !showFavorites
+                ? "No job applications yet"
+                : "No matching applications found"}
             </h3>
             <p className="text-gray-600 mb-4">
-              {statusFilter === "all"
+              {statusFilter === "all" && !searchTerm && !showFavorites
                 ? "Start tracking your job search by adding your first application."
-                : `No applications with ${statusFilter} status found.`}
+                : "Try adjusting your search or filter criteria."}
             </p>
-            {statusFilter === "all" && (
+            {statusFilter === "all" && !searchTerm && !showFavorites && (
               <button
                 onClick={() => setShowAddJobModal(true)}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"

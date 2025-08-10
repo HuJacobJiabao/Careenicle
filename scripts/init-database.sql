@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     status VARCHAR(50) NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'interview', 'rejected', 'offer', 'accepted')),
     location VARCHAR(255),
     notes TEXT,
+    is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -37,6 +38,9 @@ CREATE TABLE IF NOT EXISTS interviews (
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_jobs_application_date ON jobs(application_date);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
+CREATE INDEX IF NOT EXISTS idx_jobs_position ON jobs(position);
+CREATE INDEX IF NOT EXISTS idx_jobs_favorite ON jobs(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_interviews_job_id ON interviews(job_id);
 CREATE INDEX IF NOT EXISTS idx_interviews_scheduled_date ON interviews(scheduled_date);
 

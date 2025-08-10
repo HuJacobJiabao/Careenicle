@@ -7,6 +7,7 @@ export interface Job {
   status: "applied" | "interview" | "rejected" | "offer" | "accepted"
   location?: string
   notes?: string
+  isFavorite?: boolean
   createdAt?: Date
   updatedAt?: Date
 }
@@ -37,4 +38,17 @@ export interface TimelineEvent {
   description: string
   status: string
   location?: string
+}
+
+export interface UpcomingInterviewJob extends Job {
+  upcomingInterview: Interview
+}
+
+export interface LocationData {
+  city: string
+  state: string
+  lat: number
+  lng: number
+  count: number
+  jobs: Job[]
 }

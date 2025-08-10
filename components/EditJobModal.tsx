@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import type { Job } from "@/lib/types"
-import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin } from "lucide-react"
+import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Heart } from "lucide-react"
 
 interface EditJobModalProps {
   job: Job
@@ -20,6 +20,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
     status: job.status,
     location: job.location || "",
     notes: job.notes || "",
+    isFavorite: job.isFavorite || false,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,6 +151,20 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 rows={4}
                 placeholder="Job requirements, company culture, salary range, etc..."
               />
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isFavorite"
+                checked={formData.isFavorite}
+                onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
+                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+              />
+              <label htmlFor="isFavorite" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
+                <Heart className="w-4 h-4 mr-1" />
+                Mark as favorite
+              </label>
             </div>
 
             <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">

@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, Interview, TimelineEvent } from "@/lib/types"
-import { FileText, Users, Calendar, Clock, Building2, ExternalLink, MapPin, Briefcase, Star } from "lucide-react"
+import { FileText, Users, Calendar, Clock, ExternalLink, MapPin, Briefcase, Star } from "lucide-react"
 
 const Timeline: React.FC = () => {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
@@ -15,9 +15,13 @@ const Timeline: React.FC = () => {
 
   const fetchTimelineData = async () => {
     try {
-      const [jobsResponse, interviewsResponse] = await Promise.all([fetch("/api/jobs"), fetch("/api/interviews")])
+      const [jobsResponse, interviewsResponse] = await Promise.all([
+        fetch("/api/jobs?limit=1000"),
+        fetch("/api/interviews"),
+      ])
 
-      const jobs: Job[] = await jobsResponse.json()
+      const jobsData = await jobsResponse.json()
+      const jobs: Job[] = jobsData.jobs || jobsData
       const interviews: Interview[] = await interviewsResponse.json()
 
       const events: TimelineEvent[] = []
@@ -154,9 +158,9 @@ const Timeline: React.FC = () => {
 
   const getEventIcon = (event: TimelineEvent) => {
     if (event.type === "application") {
-      return <FileText className="w-6 h-6 text-white" />
+      return <FileText className="w-5 h-5 text-white" />
     } else {
-      return <Users className="w-6 h-6 text-white" />
+      return <Users className="w-5 h-5 text-white" />
     }
   }
 
@@ -218,6 +222,11 @@ const Timeline: React.FC = () => {
     }
   }
 
+  const getCompanyLogo = (company: string) => {
+    const domain = company.toLowerCase().replace(/\s+/g, "")
+    return `https://logo.clearbit.com/${domain}.com`
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -227,7 +236,7 @@ const Timeline: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-12 text-center">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
@@ -241,9 +250,9 @@ const Timeline: React.FC = () => {
       {/* Timeline */}
       <div className="relative">
         {/* Timeline line with gradient */}
-        <div className="absolute left-10 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500 rounded-full shadow-lg"></div>
+        <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500 rounded-full shadow-lg"></div>
 
-        <div className="space-y-12">
+        <div className="space-y-8">
           {timelineEvents.map((event, index) => {
             const config = getEventConfig(event)
             const isFirst = index === 0
@@ -253,7 +262,7 @@ const Timeline: React.FC = () => {
               <div key={event.id} className="relative flex items-start">
                 {/* Timeline node with enhanced styling */}
                 <div
-                  className={`relative z-10 flex items-center justify-center w-20 h-20 rounded-full ${config.color} shadow-xl ${config.shadowColor} ${
+                  className={`relative z-10 flex items-center justify-center w-16 h-16 rounded-full ${config.color} shadow-xl ${config.shadowColor} ${
                     isFirst ? "ring-4 ring-blue-200 ring-opacity-50" : ""
                   } ${isUpcoming ? "animate-pulse" : ""}`}
                 >
@@ -265,52 +274,54 @@ const Timeline: React.FC = () => {
                   )}
                 </div>
 
-                {/* Event content with enhanced design */}
-                <div className="flex-1 ml-8 min-w-0">
+                {/* Event content with narrower design */}
+                <div className="flex-1 ml-6 min-w-0">
                   <div
-                    className={`${config.bgColor} rounded-3xl shadow-xl border-2 ${config.borderColor} p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1`}
+                    className={`${config.bgColor} rounded-2xl shadow-lg border-2 ${config.borderColor} p-4 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 max-w-md`}
                   >
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-3">
-                          <span className="text-3xl mr-3">{getStatusEmoji(event.status, event.type)}</span>
-                          <h3 className="text-2xl font-bold text-gray-900">{event.title}</h3>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center mb-2">
+                          <img
+                            src={getCompanyLogo(event.company) || "/placeholder.svg"}
+                            alt={`${event.company} logo`}
+                            className="w-6 h-6 rounded mr-2 flex-shrink-0"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = "/placeholder.svg?height=24&width=24&text=" + event.company.charAt(0)
+                            }}
+                          />
+                          <span className="text-lg mr-2">{getStatusEmoji(event.status, event.type)}</span>
+                          <h3 className="text-lg font-bold text-gray-900 truncate">{event.company}</h3>
                         </div>
 
-                        <div className="flex items-center text-gray-700 mb-4">
-                          <Briefcase className="w-5 h-5 mr-2" />
-                          <span className="font-semibold text-lg">{event.position}</span>
-                        </div>
-
-                        <div className="flex items-center text-gray-600 mb-4">
-                          <Building2 className="w-5 h-5 mr-2" />
-                          <span className="font-medium">{event.company}</span>
+                        <div className="flex items-center text-gray-700 mb-2">
+                          <Briefcase className="w-4 h-4 mr-1 flex-shrink-0" />
+                          <span className="font-medium text-sm truncate">{event.position}</span>
                         </div>
 
                         {event.location && (
-                          <div className="flex items-center text-gray-600 mb-4">
-                            <MapPin className="w-5 h-5 mr-2" />
-                            <span>{event.location}</span>
+                          <div className="flex items-center text-gray-600 mb-2">
+                            <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+                            <span className="text-sm">{event.location}</span>
                           </div>
                         )}
 
-                        <p className="text-gray-700 mb-6 text-lg">{event.description}</p>
-
-                        <div className="flex items-center space-x-8 text-sm text-gray-500">
-                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-4 py-2">
-                            <Calendar className="w-4 h-4 mr-2" />
+                        <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
+                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-2 py-1">
+                            <Calendar className="w-3 h-3 mr-1" />
                             <span className="font-medium">{formatDate(event.date)}</span>
                           </div>
-                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-4 py-2">
-                            <Clock className="w-4 h-4 mr-2" />
+                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-2 py-1">
+                            <Clock className="w-3 h-3 mr-1" />
                             <span className="font-medium">{formatTime(event.date)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="ml-6 flex flex-col items-end space-y-3">
+                      <div className="ml-3 flex flex-col items-end space-y-2">
                         <span
-                          className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${config.textColor} bg-white bg-opacity-80 border-2 ${config.borderColor} shadow-lg`}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${config.textColor} bg-white bg-opacity-80 border ${config.borderColor} shadow-sm`}
                         >
                           {event.type === "application"
                             ? getStatusLabel(event.status as Job["status"])
@@ -320,10 +331,10 @@ const Timeline: React.FC = () => {
                         {event.type === "application" && (
                           <a
                             href="#"
-                            className="inline-flex items-center text-blue-700 hover:text-blue-900 text-sm font-medium bg-white bg-opacity-80 rounded-full px-3 py-1 shadow-md hover:shadow-lg transition-all duration-200"
+                            className="inline-flex items-center text-blue-700 hover:text-blue-900 text-xs font-medium bg-white bg-opacity-80 rounded-full px-2 py-1 shadow-sm hover:shadow-md transition-all duration-200"
                           >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            View Job
+                            <ExternalLink className="w-2 h-2 mr-1" />
+                            View
                           </a>
                         )}
                       </div>
@@ -331,20 +342,20 @@ const Timeline: React.FC = () => {
 
                     {/* Progress indicator for first item */}
                     {isFirst && (
-                      <div className="mt-6 pt-6 border-t border-white border-opacity-30">
-                        <div className="flex items-center text-sm font-medium text-blue-800">
-                          <div className="w-3 h-3 bg-blue-600 rounded-full mr-3 animate-pulse shadow-lg"></div>
-                          Most recent activity
+                      <div className="mt-3 pt-3 border-t border-white border-opacity-30">
+                        <div className="flex items-center text-xs font-medium text-blue-800">
+                          <div className="w-2 h-2 bg-blue-600 rounded-full mr-2 animate-pulse shadow-lg"></div>
+                          Most recent
                         </div>
                       </div>
                     )}
 
                     {/* Upcoming indicator */}
                     {isUpcoming && (
-                      <div className="mt-6 pt-6 border-t border-white border-opacity-30">
-                        <div className="flex items-center text-sm font-medium text-amber-800">
-                          <div className="w-3 h-3 bg-amber-500 rounded-full mr-3 animate-bounce shadow-lg"></div>
-                          Upcoming event
+                      <div className="mt-3 pt-3 border-t border-white border-opacity-30">
+                        <div className="flex items-center text-xs font-medium text-amber-800">
+                          <div className="w-2 h-2 bg-amber-500 rounded-full mr-2 animate-bounce shadow-lg"></div>
+                          Upcoming
                         </div>
                       </div>
                     )}
