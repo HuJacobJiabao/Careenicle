@@ -41,3 +41,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "Failed to update interview" }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const interviewId = Number.parseInt(params.id)
+
+    if (isNaN(interviewId)) {
+      return NextResponse.json({ error: "Invalid interview ID" }, { status: 400 })
+    }
+
+    const result = await pool.query("DELETE FROM interviews WHERE id = $1 RETURNING id", [interviewId])
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Interview not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: "Interview deleted successfully" })
+  } catch (error) {
+    console.error("Database error:", error)
+    return NextResponse.json({ error: "Failed to delete interview" }, { status: 500 })
+  }
+}

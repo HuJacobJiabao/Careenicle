@@ -11,6 +11,7 @@ export async function GET() {
         job_url as "jobUrl",
         application_date as "applicationDate",
         status,
+        location,
         notes,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -28,12 +29,12 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { company, position, jobUrl, applicationDate, status = "applied", notes } = body
+    const { company, position, jobUrl, applicationDate, status = "applied", location, notes } = body
 
     const result = await pool.query(
       `
-      INSERT INTO jobs (company, position, job_url, application_date, status, notes)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO jobs (company, position, job_url, application_date, status, location, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING 
         id,
         company,
@@ -41,11 +42,12 @@ export async function POST(request: NextRequest) {
         job_url as "jobUrl",
         application_date as "applicationDate",
         status,
+        location,
         notes,
         created_at as "createdAt",
         updated_at as "updatedAt"
     `,
-      [company, position, jobUrl, applicationDate, status, notes],
+      [company, position, jobUrl, applicationDate, status, location, notes],
     )
 
     return NextResponse.json(result.rows[0], { status: 201 })

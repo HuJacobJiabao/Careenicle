@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, Interview, TimelineEvent } from "@/lib/types"
-import { FileText, Users, Calendar, Clock, Building2, ExternalLink } from "lucide-react"
+import { FileText, Users, Calendar, Clock, Building2, ExternalLink, MapPin, Briefcase, Star } from "lucide-react"
 
 const Timeline: React.FC = () => {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
@@ -33,6 +33,7 @@ const Timeline: React.FC = () => {
           title: `Applied to ${job.company}`,
           description: job.position,
           status: job.status,
+          location: job.location,
         })
       })
 
@@ -49,6 +50,7 @@ const Timeline: React.FC = () => {
             title: `Round ${interview.round} Interview - ${job.company}`,
             description: `${getTypeLabel(interview.type)} ${interview.interviewer ? `with ${interview.interviewer}` : ""}`,
             status: interview.result,
+            location: job.location,
           })
         }
       })
@@ -79,57 +81,71 @@ const Timeline: React.FC = () => {
     if (event.type === "application") {
       const statusConfigs = {
         applied: {
-          color: "bg-blue-500",
-          bgColor: "bg-blue-50",
-          textColor: "text-blue-700",
-          borderColor: "border-blue-200",
+          color: "bg-gradient-to-r from-blue-500 to-blue-600",
+          bgColor: "bg-gradient-to-br from-blue-50 to-blue-100",
+          textColor: "text-blue-800",
+          borderColor: "border-blue-300",
+          shadowColor: "shadow-blue-200",
         },
         interview: {
-          color: "bg-amber-500",
-          bgColor: "bg-amber-50",
-          textColor: "text-amber-700",
-          borderColor: "border-amber-200",
+          color: "bg-gradient-to-r from-amber-500 to-orange-500",
+          bgColor: "bg-gradient-to-br from-amber-50 to-orange-100",
+          textColor: "text-amber-800",
+          borderColor: "border-amber-300",
+          shadowColor: "shadow-amber-200",
         },
         rejected: {
-          color: "bg-red-500",
-          bgColor: "bg-red-50",
-          textColor: "text-red-700",
-          borderColor: "border-red-200",
+          color: "bg-gradient-to-r from-red-500 to-red-600",
+          bgColor: "bg-gradient-to-br from-red-50 to-red-100",
+          textColor: "text-red-800",
+          borderColor: "border-red-300",
+          shadowColor: "shadow-red-200",
         },
         offer: {
-          color: "bg-green-500",
-          bgColor: "bg-green-50",
-          textColor: "text-green-700",
-          borderColor: "border-green-200",
+          color: "bg-gradient-to-r from-green-500 to-emerald-500",
+          bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
+          textColor: "text-green-800",
+          borderColor: "border-green-300",
+          shadowColor: "shadow-green-200",
         },
         accepted: {
-          color: "bg-purple-500",
-          bgColor: "bg-purple-50",
-          textColor: "text-purple-700",
-          borderColor: "border-purple-200",
+          color: "bg-gradient-to-r from-purple-500 to-violet-500",
+          bgColor: "bg-gradient-to-br from-purple-50 to-violet-100",
+          textColor: "text-purple-800",
+          borderColor: "border-purple-300",
+          shadowColor: "shadow-purple-200",
         },
       }
       return statusConfigs[event.status as Job["status"]] || statusConfigs.applied
     } else {
       const resultConfigs = {
         pending: {
-          color: "bg-yellow-500",
-          bgColor: "bg-yellow-50",
-          textColor: "text-yellow-700",
-          borderColor: "border-yellow-200",
+          color: "bg-gradient-to-r from-yellow-500 to-amber-500",
+          bgColor: "bg-gradient-to-br from-yellow-50 to-amber-100",
+          textColor: "text-yellow-800",
+          borderColor: "border-yellow-300",
+          shadowColor: "shadow-yellow-200",
         },
         passed: {
-          color: "bg-green-500",
-          bgColor: "bg-green-50",
-          textColor: "text-green-700",
-          borderColor: "border-green-200",
+          color: "bg-gradient-to-r from-green-500 to-emerald-500",
+          bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
+          textColor: "text-green-800",
+          borderColor: "border-green-300",
+          shadowColor: "shadow-green-200",
         },
-        failed: { color: "bg-red-500", bgColor: "bg-red-50", textColor: "text-red-700", borderColor: "border-red-200" },
+        failed: {
+          color: "bg-gradient-to-r from-red-500 to-red-600",
+          bgColor: "bg-gradient-to-br from-red-50 to-red-100",
+          textColor: "text-red-800",
+          borderColor: "border-red-300",
+          shadowColor: "shadow-red-200",
+        },
         cancelled: {
-          color: "bg-gray-500",
-          bgColor: "bg-gray-50",
-          textColor: "text-gray-700",
-          borderColor: "border-gray-200",
+          color: "bg-gradient-to-r from-gray-500 to-gray-600",
+          bgColor: "bg-gradient-to-br from-gray-50 to-gray-100",
+          textColor: "text-gray-800",
+          borderColor: "border-gray-300",
+          shadowColor: "shadow-gray-200",
         },
       }
       return resultConfigs[event.status as Interview["result"]] || resultConfigs.pending
@@ -138,9 +154,9 @@ const Timeline: React.FC = () => {
 
   const getEventIcon = (event: TimelineEvent) => {
     if (event.type === "application") {
-      return <FileText className="w-5 h-5 text-white" />
+      return <FileText className="w-6 h-6 text-white" />
     } else {
-      return <Users className="w-5 h-5 text-white" />
+      return <Users className="w-6 h-6 text-white" />
     }
   }
 
@@ -181,6 +197,27 @@ const Timeline: React.FC = () => {
     return labels[result]
   }
 
+  const getStatusEmoji = (status: string, type: string) => {
+    if (type === "application") {
+      const emojis = {
+        applied: "📝",
+        interview: "🎯",
+        rejected: "❌",
+        offer: "🎉",
+        accepted: "✅",
+      }
+      return emojis[status as Job["status"]] || "📝"
+    } else {
+      const emojis = {
+        pending: "⏳",
+        passed: "✅",
+        failed: "❌",
+        cancelled: "⏸️",
+      }
+      return emojis[status as Interview["result"]] || "⏳"
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -190,61 +227,90 @@ const Timeline: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Job Search Timeline</h1>
-        <p className="text-lg text-gray-600">Track your job search journey and interview progress</p>
+      <div className="mb-12 text-center">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          Job Search Timeline
+        </h1>
+        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          Track your job search journey and interview progress with a beautiful visual timeline
+        </p>
       </div>
 
       {/* Timeline */}
       <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 to-purple-500"></div>
+        {/* Timeline line with gradient */}
+        <div className="absolute left-10 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500 rounded-full shadow-lg"></div>
 
-        <div className="space-y-8">
+        <div className="space-y-12">
           {timelineEvents.map((event, index) => {
             const config = getEventConfig(event)
             const isFirst = index === 0
+            const isUpcoming = new Date(event.date) > new Date()
 
             return (
               <div key={event.id} className="relative flex items-start">
-                {/* Timeline node */}
+                {/* Timeline node with enhanced styling */}
                 <div
-                  className={`relative z-10 flex items-center justify-center w-16 h-16 rounded-full ${config.color} shadow-lg ${isFirst ? "ring-4 ring-blue-100" : ""}`}
+                  className={`relative z-10 flex items-center justify-center w-20 h-20 rounded-full ${config.color} shadow-xl ${config.shadowColor} ${
+                    isFirst ? "ring-4 ring-blue-200 ring-opacity-50" : ""
+                  } ${isUpcoming ? "animate-pulse" : ""}`}
                 >
                   {getEventIcon(event)}
+                  {isFirst && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                      <Star className="w-3 h-3 text-yellow-800" />
+                    </div>
+                  )}
                 </div>
 
-                {/* Event content */}
-                <div className="flex-1 ml-6 min-w-0">
+                {/* Event content with enhanced design */}
+                <div className="flex-1 ml-8 min-w-0">
                   <div
-                    className={`bg-white rounded-2xl shadow-lg border-2 ${config.borderColor} p-6 hover:shadow-xl transition-shadow duration-300`}
+                    className={`${config.bgColor} rounded-3xl shadow-xl border-2 ${config.borderColor} p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1`}
                   >
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-6">
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">{event.title}</h3>
-                        <div className="flex items-center text-gray-600 mb-3">
-                          <Building2 className="w-4 h-4 mr-2" />
-                          <span className="font-medium">{event.position}</span>
+                        <div className="flex items-center mb-3">
+                          <span className="text-3xl mr-3">{getStatusEmoji(event.status, event.type)}</span>
+                          <h3 className="text-2xl font-bold text-gray-900">{event.title}</h3>
                         </div>
-                        <p className="text-gray-700 mb-4">{event.description}</p>
 
-                        <div className="flex items-center space-x-6 text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            {formatDate(event.date)}
+                        <div className="flex items-center text-gray-700 mb-4">
+                          <Briefcase className="w-5 h-5 mr-2" />
+                          <span className="font-semibold text-lg">{event.position}</span>
+                        </div>
+
+                        <div className="flex items-center text-gray-600 mb-4">
+                          <Building2 className="w-5 h-5 mr-2" />
+                          <span className="font-medium">{event.company}</span>
+                        </div>
+
+                        {event.location && (
+                          <div className="flex items-center text-gray-600 mb-4">
+                            <MapPin className="w-5 h-5 mr-2" />
+                            <span>{event.location}</span>
                           </div>
-                          <div className="flex items-center">
+                        )}
+
+                        <p className="text-gray-700 mb-6 text-lg">{event.description}</p>
+
+                        <div className="flex items-center space-x-8 text-sm text-gray-500">
+                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-4 py-2">
+                            <Calendar className="w-4 h-4 mr-2" />
+                            <span className="font-medium">{formatDate(event.date)}</span>
+                          </div>
+                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-4 py-2">
                             <Clock className="w-4 h-4 mr-2" />
-                            {formatTime(event.date)}
+                            <span className="font-medium">{formatTime(event.date)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="ml-4 flex flex-col items-end space-y-2">
+                      <div className="ml-6 flex flex-col items-end space-y-3">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bgColor} ${config.textColor} border ${config.borderColor}`}
+                          className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${config.textColor} bg-white bg-opacity-80 border-2 ${config.borderColor} shadow-lg`}
                         >
                           {event.type === "application"
                             ? getStatusLabel(event.status as Job["status"])
@@ -252,7 +318,10 @@ const Timeline: React.FC = () => {
                         </span>
 
                         {event.type === "application" && (
-                          <a href="#" className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                          <a
+                            href="#"
+                            className="inline-flex items-center text-blue-700 hover:text-blue-900 text-sm font-medium bg-white bg-opacity-80 rounded-full px-3 py-1 shadow-md hover:shadow-lg transition-all duration-200"
+                          >
                             <ExternalLink className="w-3 h-3 mr-1" />
                             View Job
                           </a>
@@ -262,10 +331,20 @@ const Timeline: React.FC = () => {
 
                     {/* Progress indicator for first item */}
                     {isFirst && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="flex items-center text-sm text-blue-600">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+                      <div className="mt-6 pt-6 border-t border-white border-opacity-30">
+                        <div className="flex items-center text-sm font-medium text-blue-800">
+                          <div className="w-3 h-3 bg-blue-600 rounded-full mr-3 animate-pulse shadow-lg"></div>
                           Most recent activity
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upcoming indicator */}
+                    {isUpcoming && (
+                      <div className="mt-6 pt-6 border-t border-white border-opacity-30">
+                        <div className="flex items-center text-sm font-medium text-amber-800">
+                          <div className="w-3 h-3 bg-amber-500 rounded-full mr-3 animate-bounce shadow-lg"></div>
+                          Upcoming event
                         </div>
                       </div>
                     )}
@@ -276,19 +355,19 @@ const Timeline: React.FC = () => {
           })}
 
           {timelineEvents.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Calendar className="w-12 h-12 text-gray-400" />
+            <div className="text-center py-20">
+              <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
+                <Calendar className="w-16 h-16 text-gray-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">No activities yet</h3>
-              <p className="text-gray-600 text-lg mb-8">
+              <h3 className="text-3xl font-bold text-gray-900 mb-6">No activities yet</h3>
+              <p className="text-gray-600 text-xl mb-10 max-w-md mx-auto">
                 Start your job search journey by adding your first application!
               </p>
               <a
                 href="/"
-                className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
               >
-                <FileText className="w-5 h-5 mr-2" />
+                <FileText className="w-6 h-6 mr-3" />
                 Add Your First Job
               </a>
             </div>

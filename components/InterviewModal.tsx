@@ -3,7 +3,20 @@
 import type React from "react"
 import { useState } from "react"
 import type { Job, Interview } from "@/lib/types"
-import { X, Calendar, User, Clock, MessageSquare, Plus, CheckCircle, XCircle, AlertCircle, Pause } from "lucide-react"
+import {
+  X,
+  Calendar,
+  User,
+  Clock,
+  MessageSquare,
+  Plus,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Pause,
+  Edit,
+  Trash2,
+} from "lucide-react"
 
 interface InterviewModalProps {
   job: Job
@@ -20,8 +33,11 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, interviews, onClos
     interviewer: "",
     notes: "",
   })
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(null)
 
   const addInterview = async () => {
+    if (!newInterview.scheduledDate) return
+
     try {
       await fetch("/api/interviews", {
         method: "POST",
@@ -53,6 +69,41 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, interviews, onClos
         body: JSON.stringify(updates),
       })
       onUpdate()
+    } catch (error) {
+      console.error("Failed to update interview:", error)
+    }
+  }
+
+  const deleteInterview = async (interviewId: number) => {
+    if (confirm("Are you sure you want to delete this interview?")) {
+      try {
+        await fetch(`/api/interviews/${interviewId}`, { method: "DELETE" })
+        onUpdate()
+      } catch (error) {
+        console.error("Failed to delete interview:", error)
+      }
+    }
+  }
+
+  const saveEditingInterview = async () => {
+    if (!editingInterview) return
+
+    try {
+      await fetch(`/api/interviews/${editingInterview.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          round: editingInterview.round,
+          type: editingInterview.type,
+          scheduledDate: editingInterview.scheduledDate,
+          interviewer: editingInterview.interviewer,
+          result: editingInterview.result,
+          feedback: editingInterview.feedback,
+          notes: editingInterview.notes,
+        }),
+      })
+      onUpdate()
+      setEditingInterview(null)
     } catch (error) {
       console.error("Failed to update interview:", error)
     }
@@ -98,7 +149,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, interviews, onClos
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-screen overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl">
         <div className="p-8">
           {/* Header */}
           <div className="flex justify-between items-start mb-8">
@@ -129,80 +180,229 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, interviews, onClos
                 {interviews.map((interview) => {
                   const typeConfig = getTypeConfig(interview.type)
                   const resultConfig = getResultConfig(interview.result)
+                  const isEditing = editingInterview?.id === interview.id
 
                   return (
                     <div
                       key={interview.id}
                       className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
                     >
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Interview Info */}
-                        <div className="space-y-3">
+                      {isEditing ? (
+                        // Edit Mode
+                        <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-lg font-semibold text-gray-900">Round {interview.round}</h4>
-                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${typeConfig.color}`}>
-                              {typeConfig.icon} {typeConfig.label}
-                            </span>
-                          </div>
-
-                          <div className="space-y-2 text-sm text-gray-600">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              {new Date(interview.scheduledDate).toLocaleString("en-US", {
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                            <h4 className="text-lg font-semibold text-gray-900">Edit Interview</h4>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={saveEditingInterview}
+                                className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-md text-sm"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingInterview(null)}
+                                className="px-3 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md text-sm"
+                              >
+                                Cancel
+                              </button>
                             </div>
-                            {interview.interviewer && (
-                              <div className="flex items-center">
-                                <User className="w-4 h-4 mr-2" />
-                                {interview.interviewer}
-                              </div>
-                            )}
-                            {interview.duration && (
-                              <div className="flex items-center">
-                                <Clock className="w-4 h-4 mr-2" />
-                                {interview.duration} minutes
-                              </div>
-                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Round</label>
+                              <input
+                                type="number"
+                                value={editingInterview.round}
+                                onChange={(e) =>
+                                  setEditingInterview({
+                                    ...editingInterview,
+                                    round: Number.parseInt(e.target.value),
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                              <select
+                                value={editingInterview.type}
+                                onChange={(e) =>
+                                  setEditingInterview({
+                                    ...editingInterview,
+                                    type: e.target.value as Interview["type"],
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              >
+                                <option value="technical">Technical Interview</option>
+                                <option value="hr">HR Interview</option>
+                                <option value="phone">Phone Interview</option>
+                                <option value="video">Video Interview</option>
+                                <option value="onsite">Onsite Interview</option>
+                                <option value="final">Final Interview</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
+                              <input
+                                type="datetime-local"
+                                value={new Date(editingInterview.scheduledDate).toISOString().slice(0, 16)}
+                                onChange={(e) =>
+                                  setEditingInterview({
+                                    ...editingInterview,
+                                    scheduledDate: new Date(e.target.value),
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Interviewer</label>
+                              <input
+                                type="text"
+                                value={editingInterview.interviewer || ""}
+                                onChange={(e) =>
+                                  setEditingInterview({
+                                    ...editingInterview,
+                                    interviewer: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                placeholder="Interviewer name"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Result</label>
+                              <select
+                                value={editingInterview.result}
+                                onChange={(e) =>
+                                  setEditingInterview({
+                                    ...editingInterview,
+                                    result: e.target.value as Interview["result"],
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="passed">Passed</option>
+                                <option value="failed">Failed</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
+                            <textarea
+                              value={editingInterview.feedback || ""}
+                              onChange={(e) =>
+                                setEditingInterview({
+                                  ...editingInterview,
+                                  feedback: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              rows={3}
+                              placeholder="Interview feedback and notes..."
+                            />
                           </div>
                         </div>
+                      ) : (
+                        // View Mode
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          {/* Interview Info */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-lg font-semibold text-gray-900">Round {interview.round}</h4>
+                              <span className={`px-3 py-1 text-xs font-medium rounded-full ${typeConfig.color}`}>
+                                {typeConfig.icon} {typeConfig.label}
+                              </span>
+                            </div>
 
-                        {/* Result */}
-                        <div className="space-y-3">
-                          <label className="block text-sm font-medium text-gray-700">Result</label>
-                          <select
-                            value={interview.result}
-                            onChange={(e) =>
-                              updateInterview(interview.id!, { result: e.target.value as Interview["result"] })
-                            }
-                            className={`w-full px-3 py-2 text-sm font-medium rounded-lg border ${resultConfig.color} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                            <div className="space-y-2 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                {new Date(interview.scheduledDate).toLocaleString("en-US", {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                              {interview.interviewer && (
+                                <div className="flex items-center">
+                                  <User className="w-4 h-4 mr-2" />
+                                  {interview.interviewer}
+                                </div>
+                              )}
+                              {interview.duration && (
+                                <div className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  {interview.duration} minutes
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Result */}
+                          <div className="space-y-3">
+                            <label className="block text-sm font-medium text-gray-700">Result</label>
+                            <select
+                              value={interview.result}
+                              onChange={(e) =>
+                                updateInterview(interview.id!, { result: e.target.value as Interview["result"] })
+                              }
+                              className={`w-full px-3 py-2 text-sm font-medium rounded-lg border ${resultConfig.color} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="passed">Passed</option>
+                              <option value="failed">Failed</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          </div>
+
+                          {/* Feedback */}
+                          <div className="space-y-3">
+                            <label className="block text-sm font-medium text-gray-700">
+                              <MessageSquare className="w-4 h-4 inline mr-1" />
+                              Feedback
+                            </label>
+                            <textarea
+                              value={interview.feedback || ""}
+                              onChange={(e) => updateInterview(interview.id!, { feedback: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              rows={3}
+                              placeholder="Interview feedback and notes..."
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      {!isEditing && (
+                        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-200">
+                          <button
+                            onClick={() => setEditingInterview(interview)}
+                            className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-sm transition-colors duration-150"
                           >
-                            <option value="pending">Pending</option>
-                            <option value="passed">Passed</option>
-                            <option value="failed">Failed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                            <Edit className="w-4 h-4 mr-1" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteInterview(interview.id!)}
+                            className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md text-sm transition-colors duration-150"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </button>
                         </div>
-
-                        {/* Feedback */}
-                        <div className="space-y-3">
-                          <label className="block text-sm font-medium text-gray-700">
-                            <MessageSquare className="w-4 h-4 inline mr-1" />
-                            Feedback
-                          </label>
-                          <textarea
-                            value={interview.feedback || ""}
-                            onChange={(e) => updateInterview(interview.id!, { feedback: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            rows={3}
-                            placeholder="Interview feedback and notes..."
-                          />
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )
                 })}
@@ -276,7 +476,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, interviews, onClos
 
               <button
                 onClick={addInterview}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+                disabled={!newInterview.scheduledDate}
+                className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Schedule Interview

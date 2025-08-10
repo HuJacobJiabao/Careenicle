@@ -5,6 +5,7 @@ export interface Job {
   jobUrl: string
   applicationDate: Date
   status: "applied" | "interview" | "rejected" | "offer" | "accepted"
+  location?: string
   notes?: string
   createdAt?: Date
   updatedAt?: Date
@@ -35,4 +36,5 @@ export interface TimelineEvent {
   title: string
   description: string
   status: string
+  location?: string
 }

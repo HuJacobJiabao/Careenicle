@@ -2,35 +2,37 @@
 
 import type React from "react"
 import { useState } from "react"
+import type { Job } from "@/lib/types"
 import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin } from "lucide-react"
 
-interface AddJobModalProps {
+interface EditJobModalProps {
+  job: Job
   onClose: () => void
-  onAdd: () => void
+  onUpdate: () => void
 }
 
-const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
+const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
-    company: "",
-    position: "",
-    jobUrl: "",
-    applicationDate: new Date().toISOString().split("T")[0],
-    status: "applied" as const,
-    location: "",
-    notes: "",
+    company: job.company,
+    position: job.position,
+    jobUrl: job.jobUrl,
+    applicationDate: new Date(job.applicationDate).toISOString().split("T")[0],
+    status: job.status,
+    location: job.location || "",
+    notes: job.notes || "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await fetch("/api/jobs", {
-        method: "POST",
+      await fetch(`/api/jobs/${job.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
-      onAdd()
+      onUpdate()
     } catch (error) {
-      console.error("Failed to add job:", error)
+      console.error("Failed to update job:", error)
     }
   }
 
@@ -40,8 +42,8 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
         <div className="p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Add New Job Application</h2>
-              <p className="text-gray-600 mt-1">Track a new job opportunity</p>
+              <h2 className="text-2xl font-bold text-gray-900">Edit Job Application</h2>
+              <p className="text-gray-600 mt-1">Update job details</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-150">
               <X className="w-6 h-6 text-gray-400" />
@@ -122,6 +124,21 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
             </div>
 
             <div>
+              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as Job["status"] })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="applied">Applied</option>
+                <option value="interview">Interview</option>
+                <option value="rejected">Rejected</option>
+                <option value="offer">Offer</option>
+                <option value="accepted">Accepted</option>
+              </select>
+            </div>
+
+            <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                 <FileText className="w-4 h-4 mr-2" />
                 Notes
@@ -147,7 +164,7 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
                 type="submit"
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
               >
-                Add Job Application
+                Update Job Application
               </button>
             </div>
           </form>
@@ -157,4 +174,4 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
   )
 }
 
-export default AddJobModal
+export default EditJobModal
