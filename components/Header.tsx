@@ -36,9 +36,8 @@ const Header: React.FC = () => {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                JobTracker Pro
+                JobTracker
               </h1>
-              <p className="text-xs text-gray-500 font-medium">Professional Job Search Management</p>
             </div>
           </div>
 

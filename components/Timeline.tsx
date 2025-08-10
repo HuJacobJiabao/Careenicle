@@ -2,12 +2,34 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import type { Job, Interview, TimelineEvent } from "@/lib/types"
-import { FileText, Users, Calendar, Clock, ExternalLink, MapPin, Briefcase, Star } from "lucide-react"
+import type { Job, JobEvent } from "@/lib/types"
+import { 
+  Calendar, 
+  MapPin, 
+  Briefcase, 
+  CheckCircle,
+  XCircle,
+  Trophy,
+  Send,
+  MessageSquare,
+  Building
+} from "lucide-react"
 import { DataService } from "@/lib/dataService"
 
+interface TimelineEventDisplay {
+  id: string
+  type: string
+  company: string
+  position: string
+  date: Date
+  eventType: JobEvent["eventType"]
+  location?: string
+  priority: number
+  side: 'left' | 'right' // 决定卡片显示在时间轴的哪一侧
+}
+
 const Timeline: React.FC = () => {
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEventDisplay[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,50 +38,46 @@ const Timeline: React.FC = () => {
 
   const fetchTimelineData = async () => {
     try {
-      // DataService.fetchJobs already returns { jobs: Job[], pagination?: any }
       const jobsData = await DataService.fetchJobs({ limit: 1000 })
-      // DataService.fetchInterviews already returns Interview[]
-      const interviews: Interview[] = await DataService.fetchInterviews()
+      const jobs: Job[] = jobsData.jobs || []
+      
+      const events: TimelineEventDisplay[] = []
 
-      const jobs: Job[] = jobsData.jobs || [] // Ensure jobs is an array
+      for (const job of jobs) {
+        if (!job.id) continue; // 跳过没有ID的工作
+        const jobEvents = await DataService.fetchJobEvents(job.id)
+        
+        jobEvents.forEach((event: JobEvent) => {
+          // 只包含指定的事件类型
+          const allowedEvents: JobEvent["eventType"][] = [
+            'applied',
+            'interview_scheduled', 
+            'interview_completed',
+            'rejected',
+            'offer_received'
+          ]
 
-      const events: TimelineEvent[] = []
+          if (!allowedEvents.includes(event.eventType)) return
 
-      // Add application events
-      jobs.forEach((job) => {
-        events.push({
-          id: `job-${job.id}`,
-          type: "application",
-          company: job.company,
-          position: job.position,
-          date: new Date(job.applicationDate),
-          title: `Applied to ${job.company}`,
-          description: job.position,
-          status: job.status,
-          location: job.location,
-        })
-      })
-
-      // Add interview events
-      interviews.forEach((interview) => {
-        const job = jobs.find((j) => j.id === interview.jobId)
-        if (job) {
+          const priority = getEventPriority(event.eventType)
+          const side = getEventSide(event.eventType)
+          
           events.push({
-            id: `interview-${interview.id}`,
-            type: "interview",
+            id: `event-${event.id}`,
+            type: event.eventType,
             company: job.company,
             position: job.position,
-            date: new Date(interview.scheduledDate),
-            title: `Round ${interview.round} Interview - ${job.company}`,
-            description: `${getTypeLabel(interview.type)} ${interview.interviewer ? `with ${interview.interviewer}` : ""}`,
-            status: interview.result,
+            date: new Date(event.eventDate),
+            eventType: event.eventType,
             location: job.location,
+            priority,
+            side
           })
-        }
-      })
+        })
+      }
 
-      // Sort by date (newest first)
-      events.sort((a, b) => b.date.getTime() - b.date.getTime()) // Fixed sorting to be consistent
+      // 按日期排序 (最新的在前)
+      events.sort((a, b) => b.date.getTime() - a.date.getTime())
       setTimelineEvents(events)
     } catch (error) {
       console.error("Failed to fetch timeline data:", error)
@@ -68,159 +86,79 @@ const Timeline: React.FC = () => {
     }
   }
 
-  const getTypeLabel = (type: Interview["type"]) => {
-    const labels = {
-      phone: "Phone Interview",
-      video: "Video Interview",
-      onsite: "Onsite Interview",
-      technical: "Technical Interview",
-      hr: "HR Interview",
-      final: "Final Interview",
+  const getEventPriority = (eventType: JobEvent["eventType"]): number => {
+    const priorities: Record<string, number> = {
+      'offer_received': 10,
+      'rejected': 9,
+      'interview_completed': 8,
+      'interview_scheduled': 7,
+      'applied': 6
     }
-    return labels[type]
+    return priorities[eventType] || 1
   }
 
-  const getEventConfig = (event: TimelineEvent) => {
-    if (event.type === "application") {
-      const statusConfigs = {
-        applied: {
-          color: "bg-gradient-to-r from-blue-500 to-blue-600",
-          bgColor: "bg-gradient-to-br from-blue-50 to-blue-100",
-          textColor: "text-blue-800",
-          borderColor: "border-blue-300",
-          shadowColor: "shadow-blue-200",
-        },
-        interview: {
-          color: "bg-gradient-to-r from-amber-500 to-orange-500",
-          bgColor: "bg-gradient-to-br from-amber-50 to-orange-100",
-          textColor: "text-amber-800",
-          borderColor: "border-amber-300",
-          shadowColor: "shadow-amber-200",
-        },
-        rejected: {
-          color: "bg-gradient-to-r from-red-500 to-red-600",
-          bgColor: "bg-gradient-to-br from-red-50 to-red-100",
-          textColor: "text-red-800",
-          borderColor: "border-red-300",
-          shadowColor: "shadow-red-200",
-        },
-        offer: {
-          color: "bg-gradient-to-r from-green-500 to-emerald-500",
-          bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
-          textColor: "text-green-800",
-          borderColor: "border-green-300",
-          shadowColor: "shadow-green-200",
-        },
-        accepted: {
-          color: "bg-gradient-to-r from-purple-500 to-violet-500",
-          bgColor: "bg-gradient-to-br from-purple-50 to-violet-100",
-          textColor: "text-purple-800",
-          borderColor: "border-purple-300",
-          shadowColor: "shadow-purple-200",
-        },
-      }
-      return statusConfigs[event.status as Job["status"]] || statusConfigs.applied
-    } else {
-      const resultConfigs = {
-        pending: {
-          color: "bg-gradient-to-r from-yellow-500 to-amber-500",
-          bgColor: "bg-gradient-to-br from-yellow-50 to-amber-100",
-          textColor: "text-yellow-800",
-          borderColor: "border-yellow-300",
-          shadowColor: "shadow-yellow-200",
-        },
-        passed: {
-          color: "bg-gradient-to-r from-green-500 to-emerald-500",
-          bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
-          textColor: "text-green-800",
-          borderColor: "border-green-300",
-          shadowColor: "shadow-green-200",
-        },
-        failed: {
-          color: "bg-gradient-to-r from-red-500 to-red-600",
-          bgColor: "bg-gradient-to-br from-red-50 to-red-100",
-          textColor: "text-red-800",
-          borderColor: "border-red-300",
-          shadowColor: "shadow-red-200",
-        },
-        cancelled: {
-          color: "bg-gradient-to-r from-gray-500 to-gray-600",
-          bgColor: "bg-gradient-to-br from-gray-50 to-gray-100",
-          textColor: "text-gray-800",
-          borderColor: "border-gray-300",
-          shadowColor: "shadow-gray-200",
-        },
-      }
-      return resultConfigs[event.status as Interview["result"]] || resultConfigs.pending
-    }
+  // 决定事件显示在时间轴的哪一侧
+  const getEventSide = (eventType: JobEvent["eventType"]): 'left' | 'right' => {
+    // applied 和 interview 在右边，rejected 和 offer_received 在左边
+    const rightSideEvents = ['applied', 'interview_scheduled', 'interview_completed']
+    return rightSideEvents.includes(eventType) ? 'right' : 'left'
   }
 
-  const getEventIcon = (event: TimelineEvent) => {
-    if (event.type === "application") {
-      return <FileText className="w-5 h-5 text-white" />
-    } else {
-      return <Users className="w-5 h-5 text-white" />
+  const getEventConfig = (eventType: JobEvent["eventType"]) => {
+    const configs: Record<string, { icon: React.ElementType; color: string; bgColor: string; textColor: string }> = {
+      'applied': {
+        icon: Send,
+        color: "bg-blue-500",
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-800"
+      },
+      'interview_scheduled': {
+        icon: Calendar,
+        color: "bg-amber-500",
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-800"
+      },
+      'interview_completed': {
+        icon: MessageSquare,
+        color: "bg-purple-500",
+        bgColor: "bg-purple-50",
+        textColor: "text-purple-800"
+      },
+      'rejected': {
+        icon: XCircle,
+        color: "bg-red-500",
+        bgColor: "bg-red-50",
+        textColor: "text-red-800"
+      },
+      'offer_received': {
+        icon: Trophy,
+        color: "bg-green-500",
+        bgColor: "bg-green-50",
+        textColor: "text-green-800"
+      }
     }
+    return configs[eventType] || configs.applied
+  }
+
+  const getEventDisplayName = (eventType: JobEvent["eventType"]): string => {
+    const names: Record<string, string> = {
+      'applied': 'Applied',
+      'interview_scheduled': 'Interview',
+      'interview_completed': 'Interview',
+      'rejected': 'Rejected',
+      'offer_received': 'Offer Received'
+    }
+    return names[eventType] || eventType
   }
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
-      weekday: "long",
       year: "numeric",
-      month: "long",
-      day: "numeric",
+      month: "short",
+      day: "numeric"
     })
   }
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
-  const getStatusLabel = (status: Job["status"]) => {
-    const labels = {
-      applied: "Applied",
-      interview: "Interview",
-      rejected: "Rejected",
-      offer: "Offer Received",
-      accepted: "Accepted",
-    }
-    return labels[status]
-  }
-
-  const getResultLabel = (result: Interview["result"]) => {
-    const labels = {
-      pending: "Pending",
-      passed: "Passed",
-      failed: "Failed",
-      cancelled: "Cancelled",
-    }
-    return labels[result]
-  }
-
-  const getStatusEmoji = (status: string, type: string) => {
-    if (type === "application") {
-      const emojis = {
-        applied: "📝",
-        interview: "🎯",
-        rejected: "❌",
-        offer: "🎉",
-        accepted: "✅",
-      }
-      return emojis[status as Job["status"]] || "📝"
-    } else {
-      const emojis = {
-        pending: "⏳",
-        passed: "✅",
-        failed: "❌",
-        cancelled: "⏸️",
-      }
-      return emojis[status as Interview["result"]] || "⏳"
-    }
-  }
-
+  
   const getCompanyLogo = (company: string) => {
     const domain = company.toLowerCase().replace(/\s+/g, "")
     return `https://logo.clearbit.com/${domain}.com`
@@ -228,160 +166,162 @@ const Timeline: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Job Application Timeline</h1>
+          <div className="animate-pulse">
+            <div className="space-y-8">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center">
+                  <div className="w-1/2 p-4">
+                    <div className="h-24 bg-gray-200 rounded-lg"></div>
+                  </div>
+                  <div className="w-8 h-8 bg-gray-300 rounded-full mx-4"></div>
+                  <div className="w-1/2 p-4">
+                    <div className="h-24 bg-gray-200 rounded-lg"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (timelineEvents.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Job Application Timeline</h1>
+          <div className="text-center py-12">
+            <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Timeline Events</h3>
+            <p className="text-gray-500">Your job application events will appear here as you progress through the hiring process.</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-          Job Search Timeline
-        </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Track your job search journey and interview progress with a beautiful visual timeline
-        </p>
-      </div>
-
-      {/* Timeline */}
-      <div className="relative">
-        {/* Timeline line with gradient */}
-        <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500 rounded-full shadow-lg"></div>
-
-        <div className="space-y-8">
-          {timelineEvents.map((event, index) => {
-            const config = getEventConfig(event)
-            const isFirst = index === 0
-            const isUpcoming = new Date(event.date) > new Date()
-
-            return (
-              <div key={event.id} className="relative flex items-start">
-                {/* Timeline node with enhanced styling */}
-                <div
-                  className={`relative z-10 flex items-center justify-center w-16 h-16 rounded-full ${config.color} shadow-xl ${config.shadowColor} ${
-                    isFirst ? "ring-4 ring-blue-200 ring-opacity-50" : ""
-                  } ${isUpcoming ? "animate-pulse" : ""}`}
-                >
-                  {getEventIcon(event)}
-                  {isFirst && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
-                      <Star className="w-3 h-3 text-yellow-800" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Event content with narrower design */}
-                <div className="flex-1 ml-6 min-w-0">
-                  <div
-                    className={`${config.bgColor} rounded-2xl shadow-lg border-2 ${config.borderColor} p-4 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 max-w-md`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center mb-2">
-                          <img
-                            src={getCompanyLogo(event.company) || "/placeholder.svg"}
-                            alt={`${event.company} logo`}
-                            className="w-6 h-6 rounded mr-2 flex-shrink-0"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.src = "/placeholder.svg?height=24&width=24&text=" + event.company.charAt(0)
-                            }}
-                          />
-                          <span className="text-lg mr-2">{getStatusEmoji(event.status, event.type)}</span>
-                          <h3 className="text-lg font-bold text-gray-900 truncate">{event.company}</h3>
-                        </div>
-
-                        <div className="flex items-center text-gray-700 mb-2">
-                          <Briefcase className="w-4 h-4 mr-1 flex-shrink-0" />
-                          <span className="font-medium text-sm truncate">{event.position}</span>
-                        </div>
-
-                        {event.location && (
-                          <div className="flex items-center text-gray-600 mb-2">
-                            <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                            <span className="text-sm">{event.location}</span>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Job Application Timeline</h1>
+        
+        <div className="relative">
+          {/* 中央时间轴线 */}
+          <div className="absolute left-1/2 transform -translate-x-0.5 w-1 bg-gray-300 h-full"></div>
+          
+          <div className="space-y-8">
+            {timelineEvents.map((event, index) => {
+              const config = getEventConfig(event.eventType)
+              const IconComponent = config.icon
+              
+              return (
+                <div key={event.id} className="relative flex items-center">
+                  {/* 左侧内容 */}
+                  <div className="w-1/2 pr-8">
+                    {event.side === 'left' && (
+                      <div className={`${config.bgColor} rounded-lg p-6 shadow-sm border border-gray-200 ml-auto max-w-md`}>
+                        <div className="flex items-center mb-3">
+                          <div className={`${config.color} rounded-full p-2 mr-3`}>
+                            <IconComponent className="w-5 h-5 text-white" />
                           </div>
-                        )}
-
-                        <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
-                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-2 py-1">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            <span className="font-medium">{formatDate(event.date)}</span>
-                          </div>
-                          <div className="flex items-center bg-white bg-opacity-50 rounded-full px-2 py-1">
-                            <Clock className="w-3 h-3 mr-1" />
-                            <span className="font-medium">{formatTime(event.date)}</span>
+                          <div className="flex-1">
+                            <div className={`text-sm font-medium ${config.textColor}`}>
+                              {getEventDisplayName(event.eventType)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatDate(event.date)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="ml-3 flex flex-col items-end space-y-2">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${config.textColor} bg-white bg-opacity-80 border ${config.borderColor} shadow-sm`}
-                        >
-                          {event.type === "application"
-                            ? getStatusLabel(event.status as Job["status"])
-                            : getResultLabel(event.status as Interview["result"])}
-                        </span>
-
-                        {event.type === "application" && (
-                          <a
-                            href="#"
-                            className="inline-flex items-center text-blue-700 hover:text-blue-900 text-xs font-medium bg-white bg-opacity-80 rounded-full px-2 py-1 shadow-sm hover:shadow-md transition-all duration-200"
-                          >
-                            <ExternalLink className="w-2 h-2 mr-1" />
-                            View
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Progress indicator for first item */}
-                    {isFirst && (
-                      <div className="mt-3 pt-3 border-t border-white border-opacity-30">
-                        <div className="flex items-center text-xs font-medium text-blue-800">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full mr-2 animate-pulse shadow-lg"></div>
-                          Most recent
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-gray-700">
+                            <img
+                              src={getCompanyLogo(event.company)}
+                              alt={`${event.company} logo`}
+                              className="w-6 h-6 rounded-full shadow-sm mr-2"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = "/placeholder.svg?height=24&width=24&text=" + event.company.charAt(0);
+                              }}
+                            />
+                            <span className="font-medium">{event.company}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-gray-700">
+                            <Briefcase className="w-4 h-4 mr-2 text-gray-500" />
+                            <span>{event.position}</span>
+                          </div>
+                          {event.location && (
+                            <div className="flex items-center text-sm text-gray-700">
+                              <MapPin className="w-4 h-4 mr-2 text-gray-500" />
+                              <span>{event.location}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
-
-                    {/* Upcoming indicator */}
-                    {isUpcoming && (
-                      <div className="mt-3 pt-3 border-t border-white border-opacity-30">
-                        <div className="flex items-center text-xs font-medium text-amber-800">
-                          <div className="w-2 h-2 bg-amber-500 rounded-full mr-2 animate-bounce shadow-lg"></div>
-                          Upcoming
+                  </div>
+                  
+                  {/* 中央时间点 */}
+                  <div className="absolute left-1/2 transform -translate-x-1/2 z-10">
+                    <div className={`${config.color} rounded-full p-3 shadow-lg border-4 border-white`}>
+                      <IconComponent className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  
+                  {/* 右侧内容 */}
+                  <div className="w-1/2 pl-8">
+                    {event.side === 'right' && (
+                      <div className={`${config.bgColor} rounded-lg p-6 shadow-sm border border-gray-200 mr-auto max-w-md`}>
+                        <div className="flex items-center mb-3">
+                          <div className={`${config.color} rounded-full p-2 mr-3`}>
+                            <IconComponent className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <div className={`text-sm font-medium ${config.textColor}`}>
+                              {getEventDisplayName(event.eventType)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatDate(event.date)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-gray-700">
+                            <img
+                              src={getCompanyLogo(event.company)}
+                              alt={`${event.company} logo`}
+                              className="w-6 h-6 rounded-full shadow-sm mr-2"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = "/placeholder.svg?height=24&width=24&text=" + event.company.charAt(0);
+                              }}
+                            />
+                            <span className="font-medium">{event.company}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-gray-700">
+                            <Briefcase className="w-4 h-4 mr-2 text-gray-500" />
+                            <span>{event.position}</span>
+                          </div>
+                          {event.location && (
+                            <div className="flex items-center text-sm text-gray-700">
+                              <MapPin className="w-4 h-4 mr-2 text-gray-500" />
+                              <span>{event.location}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
-            )
-          })}
-
-          {timelineEvents.length === 0 && (
-            <div className="text-center py-20">
-              <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
-                <Calendar className="w-16 h-16 text-gray-400" />
-              </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-6">No activities yet</h3>
-              <p className="text-gray-600 text-xl mb-10 max-w-md mx-auto">
-                Start your job search journey by adding your first application!
-              </p>
-              <a
-                href="/"
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <FileText className="w-6 h-6 mr-3" />
-                Add Your First Job
-              </a>
-            </div>
-          )}
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

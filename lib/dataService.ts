@@ -146,6 +146,17 @@ export class DataService {
     }
   }
 
+  static async fetchJobEvents(jobId: number): Promise<any[]> {
+    if (this.useMockData) {
+      // For mock mode, we'll return an empty array for now
+      // In a real implementation, we would have mock job events
+      return []
+    } else {
+      const response = await fetch(`/api/job-events?jobId=${jobId}`)
+      return await response.json()
+    }
+  }
+
   static async toggleFavorite(jobId: number, isFavorite: boolean): Promise<void> {
     if (this.useMockData) {
       const job = mockJobs.find((job) => job.id === jobId)

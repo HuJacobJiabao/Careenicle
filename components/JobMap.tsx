@@ -201,13 +201,35 @@ const JobMap: React.FC = () => {
                 className="w-full h-full"
                 style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
               >
-                {/* US Map Outline (simplified) */}
+                {/* US Map Outline (more realistic shape) */}
                 <path
-                  d="M 100 150 L 900 150 L 900 450 L 100 450 Z"
-                  fill="rgba(255,255,255,0.1)"
-                  stroke="rgba(255,255,255,0.3)"
+                  d="M 200 200 
+                     L 250 180 L 300 190 L 350 170 L 400 180 L 450 175 L 500 170 L 550 175 L 600 180 L 650 185 L 700 190 L 750 200 L 800 210
+                     L 820 220 L 830 240 L 835 260 L 840 280 L 845 300 L 850 320 L 855 340 L 860 360 L 850 380 L 840 400 L 830 420 L 820 440
+                     L 800 450 L 780 460 L 760 465 L 740 470 L 720 475 L 700 480 L 680 475 L 660 470 L 640 465 L 620 460 L 600 455
+                     L 580 450 L 560 445 L 540 440 L 520 435 L 500 430 L 480 435 L 460 440 L 440 445 L 420 450 L 400 455 L 380 460
+                     L 360 465 L 340 470 L 320 465 L 300 460 L 280 455 L 260 450 L 240 440 L 220 430 L 210 420 L 205 400 L 200 380
+                     L 195 360 L 190 340 L 185 320 L 180 300 L 185 280 L 190 260 L 195 240 L 200 220 Z
+                     
+                     M 150 480 L 160 470 L 170 475 L 175 485 L 170 495 L 160 500 L 150 495 Z
+                     
+                     M 120 500 L 130 490 L 140 495 L 145 505 L 140 515 L 130 520 L 120 515 Z"
+                  fill="rgba(255,255,255,0.2)"
+                  stroke="rgba(255,255,255,0.5)"
                   strokeWidth="2"
                 />
+                
+                {/* State boundaries (simplified major states) */}
+                <g stroke="rgba(255,255,255,0.3)" strokeWidth="1" fill="none">
+                  {/* CA */}
+                  <path d="M 200 200 L 200 400 L 280 420 L 300 380 L 280 340 L 260 300 L 240 260 L 220 220 Z" />
+                  {/* TX */}
+                  <path d="M 400 300 L 500 320 L 520 380 L 480 420 L 420 400 L 380 360 Z" />
+                  {/* FL */}
+                  <path d="M 700 400 L 750 420 L 780 450 L 760 480 L 720 470 L 700 450 Z" />
+                  {/* NY */}
+                  <path d="M 700 220 L 750 230 L 760 260 L 740 280 L 720 270 L 710 250 Z" />
+                </g>
 
                 {/* Location Markers */}
                 {locationData.map((location, index) => {

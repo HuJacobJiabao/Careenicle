@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import type { Job, Interview, UpcomingInterviewJob } from "@/lib/types"
+import type { Job, JobEvent, UpcomingInterviewJob } from "@/lib/types"
 import { DataService } from "@/lib/dataService"
 import InterviewModal from "./InterviewModal"
 import AddJobModal from "./AddJobModal"
@@ -31,7 +31,7 @@ import {
 
 const JobTable: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([])
-  const [interviews, setInterviews] = useState<Interview[]>([])
+  const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [showInterviewModal, setShowInterviewModal] = useState(false)
   const [showAddJobModal, setShowAddJobModal] = useState(false)
@@ -47,10 +47,33 @@ const JobTable: React.FC = () => {
     totalPages: 0,
   })
 
+  // Check database connectivity and decide between PostgreSQL or mock data
+  useEffect(() => {
+    const checkDataSource = async () => {
+      try {
+        // Try to fetch a small amount of data to test database connection
+        const response = await fetch('/api/jobs?limit=1')
+        if (response.ok) {
+          // Database is working, use PostgreSQL
+          DataService.setUseMockData(false)
+          console.log('Using PostgreSQL database')
+        } else {
+          throw new Error('Database connection failed')
+        }
+      } catch (error) {
+        // Database failed, use mock data
+        console.warn('Database connection failed, using mock data:', error)
+        DataService.setUseMockData(true)
+      }
+    }
+
+    checkDataSource()
+  }, [])
+
   useEffect(() => {
     fetchJobs()
-    fetchInterviews()
-  }, [pagination.page, statusFilter, searchTerm, showFavorites])
+    fetchJobEvents()
+  }, [pagination.page, statusFilter, searchTerm, showFavorites, DataService.getUseMockData()])
 
   const fetchJobs = async () => {
     try {
@@ -72,12 +95,14 @@ const JobTable: React.FC = () => {
     }
   }
 
-  const fetchInterviews = async () => {
+  const fetchJobEvents = async () => {
     try {
-      const data = await DataService.fetchInterviews()
-      setInterviews(data)
+      // Fetch all job events
+      const response = await fetch('/api/job-events')
+      const data = await response.json()
+      setJobEvents(data)
     } catch (error) {
-      console.error("Failed to fetch interviews:", error)
+      console.error("Failed to fetch job events:", error)
     }
   }
 
@@ -104,23 +129,26 @@ const JobTable: React.FC = () => {
       try {
         await DataService.deleteJob(jobId)
         fetchJobs()
-        fetchInterviews()
+        fetchJobEvents()
       } catch (error) {
         console.error("Failed to delete job:", error)
       }
     }
   }
 
-  const getJobInterviews = (jobId: number) => {
-    return interviews.filter((interview) => interview.jobId === jobId)
+  const getJobInterviewEvents = (jobId: number) => {
+    return jobEvents.filter((event) => 
+      event.jobId === jobId && 
+      (event.eventType === 'interview_scheduled' || event.eventType === 'interview_completed')
+    )
   }
 
   const getUpcomingInterview = (jobId: number) => {
-    const jobInterviews = getJobInterviews(jobId)
+    const interviewEvents = getJobInterviewEvents(jobId)
     const now = new Date()
-    return jobInterviews
-      .filter((interview) => new Date(interview.scheduledDate) > now && interview.result === "pending")
-      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())[0]
+    return interviewEvents
+      .filter((event) => new Date(event.eventDate) > now && event.eventType === 'interview_scheduled')
+      .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())[0]
   }
 
   const getUpcomingInterviewJobs = (): UpcomingInterviewJob[] => {
@@ -134,7 +162,7 @@ const JobTable: React.FC = () => {
 
     return upcomingJobs.sort(
       (a, b) =>
-        new Date(a.upcomingInterview.scheduledDate).getTime() - new Date(b.upcomingInterview.scheduledDate).getTime(),
+        new Date(a.upcomingInterview.eventDate).getTime() - new Date(b.upcomingInterview.eventDate).getTime(),
     )
   }
 
@@ -180,17 +208,23 @@ const JobTable: React.FC = () => {
     return configs[status]
   }
 
-  const getInterviewSummary = (interviews: Interview[]) => {
-    if (interviews.length === 0) return { text: "No interviews", color: "text-gray-500" }
+  const getInterviewSummary = (jobEvents: JobEvent[]) => {
+    const interviewEvents = jobEvents.filter(event => 
+      event.eventType === 'interview_scheduled' || event.eventType === 'interview_completed'
+    )
+    
+    if (interviewEvents.length === 0) return { text: "No interviews", color: "text-gray-500" }
 
-    const pending = interviews.filter((i) => i.result === "pending").length
-    const passed = interviews.filter((i) => i.result === "passed").length
-    const failed = interviews.filter((i) => i.result === "failed").length
+    const pending = interviewEvents.filter((event) => 
+      event.eventType === 'interview_scheduled' && new Date(event.eventDate) > new Date()
+    ).length
+    const passed = interviewEvents.filter((event) => event.interviewResult === "passed").length
+    const failed = interviewEvents.filter((event) => event.interviewResult === "failed").length
 
     if (pending > 0) return { text: `${pending} pending`, color: "text-amber-600" }
-    if (failed > 0) return { text: `${failed}/${interviews.length} failed`, color: "text-red-600" }
-    if (passed === interviews.length) return { text: `${passed}/${interviews.length} passed`, color: "text-green-600" }
-    return { text: `${passed}/${interviews.length} passed`, color: "text-blue-600" }
+    if (failed > 0) return { text: `${failed}/${interviewEvents.length} failed`, color: "text-red-600" }
+    if (passed === interviewEvents.length) return { text: `${passed}/${interviewEvents.length} passed`, color: "text-green-600" }
+    return { text: `${passed}/${interviewEvents.length} passed`, color: "text-blue-600" }
   }
 
   const upcomingInterviewJobs = getUpcomingInterviewJobs()
@@ -210,37 +244,40 @@ const JobTable: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-slide-in-up">
       {/* Header */}
       <div className="mb-10">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="mb-6 sm:mb-0">
+        <div className="space-y-6">
+          {/* Title Section */}
+          <div>
             <h1 className="text-4xl font-bold gradient-text mb-3">Job Applications Dashboard</h1>
             <p className="text-lg text-gray-600 font-medium">
               Track your job applications and interview progress with precision
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+          
+          {/* Controls Section */}
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             {/* Search */}
-            <form onSubmit={handleSearch} className="flex">
-              <div className="relative">
+            <form onSubmit={handleSearch} className="flex flex-1 min-w-0">
+              <div className="relative flex-1 min-w-[250px]">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search company or position..."
-                  className="form-input pl-12 pr-4 py-3 w-72 rounded-l-xl border-r-0"
+                  className="form-input pl-12 pr-4 py-3 w-full rounded-l-xl border-r-0"
                 />
               </div>
               <button
                 type="submit"
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl whitespace-nowrap"
               >
                 Search
               </button>
             </form>
 
             {/* Filters */}
-            <div className="flex space-x-3">
-              <div className="relative">
+            <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+              <div className="relative min-w-[150px]">
                 <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <select
                   value={statusFilter}
@@ -248,7 +285,7 @@ const JobTable: React.FC = () => {
                     setStatusFilter(e.target.value)
                     setPagination({ ...pagination, page: 1 })
                   }}
-                  className="form-input pl-12 pr-8 py-3 rounded-xl appearance-none bg-white cursor-pointer"
+                  className="form-input pl-12 pr-8 py-3 rounded-xl appearance-none bg-white cursor-pointer w-full"
                 >
                   <option value="all">All Status</option>
                   <option value="applied">Applied</option>
@@ -264,17 +301,17 @@ const JobTable: React.FC = () => {
                   setShowFavorites(!showFavorites)
                   setPagination({ ...pagination, page: 1 })
                 }}
-                className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap ${
                   showFavorites
-                    ? "bg-red-100 text-red-700 hover:bg-red-200 shadow-lg"
+                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 shadow-lg"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                <Heart className={`w-5 h-5 mr-2 ${showFavorites ? "fill-current" : ""}`} />
+                <Star className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : ""}`} />
                 Favorites
               </button>
 
-              <button onClick={() => setShowAddJobModal(true)} className="btn-primary inline-flex items-center">
+              <button onClick={() => setShowAddJobModal(true)} className="btn-primary inline-flex items-center whitespace-nowrap">
                 <Plus className="w-5 h-5 mr-2" />
                 Add Job
               </button>
@@ -326,13 +363,13 @@ const JobTable: React.FC = () => {
           {
             label: "Favorites",
             value: jobs.filter((j) => j.isFavorite).length,
-            color: "from-red-500 to-pink-500",
+            color: "from-yellow-500 to-amber-500",
             icon: <Star className="w-6 h-6" />,
-            bgColor: "bg-red-50",
-            textColor: "text-red-700",
+            bgColor: "bg-yellow-50",
+            textColor: "text-yellow-700",
           },
         ].map((stat, index) => (
-          <div key={index} className="card group hover:scale-105">
+          <div key={index} className="card group hover:-translate-y-1">
             <div className="card-content">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -356,7 +393,10 @@ const JobTable: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
-                <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                <th className="px-1 py-5 w-12">
+                  {/* Star column - no header text */}
+                </th>
+                <th className="px-2 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Company & Position
                 </th>
                 <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -373,18 +413,32 @@ const JobTable: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {jobs.map((job, index) => {
-                const jobInterviews = getJobInterviews(job.id!)
+                const jobInterviewEvents = getJobInterviewEvents(job.id!)
                 const statusConfig = getStatusConfig(job.status)
-                const interviewSummary = getInterviewSummary(jobInterviews)
+                const interviewSummary = getInterviewSummary(jobInterviewEvents)
                 const upcomingInterview = getUpcomingInterview(job.id!)
 
                 return (
                   <tr
                     key={job.id}
-                    className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200"
+                    className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-colors duration-200"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
-                    <td className="px-6 py-5">
+                    <td className="px-1 py-5 whitespace-nowrap w-12">
+                      <div className="flex justify-center items-center h-full">
+                        <button
+                          onClick={() => toggleFavorite(job.id!, job.isFavorite!)}
+                          className="p-1 hover:bg-yellow-50 rounded-full transition-colors duration-200"
+                        >
+                          <Star
+                            className={`w-5 h-5 transition-colors duration-200 ${
+                              job.isFavorite ? "fill-yellow-500 text-yellow-500" : "text-gray-300 hover:text-yellow-400"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-2 py-5">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
                           <img
@@ -408,16 +462,6 @@ const JobTable: React.FC = () => {
                               {job.position}
                               <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                             </a>
-                            <button
-                              onClick={() => toggleFavorite(job.id!, job.isFavorite!)}
-                              className="ml-3 p-1 hover:bg-red-50 rounded-full transition-colors duration-200"
-                            >
-                              <Heart
-                                className={`w-5 h-5 transition-colors duration-200 ${
-                                  job.isFavorite ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400"
-                                }`}
-                              />
-                            </button>
                           </div>
                           <div className="text-base font-bold text-gray-900 mt-1">{job.company}</div>
                           {job.location && (
@@ -444,13 +488,13 @@ const JobTable: React.FC = () => {
                         <Users className="w-5 h-5 mr-3 text-gray-400" />
                         <div>
                           <div className="text-sm font-semibold text-gray-900">
-                            {jobInterviews.length > 0 ? `${jobInterviews.length} rounds` : "No interviews"}
+                            {jobInterviewEvents.length > 0 ? `${jobInterviewEvents.length} rounds` : "No interviews"}
                           </div>
                           <div className={`text-xs font-medium ${interviewSummary.color}`}>{interviewSummary.text}</div>
                           {upcomingInterview && (
                             <div className="text-xs text-amber-600 font-semibold">
                               Next:{" "}
-                              {new Date(upcomingInterview.scheduledDate).toLocaleDateString("en-US", {
+                              {new Date(upcomingInterview.eventDate).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
                               })}
@@ -492,14 +536,13 @@ const JobTable: React.FC = () => {
                           className="inline-flex items-center px-3 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-all duration-200 font-semibold hover:shadow-md"
                         >
                           <Settings className="w-4 h-4 mr-1" />
-                          Interviews
+                          Manage
                         </button>
                         <button
                           onClick={() => deleteJob(job.id!)}
                           className="inline-flex items-center px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-all duration-200 font-semibold hover:shadow-md"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -597,13 +640,12 @@ const JobTable: React.FC = () => {
       {showInterviewModal && selectedJob && (
         <InterviewModal
           job={selectedJob}
-          interviews={getJobInterviews(selectedJob.id!)}
           onClose={() => {
             setShowInterviewModal(false)
             setSelectedJob(null)
           }}
           onUpdate={() => {
-            fetchInterviews()
+            fetchJobEvents()
             fetchJobs()
           }}
         />

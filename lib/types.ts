@@ -28,9 +28,40 @@ export interface Interview {
   updatedAt?: Date
 }
 
+export interface JobEvent {
+  id?: number
+  jobId: number
+  eventType: 
+    | "applied" 
+    | "interview_scheduled" 
+    | "interview_completed" 
+    | "interview_result" 
+    | "rejected" 
+    | "offer_received" 
+    | "offer_accepted"
+    | "withdrawn"
+    | "ghosted"
+  eventDate: Date
+  title: string
+  description?: string
+  
+  // Interview specific fields
+  interviewId?: number
+  interviewRound?: number
+  interviewType?: "phone" | "video" | "onsite" | "technical" | "hr" | "final"
+  interviewer?: string
+  interviewResult?: "pending" | "passed" | "failed" | "cancelled"
+  
+  // General fields
+  notes?: string
+  metadata?: any
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 export interface TimelineEvent {
   id: string
-  type: "application" | "interview" | "result"
+  type: "application" | "interview" | "result" | "offer" | "status_change"
   company: string
   position: string
   date: Date
@@ -38,10 +69,11 @@ export interface TimelineEvent {
   description: string
   status: string
   location?: string
+  eventType?: JobEvent["eventType"]
 }
 
 export interface UpcomingInterviewJob extends Job {
-  upcomingInterview: Interview
+  upcomingInterview: JobEvent
 }
 
 export interface LocationData {
