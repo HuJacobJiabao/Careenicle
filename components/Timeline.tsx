@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, Interview, TimelineEvent } from "@/lib/types"
 import { FileText, Users, Calendar, Clock, ExternalLink, MapPin, Briefcase, Star } from "lucide-react"
+import { DataService } from "@/lib/dataService"
 
 const Timeline: React.FC = () => {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
@@ -11,18 +12,16 @@ const Timeline: React.FC = () => {
 
   useEffect(() => {
     fetchTimelineData()
-  }, [])
+  }, [DataService.getUseMockData()])
 
   const fetchTimelineData = async () => {
     try {
-      const [jobsResponse, interviewsResponse] = await Promise.all([
-        fetch("/api/jobs?limit=1000"),
-        fetch("/api/interviews"),
-      ])
+      // DataService.fetchJobs already returns { jobs: Job[], pagination?: any }
+      const jobsData = await DataService.fetchJobs({ limit: 1000 })
+      // DataService.fetchInterviews already returns Interview[]
+      const interviews: Interview[] = await DataService.fetchInterviews()
 
-      const jobsData = await jobsResponse.json()
-      const jobs: Job[] = jobsData.jobs || jobsData
-      const interviews: Interview[] = await interviewsResponse.json()
+      const jobs: Job[] = jobsData.jobs || [] // Ensure jobs is an array
 
       const events: TimelineEvent[] = []
 
@@ -60,7 +59,7 @@ const Timeline: React.FC = () => {
       })
 
       // Sort by date (newest first)
-      events.sort((a, b) => b.date.getTime() - a.date.getTime())
+      events.sort((a, b) => b.date.getTime() - b.date.getTime()) // Fixed sorting to be consistent
       setTimelineEvents(events)
     } catch (error) {
       console.error("Failed to fetch timeline data:", error)

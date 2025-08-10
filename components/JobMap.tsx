@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, LocationData } from "@/lib/types"
 import { MapPin } from "lucide-react"
+import { DataService } from "@/lib/dataService"
 
 const JobMap: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -65,15 +66,17 @@ const JobMap: React.FC = () => {
     HI: { lat: 21.1098, lng: -157.5311 },
   }
 
+  const [currentUseMockData, setCurrentUseMockData] = useState(DataService.getUseMockData())
+
   useEffect(() => {
     fetchJobs()
-  }, [])
+    setCurrentUseMockData(DataService.getUseMockData())
+  }, [DataService.getUseMockData()])
 
   const fetchJobs = async () => {
     try {
-      // Fetch all jobs without pagination for map view
-      const response = await fetch("/api/jobs?limit=1000")
-      const data = await response.json()
+      // DataService.fetchJobs already returns { jobs: Job[], pagination?: any }
+      const data = await DataService.fetchJobs({ limit: 1000 })
       setJobs(data.jobs)
       processLocationData(data.jobs)
     } catch (error) {

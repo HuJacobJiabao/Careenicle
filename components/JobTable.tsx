@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, Interview, UpcomingInterviewJob } from "@/lib/types"
+import { DataService } from "@/lib/dataService"
 import InterviewModal from "./InterviewModal"
 import AddJobModal from "./AddJobModal"
 import EditJobModal from "./EditJobModal"
@@ -22,6 +23,10 @@ import {
   Heart,
   ChevronLeft,
   ChevronRight,
+  TrendingUp,
+  Target,
+  Award,
+  Star,
 } from "lucide-react"
 
 const JobTable: React.FC = () => {
@@ -49,18 +54,17 @@ const JobTable: React.FC = () => {
 
   const fetchJobs = async () => {
     try {
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
+      const data = await DataService.fetchJobs({
+        page: pagination.page,
+        limit: pagination.limit,
         search: searchTerm,
         status: statusFilter,
-        favorites: showFavorites.toString(),
+        favorites: showFavorites,
       })
-
-      const response = await fetch(`/api/jobs?${params}`)
-      const data = await response.json()
       setJobs(data.jobs)
-      setPagination(data.pagination)
+      if (data.pagination) {
+        setPagination(data.pagination)
+      }
     } catch (error) {
       console.error("Failed to fetch jobs:", error)
     } finally {
@@ -70,8 +74,7 @@ const JobTable: React.FC = () => {
 
   const fetchInterviews = async () => {
     try {
-      const response = await fetch("/api/interviews")
-      const data = await response.json()
+      const data = await DataService.fetchInterviews()
       setInterviews(data)
     } catch (error) {
       console.error("Failed to fetch interviews:", error)
@@ -80,11 +83,7 @@ const JobTable: React.FC = () => {
 
   const updateJobStatus = async (jobId: number, status: Job["status"]) => {
     try {
-      await fetch(`/api/jobs/${jobId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      })
+      await DataService.updateJob(jobId, { status })
       fetchJobs()
     } catch (error) {
       console.error("Failed to update job status:", error)
@@ -93,11 +92,7 @@ const JobTable: React.FC = () => {
 
   const toggleFavorite = async (jobId: number, isFavorite: boolean) => {
     try {
-      await fetch(`/api/jobs/${jobId}/favorite`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isFavorite: !isFavorite }),
-      })
+      await DataService.toggleFavorite(jobId, isFavorite)
       fetchJobs()
     } catch (error) {
       console.error("Failed to toggle favorite:", error)
@@ -107,7 +102,7 @@ const JobTable: React.FC = () => {
   const deleteJob = async (jobId: number) => {
     if (confirm("Are you sure you want to delete this job application?")) {
       try {
-        await fetch(`/api/jobs/${jobId}`, { method: "DELETE" })
+        await DataService.deleteJob(jobId)
         fetchJobs()
         fetchInterviews()
       } catch (error) {
@@ -129,7 +124,7 @@ const JobTable: React.FC = () => {
   }
 
   const getUpcomingInterviewJobs = (): UpcomingInterviewJob[] => {
-    const allJobs = [...jobs] // Include all jobs, not just current page
+    const allJobs = [...jobs]
     const upcomingJobs = allJobs
       .map((job) => ({
         ...job,
@@ -202,37 +197,42 @@ const JobTable: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center h-96">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-slide-in-up">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Job Applications</h1>
-            <p className="mt-2 text-gray-600">Track your job applications and interview progress</p>
+          <div className="mb-6 sm:mb-0">
+            <h1 className="text-4xl font-bold gradient-text mb-3">Job Applications Dashboard</h1>
+            <p className="text-lg text-gray-600 font-medium">
+              Track your job applications and interview progress with precision
+            </p>
           </div>
-          <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
             {/* Search */}
             <form onSubmit={handleSearch} className="flex">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search company or position..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                  className="form-input pl-12 pr-4 py-3 w-72 rounded-l-xl border-r-0"
                 />
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
               >
                 Search
               </button>
@@ -241,14 +241,14 @@ const JobTable: React.FC = () => {
             {/* Filters */}
             <div className="flex space-x-3">
               <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <select
                   value={statusFilter}
                   onChange={(e) => {
                     setStatusFilter(e.target.value)
                     setPagination({ ...pagination, page: 1 })
                   }}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="form-input pl-12 pr-8 py-3 rounded-xl appearance-none bg-white cursor-pointer"
                 >
                   <option value="all">All Status</option>
                   <option value="applied">Applied</option>
@@ -264,20 +264,17 @@ const JobTable: React.FC = () => {
                   setShowFavorites(!showFavorites)
                   setPagination({ ...pagination, page: 1 })
                 }}
-                className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 ${
                   showFavorites
-                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    ? "bg-red-100 text-red-700 hover:bg-red-200 shadow-lg"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                <Heart className={`w-4 h-4 mr-2 ${showFavorites ? "fill-current" : ""}`} />
+                <Heart className={`w-5 h-5 mr-2 ${showFavorites ? "fill-current" : ""}`} />
                 Favorites
               </button>
 
-              <button
-                onClick={() => setShowAddJobModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
-              >
+              <button onClick={() => setShowAddJobModal(true)} className="btn-primary inline-flex items-center">
                 <Plus className="w-5 h-5 mr-2" />
                 Add Job
               </button>
@@ -288,44 +285,65 @@ const JobTable: React.FC = () => {
 
       {/* Upcoming Interviews Table */}
       {upcomingInterviewJobs.length > 0 && (
-        <UpcomingInterviewsTable
-          jobs={upcomingInterviewJobs}
-          onManageInterview={(job) => {
-            setSelectedJob(job)
-            setShowInterviewModal(true)
-          }}
-        />
+        <div className="mb-10 animate-slide-in-right">
+          <UpcomingInterviewsTable
+            jobs={upcomingInterviewJobs}
+            onManageInterview={(job) => {
+              setSelectedJob(job)
+              setShowInterviewModal(true)
+            }}
+          />
+        </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10 animate-scale-in">
         {[
-          { label: "Total Applications", value: pagination.total, color: "bg-blue-500", icon: "📊" },
+          {
+            label: "Total Applications",
+            value: pagination.total,
+            color: "from-blue-500 to-blue-600",
+            icon: <TrendingUp className="w-6 h-6" />,
+            bgColor: "bg-blue-50",
+            textColor: "text-blue-700",
+          },
           {
             label: "Active Interviews",
             value: jobs.filter((j) => j.status === "interview").length,
-            color: "bg-amber-500",
-            icon: "🎯",
+            color: "from-amber-500 to-orange-500",
+            icon: <Target className="w-6 h-6" />,
+            bgColor: "bg-amber-50",
+            textColor: "text-amber-700",
           },
           {
             label: "Offers Received",
             value: jobs.filter((j) => j.status === "offer").length,
-            color: "bg-green-500",
-            icon: "🎉",
+            color: "from-green-500 to-emerald-500",
+            icon: <Award className="w-6 h-6" />,
+            bgColor: "bg-green-50",
+            textColor: "text-green-700",
           },
           {
             label: "Favorites",
             value: jobs.filter((j) => j.isFavorite).length,
-            color: "bg-red-500",
-            icon: "❤️",
+            color: "from-red-500 to-pink-500",
+            icon: <Star className="w-6 h-6" />,
+            bgColor: "bg-red-50",
+            textColor: "text-red-700",
           },
         ].map((stat, index) => (
-          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className={`${stat.color} rounded-lg p-3 text-white text-xl`}>{stat.icon}</div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+          <div key={index} className="card group hover:scale-105">
+            <div className="card-content">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">{stat.label}</p>
+                  <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
+                </div>
+                <div
+                  className={`p-4 rounded-2xl bg-gradient-to-br ${stat.color} text-white shadow-lg group-hover:shadow-xl transition-all duration-200`}
+                >
+                  {stat.icon}
+                </div>
               </div>
             </div>
           </div>
@@ -333,83 +351,87 @@ const JobTable: React.FC = () => {
       </div>
 
       {/* Jobs Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="card animate-fade-in">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead>
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Company & Position
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Applied Date
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Interview Status
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {jobs.map((job) => {
+            <tbody className="bg-white divide-y divide-gray-100">
+              {jobs.map((job, index) => {
                 const jobInterviews = getJobInterviews(job.id!)
                 const statusConfig = getStatusConfig(job.status)
                 const interviewSummary = getInterviewSummary(jobInterviews)
                 const upcomingInterview = getUpcomingInterview(job.id!)
 
                 return (
-                  <tr key={job.id} className="hover:bg-gray-50 transition-colors duration-150">
-                    <td className="px-6 py-4">
+                  <tr
+                    key={job.id}
+                    className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <td className="px-6 py-5">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
                           <img
                             src={getCompanyLogo(job.company) || "/placeholder.svg"}
                             alt={`${job.company} logo`}
-                            className="w-10 h-10 rounded-lg"
+                            className="w-12 h-12 rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-200"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
-                              target.src = "/placeholder.svg?height=40&width=40&text=" + job.company.charAt(0)
+                              target.src = "/placeholder.svg?height=48&width=48&text=" + job.company.charAt(0)
                             }}
                           />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-4 flex-1">
                           <div className="flex items-center">
                             <a
                               href={job.jobUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+                              className="text-base font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center group-hover:text-blue-700 transition-colors duration-200"
                             >
                               {job.position}
-                              <ExternalLink className="w-3 h-3 ml-1" />
+                              <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                             </a>
                             <button
                               onClick={() => toggleFavorite(job.id!, job.isFavorite!)}
-                              className="ml-2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                              className="ml-3 p-1 hover:bg-red-50 rounded-full transition-colors duration-200"
                             >
                               <Heart
-                                className={`w-4 h-4 ${job.isFavorite ? "fill-red-500 text-red-500" : "text-gray-400"}`}
+                                className={`w-5 h-5 transition-colors duration-200 ${
+                                  job.isFavorite ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400"
+                                }`}
                               />
                             </button>
                           </div>
-                          <div className="text-sm text-gray-900 font-medium">{job.company}</div>
+                          <div className="text-base font-bold text-gray-900 mt-1">{job.company}</div>
                           {job.location && (
-                            <div className="text-xs text-gray-500 flex items-center mt-1">
-                              <MapPin className="w-3 h-3 mr-1" />
+                            <div className="text-sm text-gray-500 flex items-center mt-1">
+                              <MapPin className="w-4 h-4 mr-1" />
                               {job.location}
                             </div>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-900">
-                        <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <div className="flex items-center text-sm font-medium text-gray-900">
+                        <Calendar className="w-5 h-5 mr-3 text-gray-400" />
                         {new Date(job.applicationDate).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -417,16 +439,16 @@ const JobTable: React.FC = () => {
                         })}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-5 whitespace-nowrap">
                       <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-2 text-gray-400" />
+                        <Users className="w-5 h-5 mr-3 text-gray-400" />
                         <div>
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm font-semibold text-gray-900">
                             {jobInterviews.length > 0 ? `${jobInterviews.length} rounds` : "No interviews"}
                           </div>
-                          <div className={`text-xs ${interviewSummary.color}`}>{interviewSummary.text}</div>
+                          <div className={`text-xs font-medium ${interviewSummary.color}`}>{interviewSummary.text}</div>
                           {upcomingInterview && (
-                            <div className="text-xs text-amber-600 font-medium">
+                            <div className="text-xs text-amber-600 font-semibold">
                               Next:{" "}
                               {new Date(upcomingInterview.scheduledDate).toLocaleDateString("en-US", {
                                 month: "short",
@@ -437,11 +459,11 @@ const JobTable: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-5 whitespace-nowrap">
                       <select
                         value={job.status}
                         onChange={(e) => updateJobStatus(job.id!, e.target.value as Job["status"])}
-                        className={`px-3 py-1 text-xs font-medium rounded-full border ${statusConfig.color} focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer`}
+                        className={`px-4 py-2 text-sm font-bold rounded-full border-2 ${statusConfig.color} focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all duration-200 hover:shadow-md`}
                       >
                         <option value="applied">Applied</option>
                         <option value="interview">Interview</option>
@@ -450,14 +472,14 @@ const JobTable: React.FC = () => {
                         <option value="accepted">Accepted</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => {
                             setSelectedJob(job)
                             setShowEditJobModal(true)
                           }}
-                          className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md transition-colors duration-150"
+                          className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-all duration-200 font-semibold hover:shadow-md"
                         >
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
@@ -467,14 +489,14 @@ const JobTable: React.FC = () => {
                             setSelectedJob(job)
                             setShowInterviewModal(true)
                           }}
-                          className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md transition-colors duration-150"
+                          className="inline-flex items-center px-3 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-all duration-200 font-semibold hover:shadow-md"
                         >
                           <Settings className="w-4 h-4 mr-1" />
                           Interviews
                         </button>
                         <button
                           onClick={() => deleteJob(job.id!)}
-                          className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors duration-150"
+                          className="inline-flex items-center px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-all duration-200 font-semibold hover:shadow-md"
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
                           Delete
@@ -489,37 +511,37 @@ const JobTable: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div className="bg-gray-50/50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
           <div className="flex-1 flex justify-between sm:hidden">
             <button
               onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
               disabled={pagination.page === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
             <button
               onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
               disabled={pagination.page === pagination.totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>
           </div>
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}
-                <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{" "}
-                <span className="font-medium">{pagination.total}</span> results
+              <p className="text-sm font-medium text-gray-700">
+                Showing <span className="font-bold">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}
+                <span className="font-bold">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{" "}
+                <span className="font-bold">{pagination.total}</span> results
               </p>
             </div>
             <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px" aria-label="Pagination">
                 <button
                   onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
                   disabled={pagination.page === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 rounded-l-xl border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -527,7 +549,7 @@ const JobTable: React.FC = () => {
                   <button
                     key={page}
                     onClick={() => setPagination({ ...pagination, page })}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-semibold transition-colors duration-200 ${
                       page === pagination.page
                         ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
                         : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
@@ -539,7 +561,7 @@ const JobTable: React.FC = () => {
                 <button
                   onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
                   disabled={pagination.page === pagination.totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 rounded-r-xl border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
@@ -549,23 +571,20 @@ const JobTable: React.FC = () => {
         </div>
 
         {jobs.length === 0 && (
-          <div className="text-center py-12">
-            <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <div className="text-center py-16">
+            <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
               {statusFilter === "all" && !searchTerm && !showFavorites
                 ? "No job applications yet"
                 : "No matching applications found"}
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-6 text-lg">
               {statusFilter === "all" && !searchTerm && !showFavorites
                 ? "Start tracking your job search by adding your first application."
                 : "Try adjusting your search or filter criteria."}
             </p>
             {statusFilter === "all" && !searchTerm && !showFavorites && (
-              <button
-                onClick={() => setShowAddJobModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
-              >
+              <button onClick={() => setShowAddJobModal(true)} className="btn-primary inline-flex items-center">
                 <Plus className="w-5 h-5 mr-2" />
                 Add Your First Job
               </button>
