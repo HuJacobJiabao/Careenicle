@@ -127,6 +127,10 @@ pnpm dev
 
 The application will be available at `http://localhost:3000`.
 
+## Demo
+![Dashboard](demo/1.jpg)
+![Timeline](demo/2.jpg)
+
 ## Project Structure
 
 ```
