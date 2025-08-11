@@ -1,5 +1,5 @@
 import type { Job, JobEvent } from "./types"
-import { mockJobs } from "./mockData"
+import { mockJobs, mockJobEvents } from "./mockData"
 
 export class DataService {
   private static useMockData = false
@@ -137,9 +137,13 @@ export class DataService {
 
   static async fetchJobEvents(jobId?: number): Promise<JobEvent[]> {
     if (this.useMockData) {
-      // For mock mode, we'll return an empty array for now
-      // In a real implementation, we would have mock job events
-      return []
+      let events = [...mockJobEvents]
+
+      if (jobId) {
+        events = events.filter((event) => event.jobId === jobId)
+      }
+
+      return events.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
     } else {
       const params = jobId ? `?jobId=${jobId}` : ""
       const response = await fetch(`/api/job-events${params}`)

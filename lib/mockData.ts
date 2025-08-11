@@ -1,4 +1,4 @@
-import type { Job, Interview } from "./types"
+import type { Job, Interview, JobEvent } from "./types"
 
 export const mockJobs: Job[] = [
   {
@@ -239,3 +239,102 @@ export const mockInterviews: Interview[] = [
     updatedAt: new Date("2024-02-22"),
   },
 ]
+
+export const generateMockJobEvents = (): JobEvent[] => {
+  const events: JobEvent[] = []
+  let eventId = 1
+
+  // Generate application events for all jobs
+  mockJobs.forEach((job) => {
+    events.push({
+      id: eventId++,
+      jobId: job.id!,
+      eventType: "applied",
+      eventDate: job.applicationDate,
+      title: `Applied to ${job.company}`,
+      description: `Applied for ${job.position} position at ${job.company}`,
+      notes: job.notes,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    })
+
+    // Generate status-based events
+    if (job.status === "rejected") {
+      const rejectionDate = new Date(job.applicationDate)
+      rejectionDate.setDate(rejectionDate.getDate() + Math.floor(Math.random() * 14) + 7) // 1-3 weeks later
+      events.push({
+        id: eventId++,
+        jobId: job.id!,
+        eventType: "rejected",
+        eventDate: rejectionDate,
+        title: `Rejected by ${job.company}`,
+        description: `Application for ${job.position} was not successful`,
+        createdAt: rejectionDate,
+        updatedAt: rejectionDate,
+      })
+    } else if (job.status === "offer") {
+      const offerDate = new Date(job.applicationDate)
+      offerDate.setDate(offerDate.getDate() + Math.floor(Math.random() * 21) + 14) // 2-5 weeks later
+      events.push({
+        id: eventId++,
+        jobId: job.id!,
+        eventType: "offer_received",
+        eventDate: offerDate,
+        title: `Offer from ${job.company}`,
+        description: `Received job offer for ${job.position} position`,
+        createdAt: offerDate,
+        updatedAt: offerDate,
+      })
+    } else if (job.status === "accepted") {
+      const offerDate = new Date(job.applicationDate)
+      offerDate.setDate(offerDate.getDate() + Math.floor(Math.random() * 21) + 14)
+      const acceptDate = new Date(offerDate)
+      acceptDate.setDate(acceptDate.getDate() + Math.floor(Math.random() * 7) + 1) // 1-7 days after offer
+
+      events.push({
+        id: eventId++,
+        jobId: job.id!,
+        eventType: "offer_received",
+        eventDate: offerDate,
+        title: `Offer from ${job.company}`,
+        description: `Received job offer for ${job.position} position`,
+        createdAt: offerDate,
+        updatedAt: offerDate,
+      })
+
+      events.push({
+        id: eventId++,
+        jobId: job.id!,
+        eventType: "offer_accepted",
+        eventDate: acceptDate,
+        title: `Accepted offer from ${job.company}`,
+        description: `Accepted job offer for ${job.position} position`,
+        createdAt: acceptDate,
+        updatedAt: acceptDate,
+      })
+    }
+  })
+
+  // Generate interview events from mockInterviews
+  mockInterviews.forEach((interview) => {
+    events.push({
+      id: eventId++,
+      jobId: interview.jobId,
+      eventType: "interview",
+      eventDate: interview.scheduledDate,
+      title: `${interview.type.charAt(0).toUpperCase() + interview.type.slice(1)} Interview`,
+      description: `Round ${interview.round} ${interview.type} interview${interview.interviewer ? ` with ${interview.interviewer}` : ""}`,
+      interviewRound: interview.round,
+      interviewType: interview.type,
+      interviewer: interview.interviewer,
+      interviewResult: interview.result,
+      notes: interview.notes,
+      createdAt: interview.createdAt,
+      updatedAt: interview.updatedAt,
+    })
+  })
+
+  return events.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+}
+
+export const mockJobEvents = generateMockJobEvents()

@@ -31,9 +31,9 @@ Before you begin, ensure you have the following installed:
 
 First, install the project dependencies using pnpm:
 
-```bash
+\`\`\`bash
 pnpm install
-```
+\`\`\`
 
 ### 2. Database Setup
 
@@ -41,18 +41,18 @@ pnpm install
 
 Connect to your PostgreSQL instance and create the database:
 
-```sql
+\`\`\`sql
 CREATE DATABASE jobtracker;
-```
+\`\`\`
 
 #### Initialize Database Schema and Sample Data
 
 Run the database initialization script to create tables and populate with sample data:
 
-```bash
+\`\`\`bash
 # Connect to your PostgreSQL database and run the script
 psql -U your_username -d jobtracker -f scripts/init-database.sql
-```
+\`\`\`
 
 Alternatively, you can copy the contents of `scripts/init-database.sql` and run it in your preferred PostgreSQL client (pgAdmin, DBeaver, etc.).
 
@@ -62,22 +62,22 @@ Alternatively, you can copy the contents of `scripts/init-database.sql` and run 
 
 Copy the example environment file and rename it:
 
-```bash
+\`\`\`bash
 cp env.example .env.local
-```
+\`\`\`
 
 #### Configure Database Connection
 
 Edit the `.env.local` file and replace the placeholder values with your actual database credentials:
 
-```bash
+\`\`\`bash
 # Database Configuration
 DB_USER=your_postgres_username
 DB_HOST=localhost
 DB_NAME=jobtracker
 DB_PASSWORD=your_postgres_password
 DB_PORT=5432
-```
+\`\`\`
 
 Replace the following values:
 - `your_postgres_username`: Your PostgreSQL username
@@ -89,15 +89,15 @@ Replace the following values:
 
 Run the development server:
 
-```bash
+\`\`\`bash
 pnpm dev
-```
+\`\`\`
 
 The application will be available at `http://localhost:3000`.
 
 ## Project Structure
 
-```
+\`\`\`
 job-tracker/
 ├── app/                    # Next.js 15 App Router
 │   ├── api/               # API routes
@@ -120,7 +120,7 @@ job-tracker/
 ├── scripts/               # Database scripts
 │   └── init-database.sql  # Database initialization
 └── public/               # Static assets
-```
+\`\`\`
 
 ## Database Schema
 
