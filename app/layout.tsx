@@ -17,12 +17,12 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "JobTracker Pro - Professional Job Search Management",
+  title: "JobTracker",
   description:
     "Track your job applications, interviews, and career progress with our comprehensive job search management platform.",
-  generator: "JobTracker Pro",
+  generator: "JobTracker",
   keywords: ["job search", "career", "applications", "interviews", "job tracker"],
-  authors: [{ name: "JobTracker Pro Team" }],
+  authors: [{ name: "Jiabao Hu" }],
   viewport: "width=device-width, initial-scale=1",
 }
 

@@ -178,6 +178,7 @@ const Timeline: React.FC = () => {
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
+      year: "numeric"
     })
   }
 
