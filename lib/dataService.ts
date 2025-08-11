@@ -1,5 +1,5 @@
-import type { Job, Interview } from "./types"
-import { mockJobs, mockInterviews } from "./mockData"
+import type { Job, JobEvent } from "./types"
+import { mockJobs } from "./mockData"
 
 export class DataService {
   private static useMockData = false
@@ -77,14 +77,9 @@ export class DataService {
     }
   }
 
-  static async fetchInterviews(jobId?: number): Promise<Interview[]> {
-    if (this.useMockData) {
-      return jobId ? mockInterviews.filter((interview) => interview.jobId === jobId) : mockInterviews
-    } else {
-      const params = jobId ? `?jobId=${jobId}` : ""
-      const response = await fetch(`/api/interviews${params}`)
-      return await response.json()
-    }
+  static async fetchInterviews(jobId?: number): Promise<JobEvent[]> {
+    // This method is deprecated - use fetchJobEvents instead
+    return this.fetchJobEvents(jobId)
   }
 
   static async createJob(jobData: Partial<Job>): Promise<Job> {
@@ -135,24 +130,19 @@ export class DataService {
       if (jobIndex !== -1) {
         mockJobs.splice(jobIndex, 1)
       }
-      // Also remove related interviews
-      for (let i = mockInterviews.length - 1; i >= 0; i--) {
-        if (mockInterviews[i].jobId === jobId) {
-          mockInterviews.splice(i, 1)
-        }
-      }
     } else {
       await fetch(`/api/jobs/${jobId}`, { method: "DELETE" })
     }
   }
 
-  static async fetchJobEvents(jobId: number): Promise<any[]> {
+  static async fetchJobEvents(jobId?: number): Promise<JobEvent[]> {
     if (this.useMockData) {
       // For mock mode, we'll return an empty array for now
       // In a real implementation, we would have mock job events
       return []
     } else {
-      const response = await fetch(`/api/job-events?jobId=${jobId}`)
+      const params = jobId ? `?jobId=${jobId}` : ""
+      const response = await fetch(`/api/job-events${params}`)
       return await response.json()
     }
   }
@@ -170,61 +160,6 @@ export class DataService {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isFavorite: !isFavorite }),
       })
-    }
-  }
-
-  static async createInterview(interviewData: Partial<Interview>): Promise<Interview> {
-    if (this.useMockData) {
-      const newInterview: Interview = {
-        id: Math.max(...mockInterviews.map((i) => i.id!)) + 1,
-        jobId: interviewData.jobId!,
-        round: interviewData.round!,
-        type: interviewData.type!,
-        scheduledDate: interviewData.scheduledDate!,
-        actualDate: interviewData.actualDate,
-        duration: interviewData.duration,
-        interviewer: interviewData.interviewer,
-        result: interviewData.result || "pending",
-        feedback: interviewData.feedback,
-        notes: interviewData.notes,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-      mockInterviews.push(newInterview)
-      return newInterview
-    } else {
-      const response = await fetch("/api/interviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(interviewData),
-      })
-      return await response.json()
-    }
-  }
-
-  static async updateInterview(interviewId: number, updates: Partial<Interview>): Promise<void> {
-    if (this.useMockData) {
-      const interviewIndex = mockInterviews.findIndex((interview) => interview.id === interviewId)
-      if (interviewIndex !== -1) {
-        mockInterviews[interviewIndex] = { ...mockInterviews[interviewIndex], ...updates, updatedAt: new Date() }
-      }
-    } else {
-      await fetch(`/api/interviews/${interviewId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      })
-    }
-  }
-
-  static async deleteInterview(interviewId: number): Promise<void> {
-    if (this.useMockData) {
-      const interviewIndex = mockInterviews.findIndex((interview) => interview.id === interviewId)
-      if (interviewIndex !== -1) {
-        mockInterviews.splice(interviewIndex, 1)
-      }
-    } else {
-      await fetch(`/api/interviews/${interviewId}`, { method: "DELETE" })
     }
   }
 }

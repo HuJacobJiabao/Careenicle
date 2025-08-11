@@ -139,15 +139,16 @@ const JobTable: React.FC = () => {
   const getJobInterviewEvents = (jobId: number) => {
     return jobEvents.filter((event) => 
       event.jobId === jobId && 
-      (event.eventType === 'interview_scheduled' || event.eventType === 'interview_completed')
+       event.eventType === 'interview'
     )
   }
 
   const getUpcomingInterview = (jobId: number) => {
     const interviewEvents = getJobInterviewEvents(jobId)
     const now = new Date()
+    // Return the actual interview event (not the scheduled event) that is in the future
     return interviewEvents
-      .filter((event) => new Date(event.eventDate) > now && event.eventType === 'interview_scheduled')
+      .filter((event) => new Date(event.eventDate) > now && event.eventType === 'interview')
       .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())[0]
   }
 
@@ -210,7 +211,7 @@ const JobTable: React.FC = () => {
 
   const getInterviewSummary = (jobEvents: JobEvent[]) => {
     const interviewEvents = jobEvents.filter(event => 
-      event.eventType === 'interview_scheduled' || event.eventType === 'interview_completed'
+      event.eventType === 'interview_scheduled' || event.eventType === 'interview'
     )
     
     if (interviewEvents.length === 0) return { text: "No interviews", color: "text-gray-500" }
@@ -258,13 +259,13 @@ const JobTable: React.FC = () => {
             {/* Search */}
             <form onSubmit={handleSearch} className="flex flex-1 min-w-0">
               <div className="relative flex-1 min-w-[250px]">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search company or position..."
-                  className="form-input pl-12 pr-4 py-3 w-full rounded-l-xl border-r-0"
+                  className="form-input pl-14 pr-4 py-3 w-full rounded-l-xl border-r-0"
                 />
               </div>
               <button
@@ -278,14 +279,14 @@ const JobTable: React.FC = () => {
             {/* Filters */}
             <div className="flex gap-3 flex-wrap sm:flex-nowrap">
               <div className="relative min-w-[150px]">
-                <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10 pointer-events-none" />
                 <select
                   value={statusFilter}
                   onChange={(e) => {
                     setStatusFilter(e.target.value)
                     setPagination({ ...pagination, page: 1 })
                   }}
-                  className="form-input pl-12 pr-8 py-3 rounded-xl appearance-none bg-white cursor-pointer w-full"
+                  className="form-input pl-14 pr-10 py-3 rounded-xl appearance-none bg-white cursor-pointer w-full"
                 >
                   <option value="all">All Status</option>
                   <option value="applied">Applied</option>
@@ -294,6 +295,11 @@ const JobTable: React.FC = () => {
                   <option value="offer">Offer</option>
                   <option value="accepted">Accepted</option>
                 </select>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
 
               <button
@@ -656,6 +662,7 @@ const JobTable: React.FC = () => {
           onClose={() => setShowAddJobModal(false)}
           onAdd={() => {
             fetchJobs()
+            fetchJobEvents()
             setShowAddJobModal(false)
           }}
         />

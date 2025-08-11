@@ -34,11 +34,12 @@ export interface JobEvent {
   eventType: 
     | "applied" 
     | "interview_scheduled" 
-    | "interview_completed" 
+    | "interview" 
     | "interview_result" 
     | "rejected" 
     | "offer_received" 
     | "offer_accepted"
+    | "offer_declined"
     | "withdrawn"
     | "ghosted"
   eventDate: Date
@@ -46,9 +47,8 @@ export interface JobEvent {
   description?: string
   
   // Interview specific fields
-  interviewId?: number
   interviewRound?: number
-  interviewType?: "phone" | "video" | "onsite" | "technical" | "hr" | "final"
+  interviewType?: "phone" | "video" | "onsite" | "technical" | "hr" | "final" | "oa" | "vo"  // Added oa and vo to existing types
   interviewer?: string
   interviewResult?: "pending" | "passed" | "failed" | "cancelled"
   

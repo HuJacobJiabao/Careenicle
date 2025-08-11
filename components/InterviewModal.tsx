@@ -31,17 +31,18 @@ interface InterviewModalProps {
 const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate }) => {
   const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
   const interviews = jobEvents.filter(event => 
-    event.eventType === 'interview_scheduled' || event.eventType === 'interview_completed'
+    event.eventType === 'interview'
   )
   const [newInterview, setNewInterview] = useState({
     round: interviews.length + 1,
-    type: "technical" as Interview["type"],
+    type: "technical" as JobEvent["interviewType"],
     scheduledDate: "",
     interviewer: "",
     notes: "",
   })
-  const [editingInterview, setEditingInterview] = useState<Interview | null>(null)
+  const [editingInterview, setEditingInterview] = useState<JobEvent | null>(null)
   const [showEventForm, setShowEventForm] = useState(false)
+  const [showNewInterviewForm, setShowNewInterviewForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<JobEvent | null>(null)
   const [newEvent, setNewEvent] = useState({
     eventType: "interview_scheduled" as JobEvent["eventType"],
@@ -67,11 +68,25 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
   const createJobEvent = async (eventData: Partial<JobEvent>) => {
     try {
+      // Convert Date objects to local ISO strings to avoid timezone issues
+      const dataToSend = { ...eventData }
+      if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
+        // Create local ISO string without timezone conversion
+        const date = dataToSend.eventDate
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
+        dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
+      }
+      
       await fetch("/api/job-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...eventData,
+          ...dataToSend,
           jobId: job.id,
         }),
       })
@@ -84,40 +99,31 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   const addInterview = async () => {
     if (!newInterview.scheduledDate) return
 
-    try {
-      // Create the interview
-      const interviewResponse = await fetch("/api/interviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...newInterview,
-          jobId: job.id,
-          result: "pending",
-        }),
-      })
-      
-      const interview = await interviewResponse.json()
+    // Parse the datetime-local input to create a proper local date
+    const [dateStr, timeStr] = newInterview.scheduledDate.split('T')
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const [hour, minute] = timeStr.split(':').map(Number)
+    const scheduledLocalDate = new Date(year, month - 1, day, hour, minute)
 
-      // Create corresponding job event for scheduled interview
+    try {
+      // Create scheduled interview event with current time
       await createJobEvent({
         eventType: "interview_scheduled",
-        eventDate: new Date(newInterview.scheduledDate),
+        eventDate: new Date(), // Current time
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label} Scheduled`,
-        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewer ? ` with ${newInterview.interviewer}` : ""}`,
-        interviewId: interview.id,
+        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewer ? ` with ${newInterview.interviewer}` : ""} scheduled for ${scheduledLocalDate.toLocaleString()}`,
         interviewRound: newInterview.round,
         interviewType: newInterview.type,
         interviewer: newInterview.interviewer,
         notes: newInterview.notes,
       })
 
-      // Also create a corresponding interview_completed event for timeline
+      // Create the actual interview event with the scheduled time
       await createJobEvent({
-        eventType: "interview_completed",
-        eventDate: new Date(newInterview.scheduledDate),
+        eventType: "interview",
+        eventDate: scheduledLocalDate,
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
         description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewer ? ` with ${newInterview.interviewer}` : ""}`,
-        interviewId: interview.id,
         interviewRound: newInterview.round,
         interviewType: newInterview.type,
         interviewer: newInterview.interviewer,
@@ -125,6 +131,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       })
 
       onUpdate()
+      fetchJobEvents() // Refresh the local data
       setNewInterview({
         round: interviews.length + 2,
         type: "technical",
@@ -132,6 +139,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         interviewer: "",
         notes: "",
       })
+      setShowNewInterviewForm(false) // Hide the form after successful creation
     } catch (error) {
       console.error("Failed to add interview:", error)
     }
@@ -155,18 +163,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   // Helper function to safely update editing interview
-  const updateEditingInterview = (updates: Partial<Interview>) => {
+    const updateEditingInterview = (updates: Partial<JobEvent>) => {
     if (!editingInterview) return
     setEditingInterview(prev => {
       if (!prev) return null
       return {
         ...prev,
-        jobId: prev.jobId,
-        round: prev.round,
-        type: prev.type,
-        scheduledDate: prev.scheduledDate,
         ...updates,
-      } as Interview
+      }
     })
   }
 
@@ -174,9 +178,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!newEvent.eventDate || !newEvent.title) return
 
     try {
+      // Create a local date without timezone conversion
+      const [year, month, day] = newEvent.eventDate.split('-').map(Number)
+      const localDate = new Date(year, month - 1, day) // month is 0-indexed
+      
       await createJobEvent({
         eventType: newEvent.eventType,
-        eventDate: new Date(newEvent.eventDate),
+        eventDate: localDate,
         title: newEvent.title,
         description: newEvent.description,
         notes: newEvent.notes,
@@ -191,6 +199,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       })
       setShowEventForm(false)
       onUpdate()
+      fetchJobEvents() // Refresh the local data
     } catch (error) {
       console.error("Failed to add custom event:", error)
     }
@@ -198,12 +207,26 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
   const updateEvent = async (eventId: number, updates: Partial<JobEvent>) => {
     try {
+      // Convert Date objects to local ISO strings to avoid timezone issues
+      const dataToSend = { ...updates }
+      if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
+        const date = dataToSend.eventDate
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
+        dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
+      }
+      
       await fetch(`/api/job-events/${eventId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(dataToSend),
       })
       onUpdate()
+      fetchJobEvents() // Refresh the local data
       setEditingEvent(null)
     } catch (error) {
       console.error("Failed to update event:", error)
@@ -218,22 +241,23 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         method: "DELETE",
       })
       onUpdate()
+      fetchJobEvents() // Refresh the local data
     } catch (error) {
       console.error("Failed to delete event:", error)
     }
   }
 
-  const deleteInterviewWithEvents = async (interviewId: number) => {
+  const deleteInterviewEvents = async (interviewRound: number, interviewType: string) => {
     if (!confirm("Are you sure you want to delete this interview and all related events?")) return
 
     try {
-      // Delete the interview
-      await fetch(`/api/interviews/${interviewId}`, {
-        method: "DELETE",
-      })
-
-      // Delete related events
-      const relatedEvents = jobEvents.filter(event => event.interviewId === interviewId)
+      // Delete related events by matching round and type
+      const relatedEvents = jobEvents.filter(event => 
+        event.interviewRound === interviewRound && 
+        event.interviewType === interviewType &&
+        (event.eventType === 'interview_scheduled' || event.eventType === 'interview')
+      )
+      
       for (const event of relatedEvents) {
         await fetch(`/api/job-events/${event.id}`, {
           method: "DELETE",
@@ -241,28 +265,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       }
 
       onUpdate()
+      fetchJobEvents() // Refresh the local data
     } catch (error) {
-      console.error("Failed to delete interview:", error)
-    }
-  }
-
-  const deleteInterview = async (interviewId: number) => {
-    if (confirm("Are you sure you want to delete this interview and all related events?")) {
-      try {
-        // Delete related events first
-        const relatedEvents = jobEvents.filter(event => event.interviewId === interviewId)
-        for (const event of relatedEvents) {
-          await fetch(`/api/job-events/${event.id}`, {
-            method: "DELETE",
-          })
-        }
-
-        // Then delete the interview
-        await fetch(`/api/interviews/${interviewId}`, { method: "DELETE" })
-        onUpdate()
-      } catch (error) {
-        console.error("Failed to delete interview:", error)
-      }
+      console.error("Failed to delete interview events:", error)
     }
   }
 
@@ -270,27 +275,43 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!editingInterview) return
 
     try {
-      await fetch(`/api/interviews/${editingInterview.id}`, {
+      // Convert eventDate to local ISO string if it's a Date object
+      const eventDateToSend = editingInterview.eventDate instanceof Date ? (() => {
+        const date = editingInterview.eventDate
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+      })() : editingInterview.eventDate
+      
+      // Since editingInterview is now a JobEvent, we update the job event directly
+      await fetch(`/api/job-events/${editingInterview.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          round: editingInterview.round,
-          type: editingInterview.type,
-          scheduledDate: editingInterview.scheduledDate,
+          eventType: editingInterview.eventType,
+          eventDate: eventDateToSend,
+          title: editingInterview.title,
+          description: editingInterview.description,
+          interviewRound: editingInterview.interviewRound,
+          interviewType: editingInterview.interviewType,
           interviewer: editingInterview.interviewer,
-          result: editingInterview.result,
-          feedback: editingInterview.feedback,
+          interviewResult: editingInterview.interviewResult,
           notes: editingInterview.notes,
         }),
       })
       onUpdate()
+      fetchJobEvents() // Refresh the local data
       setEditingInterview(null)
     } catch (error) {
       console.error("Failed to update interview:", error)
     }
   }
 
-  const getTypeConfig = (type: Interview["type"]) => {
+  const getTypeConfig = (type: JobEvent["interviewType"]) => {
     const configs = {
       phone: { label: "Phone Interview", color: "bg-blue-100 text-blue-800", icon: "📞" },
       video: { label: "Video Interview", color: "bg-green-100 text-green-800", icon: "📹" },
@@ -298,11 +319,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       technical: { label: "Technical Interview", color: "bg-orange-100 text-orange-800", icon: "💻" },
       hr: { label: "HR Interview", color: "bg-pink-100 text-pink-800", icon: "👥" },
       final: { label: "Final Interview", color: "bg-indigo-100 text-indigo-800", icon: "🎯" },
+      oa: { label: "Online Assessment", color: "bg-cyan-100 text-cyan-800", icon: "📝" },
+      vo: { label: "Virtual Onsite", color: "bg-emerald-100 text-emerald-800", icon: "🖥️" },
     }
-    return configs[type]
+    return type ? configs[type] : configs.technical
   }
 
-  const getResultConfig = (result: Interview["result"]) => {
+  const getResultConfig = (result: JobEvent["interviewResult"]) => {
     const configs = {
       pending: {
         label: "Pending",
@@ -325,7 +348,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         icon: <Pause className="w-4 h-4" />,
       },
     }
-    return configs[result]
+    return result ? configs[result] : configs.pending
   }
 
   return (
@@ -349,7 +372,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
           {/* Existing Interviews */}
           <div className="mb-10">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Interview Rounds</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">Interview Rounds</h3>
+              {!showNewInterviewForm && (
+                <button
+                  onClick={() => setShowNewInterviewForm(true)}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Schedule New Interview
+                </button>
+              )}
+            </div>
             {interviews.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-xl">
                 <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -394,9 +428,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               <label className="block text-sm font-medium text-gray-700 mb-1">Round</label>
                               <input
                                 type="number"
-                                value={editingInterview?.round || 1}
+                                value={editingInterview?.interviewRound || 1}
                                 onChange={(e) =>
-                                  updateEditingInterview({ round: Number.parseInt(e.target.value) })
+                                  updateEditingInterview({ interviewRound: Number.parseInt(e.target.value) })
                                 }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               />
@@ -405,9 +439,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                               <select
-                                value={editingInterview?.type || "technical"}
+                                value={editingInterview?.interviewType || "technical"}
                                 onChange={(e) =>
-                                  updateEditingInterview({ type: e.target.value as Interview["type"] })
+                                  updateEditingInterview({ interviewType: e.target.value as JobEvent["interviewType"] })
                                 }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               >
@@ -417,6 +451,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                 <option value="video">Video Interview</option>
                                 <option value="onsite">Onsite Interview</option>
                                 <option value="final">Final Interview</option>
+                                <option value="oa">Online Assessment</option>
+                                <option value="vo">Virtual Onsite</option>
                               </select>
                             </div>
 
@@ -424,10 +460,22 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
                               <input
                                 type="datetime-local"
-                                value={editingInterview?.scheduledDate ? new Date(editingInterview.scheduledDate).toISOString().slice(0, 16) : ""}
-                                onChange={(e) =>
-                                  updateEditingInterview({ scheduledDate: new Date(e.target.value) })
-                                }
+                                value={editingInterview?.eventDate ? (() => {
+                                  const date = new Date(editingInterview.eventDate)
+                                  const year = date.getFullYear()
+                                  const month = String(date.getMonth() + 1).padStart(2, '0')
+                                  const day = String(date.getDate()).padStart(2, '0')
+                                  const hours = String(date.getHours()).padStart(2, '0')
+                                  const minutes = String(date.getMinutes()).padStart(2, '0')
+                                  return `${year}-${month}-${day}T${hours}:${minutes}`
+                                })() : ""}
+                                onChange={(e) => {
+                                  const [dateStr, timeStr] = e.target.value.split('T')
+                                  const [year, month, day] = dateStr.split('-').map(Number)
+                                  const [hour, minute] = timeStr.split(':').map(Number)
+                                  const localDate = new Date(year, month - 1, day, hour, minute)
+                                  updateEditingInterview({ eventDate: localDate })
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               />
                             </div>
@@ -448,10 +496,20 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Result</label>
                               <select
-                                value={editingInterview?.result || "pending"}
-                                onChange={(e) =>
-                                  updateEditingInterview({ result: e.target.value as Interview["result"] })
-                                }
+                                value={editingInterview?.interviewResult || "pending"}
+                                onChange={async (e) => {
+                                  const newResult = e.target.value as JobEvent["interviewResult"]
+                                  updateEditingInterview({ interviewResult: newResult })
+                                  
+                                  // Immediately save the result change
+                                  if (editingInterview?.id) {
+                                    try {
+                                      await updateEvent(editingInterview.id, { interviewResult: newResult })
+                                    } catch (error) {
+                                      console.error("Failed to update interview result:", error)
+                                    }
+                                  }
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               >
                                 <option value="pending">Pending</option>
@@ -465,9 +523,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
                             <textarea
-                              value={editingInterview?.feedback || ""}
+                              value={editingInterview?.notes || ""}
                               onChange={(e) =>
-                                updateEditingInterview({ feedback: e.target.value })
+                                updateEditingInterview({ notes: e.target.value })
                               }
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               rows={3}
@@ -558,7 +616,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             Edit
                           </button>
                           <button
-                            onClick={() => deleteInterviewWithEvents(interview.id!)}
+                            onClick={() => deleteInterviewEvents(interview.interviewRound!, interview.interviewType!)}
                             className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md text-sm transition-colors duration-150"
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
@@ -574,9 +632,19 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           </div>
 
           {/* Add New Interview */}
-          <div className="border-t border-gray-200 pt-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Schedule New Interview</h3>
-            <div className="bg-blue-50 rounded-xl p-6">
+          {showNewInterviewForm && (
+            <div className="border-t border-gray-200 pt-8">
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Schedule New Interview</h3>
+                  <button
+                    onClick={() => setShowNewInterviewForm(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Round Number</label>
@@ -592,7 +660,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                   <label className="block text-sm font-medium text-gray-700 mb-2">Interview Type</label>
                   <select
                     value={newInterview.type}
-                    onChange={(e) => setNewInterview({ ...newInterview, type: e.target.value as Interview["type"] })}
+                    onChange={(e) => setNewInterview({ ...newInterview, type: e.target.value as JobEvent["interviewType"] })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="technical">Technical Interview</option>
@@ -601,6 +669,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     <option value="video">Video Interview</option>
                     <option value="onsite">Onsite Interview</option>
                     <option value="final">Final Interview</option>
+                    <option value="oa">Online Assessment</option>
+                    <option value="vo">Virtual Onsite</option>
                   </select>
                 </div>
 
@@ -637,16 +707,26 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                 />
               </div>
 
-              <button
-                onClick={addInterview}
-                disabled={!newInterview.scheduledDate}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Schedule Interview
-              </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={addInterview}
+                      disabled={!newInterview.scheduledDate}
+                      className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+                    >
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Schedule Interview
+                    </button>
+                    <button
+                      onClick={() => setShowNewInterviewForm(false)}
+                      className="inline-flex items-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg shadow-sm transition-colors duration-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Events Timeline Section */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -675,7 +755,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     >
                       <option value="applied">Applied</option>
                       <option value="interview_scheduled">Interview Scheduled</option>
-                      <option value="interview_completed">Interview Completed</option>
+                      <option value="interview">Interview Completed</option>
                       <option value="interview_result">Interview Result</option>
                       <option value="rejected">Rejected</option>
                       <option value="offer_received">Offer Received</option>
@@ -756,7 +836,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     >
                       <option value="applied">Applied</option>
                       <option value="interview_scheduled">Interview Scheduled</option>
-                      <option value="interview_completed">Interview Completed</option>
+                      <option value="interview">Interview Completed</option>
                       <option value="interview_result">Interview Result</option>
                       <option value="rejected">Rejected</option>
                       <option value="offer_received">Offer Received</option>
@@ -769,8 +849,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
                     <input
                       type="date"
-                      value={new Date(editingEvent.eventDate).toISOString().slice(0, 10)}
-                      onChange={(e) => setEditingEvent({ ...editingEvent, eventDate: new Date(e.target.value) })}
+                      value={(() => {
+                        const date = new Date(editingEvent.eventDate)
+                        const year = date.getFullYear()
+                        const month = String(date.getMonth() + 1).padStart(2, '0')
+                        const day = String(date.getDate()).padStart(2, '0')
+                        return `${year}-${month}-${day}`
+                      })()}
+                      onChange={(e) => {
+                        const [year, month, day] = e.target.value.split('-').map(Number)
+                        const localDate = new Date(year, month - 1, day)
+                        setEditingEvent({ ...editingEvent, eventDate: localDate })
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     />
                   </div>
@@ -873,7 +963,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             event.eventType === "applied" ? "bg-blue-100 text-blue-800" :
                             event.eventType === "interview_scheduled" ? "bg-yellow-100 text-yellow-800" :
-                            event.eventType === "interview_completed" ? "bg-purple-100 text-purple-800" :
+                            event.eventType === "interview" ? "bg-purple-100 text-purple-800" :
                             event.eventType === "interview_result" ? "bg-indigo-100 text-indigo-800" :
                             event.eventType === "rejected" ? "bg-red-100 text-red-800" :
                             event.eventType === "offer_received" ? "bg-green-100 text-green-800" :

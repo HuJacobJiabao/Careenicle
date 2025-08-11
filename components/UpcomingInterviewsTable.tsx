@@ -15,7 +15,7 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
     return `https://logo.clearbit.com/${domain}.com`
   }
 
-  const getTypeConfig = (type: string) => {
+  const getTypeConfig = (type: string | undefined) => {
     const configs = {
       phone: { label: "Phone Interview", color: "bg-blue-100 text-blue-800", icon: "📞" },
       video: { label: "Video Interview", color: "bg-green-100 text-green-800", icon: "📹" },
@@ -23,6 +23,8 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
       technical: { label: "Technical Interview", color: "bg-orange-100 text-orange-800", icon: "💻" },
       hr: { label: "HR Interview", color: "bg-pink-100 text-pink-800", icon: "👥" },
       final: { label: "Final Interview", color: "bg-indigo-100 text-indigo-800", icon: "🎯" },
+      oa: { label: "Online Assessment", color: "bg-cyan-100 text-cyan-800", icon: "📝" },
+      vo: { label: "Virtual Onsite", color: "bg-emerald-100 text-emerald-800", icon: "🖥️" },
     }
     return configs[type as keyof typeof configs] || configs.technical
   }
@@ -88,8 +90,8 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
             <tbody className="bg-white divide-y divide-gray-200">
               {jobs.map((job) => {
                 const interview = job.upcomingInterview
-                const typeConfig = getTypeConfig(interview.type)
-                const interviewDate = new Date(interview.scheduledDate)
+                const typeConfig = getTypeConfig(interview.interviewType)
+                const interviewDate = new Date(interview.eventDate)
 
                 return (
                   <tr
@@ -138,7 +140,7 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${typeConfig.color}`}
                         >
-                          {typeConfig.icon} Round {interview.round} - {typeConfig.label}
+                          {typeConfig.icon} Round {interview.interviewRound || 1} - {typeConfig.label}
                         </span>
                       </div>
                     </td>

@@ -1,30 +1,197 @@
-# Job tracker design
+# Job Tracker
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+A modern job application tracking system built with Next.js 15, TypeScript, and PostgreSQL. Track your job applications, interview schedules, and progress through an intuitive timeline interface.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/hujiabao1224-2839s-projects/v0-job-tracker-design)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/RKlyL07PSq8)
+## Features
 
-## Overview
+- **Job Management**: Add, edit, and track job applications
+- **Timeline View**: Visual timeline of your application progress
+- **Interview Scheduling**: Schedule and track different types of interviews (phone, video, onsite, technical, HR, final, online assessment, virtual onsite)
+- **Event Tracking**: Comprehensive event system for all application stages
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Tech Stack
 
-## Deployment
+- **Frontend**: Next.js 15.2.4, React, TypeScript
+- **Styling**: Tailwind CSS, Radix UI components
+- **Database**: PostgreSQL
+- **Package Manager**: pnpm
 
-Your project is live at:
+## Prerequisites
 
-**[https://vercel.com/hujiabao1224-2839s-projects/v0-job-tracker-design](https://vercel.com/hujiabao1224-2839s-projects/v0-job-tracker-design)**
+Before you begin, ensure you have the following installed:
 
-## Build your app
+- Node.js (version 18 or higher)
+- pnpm package manager
+- PostgreSQL database
 
-Continue building your app on:
+## Installation and Setup
 
-**[https://v0.dev/chat/projects/RKlyL07PSq8](https://v0.dev/chat/projects/RKlyL07PSq8)**
+### 1. Install Dependencies
 
-## How It Works
+First, install the project dependencies using pnpm:
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+```bash
+pnpm install
+```
+
+### 2. Database Setup
+
+#### Create PostgreSQL Database
+
+Connect to your PostgreSQL instance and create the database:
+
+```sql
+CREATE DATABASE jobtracker;
+```
+
+#### Initialize Database Schema and Sample Data
+
+Run the database initialization script to create tables and populate with sample data:
+
+```bash
+# Connect to your PostgreSQL database and run the script
+psql -U your_username -d jobtracker -f scripts/init-database.sql
+```
+
+Alternatively, you can copy the contents of `scripts/init-database.sql` and run it in your preferred PostgreSQL client (pgAdmin, DBeaver, etc.).
+
+### 3. Environment Configuration
+
+#### Create Environment File
+
+Copy the example environment file and rename it:
+
+```bash
+cp env.example .env.local
+```
+
+#### Configure Database Connection
+
+Edit the `.env.local` file and replace the placeholder values with your actual database credentials:
+
+```bash
+# Database Configuration
+DB_USER=your_postgres_username
+DB_HOST=localhost
+DB_NAME=jobtracker
+DB_PASSWORD=your_postgres_password
+DB_PORT=5432
+```
+
+Replace the following values:
+- `your_postgres_username`: Your PostgreSQL username
+- `your_postgres_password`: Your PostgreSQL password
+- `localhost`: Your database host (change if using a remote database)
+- `5432`: Your PostgreSQL port (change if using a different port)
+
+### 4. Start the Development Server
+
+Run the development server:
+
+```bash
+pnpm dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+## Project Structure
+
+```
+job-tracker/
+├── app/                    # Next.js 15 App Router
+│   ├── api/               # API routes
+│   │   ├── jobs/          # Job management endpoints
+│   │   └── job-events/    # Event management endpoints
+│   ├── timeline/          # Timeline page
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page
+├── components/            # React components
+│   ├── AddJobModal.tsx    # Job creation/editing modal
+│   ├── InterviewModal.tsx # Interview scheduling modal
+│   ├── JobTable.tsx       # Job listing table
+│   ├── Timeline.tsx       # Timeline visualization
+│   └── ...               # Other UI components
+├── lib/                   # Utility libraries
+│   ├── database.ts        # Database connection
+│   ├── types.ts           # TypeScript type definitions
+│   └── utils.ts           # Helper functions
+├── scripts/               # Database scripts
+│   └── init-database.sql  # Database initialization
+└── public/               # Static assets
+```
+
+## Database Schema
+
+The application uses two main tables:
+
+### Jobs Table
+- Stores basic job application information
+- Tracks application status and metadata
+
+### Job Events Table
+- Records all events related to job applications
+- Supports various event types: applied, interview_scheduled, interview, rejected, offer_received, etc.
+- Includes interview-specific fields for different interview types
+
+## Interview Types Supported
+
+- **phone**: Phone interviews
+- **video**: Video interviews
+- **onsite**: On-site interviews
+- **technical**: Technical interviews
+- **hr**: HR interviews
+- **final**: Final round interviews
+- **oa**: Online assessments
+- **vo**: Virtual onsite interviews
+
+## Available Scripts
+
+- `pnpm dev`: Start development server
+- `pnpm build`: Build for production
+- `pnpm start`: Start production server
+- `pnpm lint`: Run ESLint
+
+## API Endpoints
+
+### Jobs
+- `GET /api/jobs`: Retrieve all jobs
+- `POST /api/jobs`: Create a new job
+- `PUT /api/jobs/[id]`: Update a job
+- `DELETE /api/jobs/[id]`: Delete a job
+
+### Job Events
+- `GET /api/job-events`: Retrieve all job events
+- `POST /api/job-events`: Create a new job event
+- `PUT /api/job-events/[id]`: Update a job event
+- `DELETE /api/job-events/[id]`: Delete a job event
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## Troubleshooting
+
+### Database Connection Issues
+- Verify PostgreSQL is running
+- Check database credentials in `.env.local`
+- Ensure the database `jobtracker` exists
+- Verify network connectivity to database host
+
+### Build Issues
+- Ensure all dependencies are installed: `pnpm install`
+- Check Node.js version compatibility
+- Clear next.js cache: `rm -rf .next`
+
+### Environment Issues
+- Ensure `.env.local` file exists and contains correct values
+- Restart the development server after changing environment variables
+
+## License
+
+This project is licensed under the MIT License.

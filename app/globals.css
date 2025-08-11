@@ -269,11 +269,20 @@ table tbody tr:hover {
 
 /* Form inputs */
 .form-input {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-medium placeholder-gray-400;
+  @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-medium placeholder-gray-400 bg-white;
 }
 
 .form-input:focus {
-  @apply shadow-lg;
+  @apply shadow-lg border-blue-400;
+}
+
+/* Input with icon spacing */
+.form-input.pl-14 {
+  padding-left: 2.5rem; /* 56px - enough space for icon */
+}
+
+.form-input.pl-12 {
+  padding-left: 2rem; /* 48px */
 }
 
 /* Loading states */

@@ -12,7 +12,8 @@ import {
   Trophy,
   Send,
   MessageSquare,
-  Building
+  Building,
+  User
 } from "lucide-react"
 import { DataService } from "@/lib/dataService"
 
@@ -25,7 +26,11 @@ interface TimelineEventDisplay {
   eventType: JobEvent["eventType"]
   location?: string
   priority: number
-  side: 'left' | 'right' // 决定卡片显示在时间轴的哪一侧
+  side: 'left' | 'right'
+  // 面试相关字段
+  interviewType?: string
+  interviewRound?: number
+  interviewer?: string
 }
 
 const Timeline: React.FC = () => {
@@ -48,13 +53,13 @@ const Timeline: React.FC = () => {
         const jobEvents = await DataService.fetchJobEvents(job.id)
         
         jobEvents.forEach((event: JobEvent) => {
-          // 只包含指定的事件类型
+          // 只包含指定的5种事件类型
           const allowedEvents: JobEvent["eventType"][] = [
             'applied',
-            'interview_scheduled', 
-            'interview_completed',
+            'interview',
             'rejected',
-            'offer_received'
+            'offer_received',
+            'offer_accepted'
           ]
 
           if (!allowedEvents.includes(event.eventType)) return
@@ -71,7 +76,10 @@ const Timeline: React.FC = () => {
             eventType: event.eventType,
             location: job.location,
             priority,
-            side
+            side,
+            interviewType: event.interviewType,
+            interviewRound: event.interviewRound,
+            interviewer: event.interviewer
           })
         })
       }
@@ -88,10 +96,10 @@ const Timeline: React.FC = () => {
 
   const getEventPriority = (eventType: JobEvent["eventType"]): number => {
     const priorities: Record<string, number> = {
-      'offer_received': 10,
-      'rejected': 9,
-      'interview_completed': 8,
-      'interview_scheduled': 7,
+      'offer_accepted': 10,
+      'offer_received': 9,
+      'rejected': 8,
+      'interview': 7,
       'applied': 6
     }
     return priorities[eventType] || 1
@@ -99,9 +107,9 @@ const Timeline: React.FC = () => {
 
   // 决定事件显示在时间轴的哪一侧
   const getEventSide = (eventType: JobEvent["eventType"]): 'left' | 'right' => {
-    // applied 和 interview 在右边，rejected 和 offer_received 在左边
-    const rightSideEvents = ['applied', 'interview_scheduled', 'interview_completed']
-    return rightSideEvents.includes(eventType) ? 'right' : 'left'
+    // rejected, offer_received, offer_accepted 在左边；applied, interview 在右边
+    const leftSideEvents = ['rejected', 'offer_received', 'offer_accepted']
+    return leftSideEvents.includes(eventType) ? 'left' : 'right'
   }
 
   const getEventConfig = (eventType: JobEvent["eventType"]) => {
@@ -112,13 +120,7 @@ const Timeline: React.FC = () => {
         bgColor: "bg-blue-50",
         textColor: "text-blue-800"
       },
-      'interview_scheduled': {
-        icon: Calendar,
-        color: "bg-amber-500",
-        bgColor: "bg-amber-50",
-        textColor: "text-amber-800"
-      },
-      'interview_completed': {
+      'interview': {
         icon: MessageSquare,
         color: "bg-purple-500",
         bgColor: "bg-purple-50",
@@ -135,28 +137,70 @@ const Timeline: React.FC = () => {
         color: "bg-green-500",
         bgColor: "bg-green-50",
         textColor: "text-green-800"
+      },
+      'offer_accepted': {
+        icon: CheckCircle,
+        color: "bg-emerald-500",
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-800"
       }
     }
     return configs[eventType] || configs.applied
   }
 
-  const getEventDisplayName = (eventType: JobEvent["eventType"]): string => {
+  const getEventDisplayName = (eventType: JobEvent["eventType"], event?: TimelineEventDisplay): string => {
+    if (eventType === 'interview' && event) {
+      const interviewTypeDisplay = getInterviewTypeDisplay(event.interviewType)
+      const round = event.interviewRound ? ` Round ${event.interviewRound}` : ''
+      return `${interviewTypeDisplay}${round}`
+    }
+
     const names: Record<string, string> = {
       'applied': 'Applied',
-      'interview_scheduled': 'Interview',
-      'interview_completed': 'Interview',
+      'interview': 'Interview',
       'rejected': 'Rejected',
-      'offer_received': 'Offer Received'
+      'offer_received': 'Offer Received',
+      'offer_accepted': 'Offer Accepted'
     }
     return names[eventType] || eventType
   }
 
+  const getInterviewTypeDisplay = (interviewType?: string): string => {
+    const typeMap: Record<string, string> = {
+      'phone': 'Phone Interview',
+      'video': 'Video Interview',
+      'onsite': 'Onsite Interview',
+      'technical': 'Technical Interview',
+      'hr': 'HR Interview',
+      'final': 'Final Interview',
+      'oa': 'Online Assessment',
+      'vo': 'Virtual Onsite'
+    }
+    return typeMap[interviewType || 'technical'] || 'Interview'
+  }
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
-      year: "numeric",
       month: "short",
       day: "numeric"
     })
+  }
+
+  const formatYear = (date: Date) => {
+    return date.getFullYear().toString()
+  }
+
+  // 按年份分组事件
+  const groupEventsByYear = (events: TimelineEventDisplay[]) => {
+    const groups: { [year: string]: TimelineEventDisplay[] } = {}
+    events.forEach(event => {
+      const year = formatYear(event.date)
+      if (!groups[year]) {
+        groups[year] = []
+      }
+      groups[year].push(event)
+    })
+    return groups
   }
   
   const getCompanyLogo = (company: string) => {
@@ -204,6 +248,9 @@ const Timeline: React.FC = () => {
     )
   }
 
+  const eventsByYear = groupEventsByYear(timelineEvents)
+  const years = Object.keys(eventsByYear).sort((a, b) => parseInt(b) - parseInt(a)) // 最新年份在前
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -213,107 +260,108 @@ const Timeline: React.FC = () => {
           {/* 中央时间轴线 */}
           <div className="absolute left-1/2 transform -translate-x-0.5 w-1 bg-gray-300 h-full"></div>
           
-          <div className="space-y-8">
-            {timelineEvents.map((event, index) => {
-              const config = getEventConfig(event.eventType)
-              const IconComponent = config.icon
-              
-              return (
+          {years.map((year, yearIndex) => (
+            <div key={year} className="mb-8">
+              {/* 该年的事件 */}
+              <div className="space-y-12">
+                {eventsByYear[year].map((event, index) => {
+                  const config = getEventConfig(event.eventType)
+                  const IconComponent = config.icon
+                  
+                  return (
                 <div key={event.id} className="relative flex items-center">
-                  {/* 左侧内容 */}
+                  {/* 左侧内容 - 镜像布局 */}
                   <div className="w-1/2 pr-8">
                     {event.side === 'left' && (
                       <div className={`${config.bgColor} rounded-lg p-6 shadow-sm border border-gray-200 ml-auto max-w-md`}>
-                        <div className="flex items-center mb-3">
-                          <div className={`${config.color} rounded-full p-2 mr-3`}>
-                            <IconComponent className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <div className={`text-sm font-medium ${config.textColor}`}>
-                              {getEventDisplayName(event.eventType)}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatDate(event.date)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center text-sm text-gray-700">
+                        <div className="flex justify-between items-center">
+                          {/* 左侧公司信息（镜像布局） */}
+                          <div className="flex flex-col items-left text-right">
                             <img
                               src={getCompanyLogo(event.company)}
                               alt={`${event.company} logo`}
-                              className="w-6 h-6 rounded-full shadow-sm mr-2"
+                              className="w-12 h-12 mb-2 rounded"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = "/placeholder.svg?height=24&width=24&text=" + event.company.charAt(0);
+                                target.src = "/placeholder.svg?height=48&width=48&text=" + event.company.charAt(0);
                               }}
                             />
-                            <span className="font-medium">{event.company}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-gray-700">
-                            <Briefcase className="w-4 h-4 mr-2 text-gray-500" />
-                            <span>{event.position}</span>
-                          </div>
-                          {event.location && (
-                            <div className="flex items-center text-sm text-gray-700">
-                              <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                              <span>{event.location}</span>
+                            <div className="text-left">
+                              <div className="text-sm font-medium text-gray-900">{event.company}</div>
+                              {event.location && (
+                                <div className="flex items-center justify-center text-xs text-gray-600 mt-1">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  <span>{event.location}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
+                          
+                          {/* 右侧信息（镜像布局） */}
+                          <div className="flex flex-col gap-1 items-end text-right">
+                            <div className={`inline-block px-3 py-1 rounded text-sm font-bold text-white ${config.color}`}>
+                              {getEventDisplayName(event.eventType, event)}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {formatDate(event.date)} {formatYear(event.date)}
+                            </div>
+                            <div className="flex items-center text-base font-medium text-gray-900">
+                              <span>{event.position}</span>
+                              <Briefcase className="w-4 h-4 ml-2 text-gray-500" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                   
                   {/* 中央时间点 */}
-                  <div className="absolute left-1/2 transform -translate-x-1/2 z-10">
+                  <div className="absolute left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
                     <div className={`${config.color} rounded-full p-3 shadow-lg border-4 border-white`}>
                       <IconComponent className="w-6 h-6 text-white" />
                     </div>
                   </div>
                   
-                  {/* 右侧内容 */}
+                  {/* 右侧内容 - 按照你的设计 */}
                   <div className="w-1/2 pl-8">
                     {event.side === 'right' && (
                       <div className={`${config.bgColor} rounded-lg p-6 shadow-sm border border-gray-200 mr-auto max-w-md`}>
-                        <div className="flex items-center mb-3">
-                          <div className={`${config.color} rounded-full p-2 mr-3`}>
-                            <IconComponent className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <div className={`text-sm font-medium ${config.textColor}`}>
-                              {getEventDisplayName(event.eventType)}
+                        <div className="flex justify-between items-center">
+                          {/* 左侧信息 */}
+                          <div className="flex flex-col gap-1">
+                            <div className={`inline-block px-3 py-1 rounded text-sm font-bold text-white ${config.color} w-fit`}>
+                              {getEventDisplayName(event.eventType, event)}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatDate(event.date)}
+                            <div className="text-sm text-gray-600">
+                              {formatDate(event.date)} {formatYear(event.date)}
+                            </div>
+                            <div className="flex items-center text-base font-medium text-gray-900">
+                              <Briefcase className="w-4 h-4 mr-2 text-gray-500" />
+                              <span>{event.position}</span>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center text-sm text-gray-700">
+                          
+                          {/* 右侧公司信息 */}
+                          <div className="flex flex-col items-right text-left">
                             <img
                               src={getCompanyLogo(event.company)}
                               alt={`${event.company} logo`}
-                              className="w-6 h-6 rounded-full shadow-sm mr-2"
+                              className="w-12 h-12 mb-2 rounded"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = "/placeholder.svg?height=24&width=24&text=" + event.company.charAt(0);
+                                target.src = "/placeholder.svg?height=48&width=48&text=" + event.company.charAt(0);
                               }}
                             />
-                            <span className="font-medium">{event.company}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-gray-700">
-                            <Briefcase className="w-4 h-4 mr-2 text-gray-500" />
-                            <span>{event.position}</span>
-                          </div>
-                          {event.location && (
-                            <div className="flex items-center text-sm text-gray-700">
-                              <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                              <span>{event.location}</span>
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-gray-900">{event.company}</div>
+                              {event.location && (
+                                <div className="flex items-center justify-center text-xs text-gray-600 mt-1">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  <span>{event.location}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -321,7 +369,9 @@ const Timeline: React.FC = () => {
                 </div>
               )
             })}
-          </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/database"
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
-    const jobId = Number.parseInt(params.id)
+    const { id } = await params
+    const jobId = Number.parseInt(id)
 
     if (isNaN(jobId)) {
       return NextResponse.json({ error: "Invalid job ID" }, { status: 400 })
@@ -41,15 +42,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const jobId = Number.parseInt(params.id)
+    const { id } = await params
+    const jobId = Number.parseInt(id)
 
     if (isNaN(jobId)) {
       return NextResponse.json({ error: "Invalid job ID" }, { status: 400 })
     }
 
-    await pool.query("DELETE FROM interviews WHERE job_id = $1", [jobId])
+    // Delete related job events first (CASCADE should handle this, but let's be explicit)
+    await pool.query("DELETE FROM job_events WHERE job_id = $1", [jobId])
     const result = await pool.query("DELETE FROM jobs WHERE id = $1 RETURNING id", [jobId])
 
     if (result.rows.length === 0) {

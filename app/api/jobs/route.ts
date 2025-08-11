@@ -79,27 +79,61 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { company, position, jobUrl, applicationDate, status = "applied", location, notes, isFavorite = false } = body
 
-    const result = await pool.query(
-      `
-      INSERT INTO jobs (company, position, job_url, application_date, status, location, notes, is_favorite)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING 
-        id,
-        company,
-        position,
-        job_url as "jobUrl",
-        application_date as "applicationDate",
-        status,
-        location,
-        notes,
-        is_favorite as "isFavorite",
-        created_at as "createdAt",
-        updated_at as "updatedAt"
-    `,
-      [company, position, jobUrl, applicationDate, status, location, notes, isFavorite],
-    )
+    // Start a transaction
+    const client = await pool.connect()
+    
+    try {
+      await client.query('BEGIN')
+      
+      // Insert the job
+      const jobResult = await client.query(
+        `
+        INSERT INTO jobs (company, position, job_url, application_date, status, location, notes, is_favorite)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING 
+          id,
+          company,
+          position,
+          job_url as "jobUrl",
+          application_date as "applicationDate",
+          status,
+          location,
+          notes,
+          is_favorite as "isFavorite",
+          created_at as "createdAt",
+          updated_at as "updatedAt"
+      `,
+        [company, position, jobUrl, applicationDate, status, location, notes, isFavorite],
+      )
 
-    return NextResponse.json(result.rows[0], { status: 201 })
+      const newJob = jobResult.rows[0]
+
+      // Automatically create an "applied" event
+      await client.query(
+        `
+        INSERT INTO job_events (
+          job_id, event_type, event_date, title, description, notes
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+      `,
+        [
+          newJob.id,
+          'applied',
+          applicationDate,
+          `Applied to ${company} for ${position}`,
+          `Applied for ${position} position at ${company}`,
+          notes
+        ]
+      )
+
+      await client.query('COMMIT')
+      client.release()
+
+      return NextResponse.json(newJob, { status: 201 })
+    } catch (error) {
+      await client.query('ROLLBACK')
+      client.release()
+      throw error
+    }
   } catch (error) {
     console.error("Database error:", error)
     return NextResponse.json({ error: "Failed to create job" }, { status: 500 })
