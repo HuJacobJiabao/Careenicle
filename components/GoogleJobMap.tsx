@@ -198,7 +198,6 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
     // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null))
     markersRef.current = []
-
     // Filter jobs by selected statuses and location data
     const filteredJobs = jobs.filter(job => {
       const hasCoords = job.latitude != null && job.longitude != null

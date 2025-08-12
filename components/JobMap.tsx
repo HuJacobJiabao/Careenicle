@@ -71,7 +71,18 @@ const JobMap: React.FC = () => {
   useEffect(() => {
     fetchJobs()
     setCurrentUseMockData(DataService.getUseMockData())
-  }, [DataService.getUseMockData()])
+  }, [])
+
+  // Listen for data source changes
+  useEffect(() => {
+    const handleDataSourceChange = () => {
+      fetchJobs()
+      setCurrentUseMockData(DataService.getUseMockData())
+    }
+
+    window.addEventListener("dataSourceChanged", handleDataSourceChange)
+    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
+  }, [])
 
   const fetchJobs = async () => {
     try {

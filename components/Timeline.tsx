@@ -27,7 +27,17 @@ const Timeline: React.FC = () => {
 
   useEffect(() => {
     fetchTimelineData()
-  }, [DataService.getUseMockData()])
+  }, [])
+
+  // Listen for data source changes
+  useEffect(() => {
+    const handleDataSourceChange = () => {
+      fetchTimelineData()
+    }
+
+    window.addEventListener("dataSourceChanged", handleDataSourceChange)
+    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
+  }, [])
 
   const fetchTimelineData = async () => {
     try {

@@ -105,6 +105,9 @@ const JobTable: React.FC = () => {
       if (DataService.getUseMockData()) {
         // User switched to mock data manually, don't show database errors
         setDatabaseStatus("connected")
+        // Refresh data immediately
+        fetchJobs()
+        fetchJobEvents()
       } else {
         // User switched back to database, re-check connection
         setDatabaseStatus("checking")
@@ -115,6 +118,9 @@ const JobTable: React.FC = () => {
               const data = await response.json()
               if (data.jobs !== undefined) {
                 setDatabaseStatus("connected")
+                // Refresh data after confirming database connection
+                fetchJobs()
+                fetchJobEvents()
               } else {
                 setDatabaseStatus("no-tables")
               }

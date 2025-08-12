@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { useState, useEffect } from "react"
 import type { Job, JobEvent } from "@/lib/types"
 import {
@@ -19,6 +19,7 @@ import {
   FileText,
   Award,
   UserCheck,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -366,7 +367,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         icon: <Pause className="w-4 h-4" />,
       },
     }
-    return result ? configs[result] : configs.pending
+    return result ? configs[result as keyof typeof configs] || configs.pending : configs.pending
   }
 
   const deleteInterview = async (interviewId: number) => {
@@ -433,132 +434,146 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6">
-                {interviews.map((interview) => {
-                  const typeConfig = getTypeConfig(interview.interviewType || "technical")
-                  const resultConfig = getResultConfig(interview.interviewResult || "pending")
-                  const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
+              <div className="space-y-6">
+                {/* Interview Flow Layout with arrows */}
+                <div className="flex flex-wrap items-center gap-4">
+                  {interviews
+                    .sort((a, b) => (a.interviewRound || 0) - (b.interviewRound || 0))
+                    .map((interview, index) => {
+                      const typeConfig = getTypeConfig(interview.interviewType || "technical")
+                      const resultConfig = getResultConfig(interview.interviewResult || "pending")
+                      const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
 
-                  return (
-                    <Card key={interview.id} className="hover:shadow-lg transition-all duration-200 border-slate-200">
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                              {interview.interviewRound || 1}
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg text-slate-800">
-                                Round {interview.interviewRound || 1}
-                              </CardTitle>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <Badge className={`${typeConfig.color} border font-medium`}>
-                                  {typeConfig.icon}
-                                  <span className="ml-1">{typeConfig.label}</span>
-                                </Badge>
-                                <Badge className={`${resultConfig.color} border font-medium`}>
-                                  {resultConfig.icon}
-                                  <span className="ml-1">{resultConfig.label}</span>
-                                </Badge>
+                      return (
+                        <React.Fragment key={interview.id}>
+                          <Card 
+                            className="hover:shadow-lg transition-all duration-200 border-slate-200 flex-shrink-0"
+                            style={{ width: 'calc(33.333% - 32px)', minWidth: '300px' }}
+                          >
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                    {interview.interviewRound || 1}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <CardTitle className="text-base text-slate-800">
+                                      Round {interview.interviewRound || 1}
+                                    </CardTitle>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      // Populate the form with existing interview data
+                                      const eventDate = new Date(interview.eventDate)
+                                      const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}T${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes()).padStart(2, "0")}`
+
+                                      setNewInterview({
+                                        round: interview.interviewRound || 1,
+                                        type: interview.interviewType || "technical",
+                                        scheduledDate: formattedDate,
+                                        interviewLink: interview.interviewLink || "",
+                                        notes: interview.notes || "",
+                                      })
+                                      setEditingInterview(interview)
+                                      setShowNewInterviewForm(true)
+                                    }}
+                                    className="text-slate-600 hover:text-blue-600 h-6 w-6 p-0"
+                                  >
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteInterview(interview.id!)}
+                                    className="text-slate-600 hover:text-red-600 h-6 w-6 p-0"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                // Populate the form with existing interview data
-                                const eventDate = new Date(interview.eventDate)
-                                const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}T${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes()).padStart(2, "0")}`
+                            </CardHeader>
 
-                                setNewInterview({
-                                  round: interview.interviewRound || 1,
-                                  type: interview.interviewType || "technical",
-                                  scheduledDate: formattedDate,
-                                  interviewLink: interview.interviewLink || "",
-                                  notes: interview.notes || "",
-                                })
-                                setEditingInterview(interview)
-                                setShowNewInterviewForm(true)
-                              }}
-                              className="text-slate-600 hover:text-blue-600"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteInterview(interview.id!)}
-                              className="text-slate-600 hover:text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
+                            {!isEditing && (
+                              <CardContent className="pt-0 space-y-3">
+                                {/* Type and Result Badges */}
+                                <div className="flex flex-col space-y-2">
+                                  <Badge className={`${typeConfig.color} border font-medium text-xs w-fit`}>
+                                    {typeConfig.icon}
+                                    <span className="ml-1">{typeConfig.label}</span>
+                                  </Badge>
+                                  <Select
+                                    value={interview.interviewResult || "pending"}
+                                    onValueChange={(value) => updateEvent(interview.id!, { interviewResult: value as any })}
+                                  >
+                                    <SelectTrigger className={`w-fit h-6 text-xs border-0 ${resultConfig.color} font-medium px-2 rounded-full`}>
+                                      <div className="flex items-center">
+                                        {resultConfig.icon}
+                                        <span className="ml-1">{resultConfig.label}</span>
+                                      </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pending">Pending</SelectItem>
+                                      <SelectItem value="passed">Passed</SelectItem>
+                                      <SelectItem value="failed">Failed</SelectItem>
+                                      <SelectItem value="waiting">Waiting</SelectItem>
+                                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
 
-                      {!isEditing && (
-                        <CardContent className="pt-0">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center text-slate-600">
-                              <Calendar className="w-4 h-4 mr-2 text-slate-400" />
-                              <span>
-                                {new Date(interview.eventDate).toLocaleString("en-US", {
-                                  weekday: "short",
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-                            {interview.interviewLink && (
-                              <div className="flex items-center text-slate-600">
-                                <MessageSquare className="w-4 h-4 mr-2 text-slate-400" />
-                                <a
-                                  href={interview.interviewLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 hover:underline truncate"
-                                >
-                                  Interview Link
-                                </a>
-                              </div>
+                                {/* Date and Link */}
+                                <div className="space-y-2 text-xs">
+                                  <div className="flex items-center text-slate-600">
+                                    <Calendar className="w-3 h-3 mr-2 text-slate-400" />
+                                    <span className="truncate">
+                                      {new Date(interview.eventDate).toLocaleString("en-US", {
+                                        weekday: "short",
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  </div>
+                                  {interview.interviewLink && (
+                                    <div className="flex items-center text-slate-600">
+                                      <MessageSquare className="w-3 h-3 mr-2 text-slate-400 flex-shrink-0" />
+                                      <a
+                                        href={interview.interviewLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 hover:underline truncate text-xs"
+                                      >
+                                        Interview Link
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Notes */}
+                                {interview.notes && (
+                                  <div className="p-2 bg-slate-50 rounded-lg">
+                                    <p className="text-xs text-slate-600 line-clamp-2">{interview.notes}</p>
+                                  </div>
+                                )}
+                              </CardContent>
                             )}
-                          </div>
-                          {interview.notes && (
-                            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                              <p className="text-sm text-slate-600">{interview.notes}</p>
+                          </Card>
+
+                          {/* Arrow between interviews */}
+                          {index < interviews.length - 1 && (
+                            <div className="flex items-center justify-center flex-shrink-0">
+                              <ChevronRight className="w-6 h-6 text-slate-400" />
                             </div>
                           )}
-
-                          {/* Added interview result status change functionality */}
-                          <div className="mt-4 pt-4 border-t border-slate-100">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-slate-700">Interview Result:</span>
-                              <Select
-                                value={interview.interviewResult || "pending"}
-                                onValueChange={(value) => updateEvent(interview.id!, { interviewResult: value as any })}
-                              >
-                                <SelectTrigger className="w-32 h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="passed">Passed</SelectItem>
-                                  <SelectItem value="failed">Failed</SelectItem>
-                                  <SelectItem value="waiting">Waiting</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </CardContent>
-                      )}
-                    </Card>
-                  )
-                })}
+                        </React.Fragment>
+                      )
+                    })}
+                </div>
               </div>
             )}
           </div>

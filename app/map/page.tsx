@@ -70,7 +70,7 @@ export default function MapPage() {
         if (addressParts.length >= 2) {
           city = addressParts[0] || "Unknown"
           // Handle state extraction - look for state abbreviation pattern
-          const stateMatch = addressParts.find((part) => /^[A-Z]{2}(\s|$)/.test(part))
+          const stateMatch = addressParts.find((part: string) => /^[A-Z]{2}(\s|$)/.test(part))
           if (stateMatch) {
             state = stateMatch.split(" ")[0]
           } else if (addressParts.length >= 2) {
