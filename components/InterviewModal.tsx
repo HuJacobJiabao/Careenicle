@@ -148,35 +148,6 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     }
   }
 
-  const updateJobEvent = async (eventId: number, updates: Partial<JobEvent>) => {
-    try {
-      const response = await fetch(`/api/job-events/${eventId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      })
-
-      if (response.ok) {
-        onUpdate() // Call parent update first
-        await fetchJobEvents() // Then refresh local data
-      }
-    } catch (error) {
-      console.error("Failed to update job event:", error)
-    }
-  }
-
-  // Helper function to safely update editing interview
-  const updateEditingInterview = (updates: Partial<JobEvent>) => {
-    if (!editingInterview) return
-    setEditingInterview((prev) => {
-      if (!prev) return null
-      return {
-        ...prev,
-        ...updates,
-      }
-    })
-  }
-
   const addCustomEvent = async () => {
     if (!newEvent.eventDate || !newEvent.title) return
 
@@ -561,6 +532,28 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               <p className="text-sm text-slate-600">{interview.notes}</p>
                             </div>
                           )}
+
+                          {/* Added interview result status change functionality */}
+                          <div className="mt-4 pt-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-slate-700">Interview Result:</span>
+                              <Select
+                                value={interview.interviewResult || "pending"}
+                                onValueChange={(value) => updateEvent(interview.id!, { interviewResult: value as any })}
+                              >
+                                <SelectTrigger className="w-32 h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="passed">Passed</SelectItem>
+                                  <SelectItem value="failed">Failed</SelectItem>
+                                  <SelectItem value="waiting">Waiting</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         </CardContent>
                       )}
                     </Card>
@@ -706,6 +699,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
             </Card>
           )}
 
+          {/* Added clear dividing line between sections */}
+          <div className="border-t-2 border-slate-200 my-8"></div>
+
           <Card className="border-slate-200">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -713,10 +709,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                   <CardTitle className="text-xl text-slate-800">Event Timeline</CardTitle>
                   <CardDescription>Track all events related to this job application</CardDescription>
                 </div>
+                {/* Made Add Event button solid like Schedule New Interview */}
                 <Button
                   onClick={() => setShowEventForm(!showEventForm)}
-                  variant="outline"
-                  className="border-green-200 text-green-700 hover:bg-green-50"
+                  className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Event
@@ -727,243 +723,275 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
             <CardContent className="space-y-6">
               {/* Custom Event Form */}
               {showEventForm && (
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Add Custom Event</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                      <select
-                        value={newEvent.eventType}
-                        onChange={(e) =>
-                          setNewEvent({ ...newEvent, eventType: e.target.value as JobEvent["eventType"] })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                <Card className="border-green-200 bg-green-50/30">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-slate-800">Add Custom Event</CardTitle>
+                    <CardDescription>Record important milestones in your application process</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="eventType" className="text-sm font-medium text-slate-700">
+                          Event Type
+                        </Label>
+                        <Select
+                          value={newEvent.eventType}
+                          onValueChange={(value) =>
+                            setNewEvent({ ...newEvent, eventType: value as JobEvent["eventType"] })
+                          }
+                        >
+                          <SelectTrigger className="border-slate-300 focus:border-green-500 focus:ring-green-500">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="applied">Applied</SelectItem>
+                            <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
+                            <SelectItem value="interview">Interview Completed</SelectItem>
+                            <SelectItem value="interview_result">Interview Result</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="offer_received">Offer Received</SelectItem>
+                            <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
+                            <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                            <SelectItem value="ghosted">Ghosted</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="eventDate" className="text-sm font-medium text-slate-700">
+                          Event Date
+                        </Label>
+                        <Input
+                          id="eventDate"
+                          type="date"
+                          value={newEvent.eventDate}
+                          onChange={(e) => setNewEvent({ ...newEvent, eventDate: e.target.value })}
+                          className="border-slate-300 focus:border-green-500 focus:ring-green-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="eventTitle" className="text-sm font-medium text-slate-700">
+                          Title
+                        </Label>
+                        <Input
+                          id="eventTitle"
+                          type="text"
+                          value={newEvent.title}
+                          onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                          placeholder="Event title"
+                          className="border-slate-300 focus:border-green-500 focus:ring-green-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="eventDescription" className="text-sm font-medium text-slate-700">
+                          Description
+                        </Label>
+                        <Input
+                          id="eventDescription"
+                          type="text"
+                          value={newEvent.description}
+                          onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                          placeholder="Event description"
+                          className="border-slate-300 focus:border-green-500 focus:ring-green-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={addCustomEvent}
+                        disabled={!newEvent.eventDate || !newEvent.title}
+                        className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                       >
-                        <option value="applied">Applied</option>
-                        <option value="interview_scheduled">Interview Scheduled</option>
-                        <option value="interview">Interview Completed</option>
-                        <option value="interview_result">Interview Result</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="offer_received">Offer Received</option>
-                        <option value="offer_accepted">Offer Accepted</option>
-                        <option value="withdrawn">Withdrawn</option>
-                        <option value="ghosted">Ghosted</option>
-                      </select>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Event
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowEventForm(false)}
+                        className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </Button>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
-                      <input
-                        type="date"
-                        value={newEvent.eventDate}
-                        onChange={(e) => setNewEvent({ ...newEvent, eventDate: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={newEvent.title}
-                        onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Event title"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <input
-                        type="text"
-                        value={newEvent.description}
-                        onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Event description"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                      <textarea
-                        value={newEvent.notes}
-                        onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        rows={2}
-                        placeholder="Additional notes"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      onClick={() => setShowEventForm(false)}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={addCustomEvent}
-                      disabled={!newEvent.eventDate || !newEvent.title}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200"
-                    >
-                      Add Event
-                    </button>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
 
               {/* Edit Event Form */}
               {editingEvent && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Edit Event</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                      <select
-                        value={editingEvent.eventType}
-                        onChange={(e) =>
-                          setEditingEvent({ ...editingEvent, eventType: e.target.value as JobEvent["eventType"] })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                <Card className="border-blue-200 bg-blue-50/30">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-slate-800">Edit Event</CardTitle>
+                    <CardDescription>Update event details</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="editEventType" className="text-sm font-medium text-slate-700">
+                          Event Type
+                        </Label>
+                        <Select
+                          value={editingEvent.eventType}
+                          onValueChange={(value) =>
+                            setEditingEvent({ ...editingEvent, eventType: value as JobEvent["eventType"] })
+                          }
+                        >
+                          <SelectTrigger className="border-slate-300 focus:border-blue-500 focus:ring-blue-500">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="applied">Applied</SelectItem>
+                            <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
+                            <SelectItem value="interview">Interview Completed</SelectItem>
+                            <SelectItem value="interview_result">Interview Result</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="offer_received">Offer Received</SelectItem>
+                            <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
+                            <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                            <SelectItem value="ghosted">Ghosted</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editEventDate" className="text-sm font-medium text-slate-700">
+                          Event Date
+                        </Label>
+                        <Input
+                          id="editEventDate"
+                          type="date"
+                          value={(() => {
+                            const date = new Date(editingEvent.eventDate)
+                            const year = date.getFullYear()
+                            const month = String(date.getMonth() + 1).padStart(2, "0")
+                            const day = String(date.getDate()).padStart(2, "0")
+                            return `${year}-${month}-${day}`
+                          })()}
+                          onChange={(e) => {
+                            const [year, month, day] = e.target.value.split("-").map(Number)
+                            const localDate = new Date(year, month - 1, day)
+                            setEditingEvent({ ...editingEvent, eventDate: localDate })
+                          }}
+                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="editEventTitle" className="text-sm font-medium text-slate-700">
+                          Title
+                        </Label>
+                        <Input
+                          id="editEventTitle"
+                          type="text"
+                          value={editingEvent.title}
+                          onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                          placeholder="Event title"
+                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="editEventDescription" className="text-sm font-medium text-slate-700">
+                          Description
+                        </Label>
+                        <Input
+                          id="editEventDescription"
+                          type="text"
+                          value={editingEvent.description || ""}
+                          onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                          placeholder="Event description"
+                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="editEventNotes" className="text-sm font-medium text-slate-700">
+                          Notes
+                        </Label>
+                        <Textarea
+                          id="editEventNotes"
+                          value={editingEvent.notes || ""}
+                          onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
+                          placeholder="Additional notes"
+                          rows={2}
+                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={() => updateEvent(editingEvent.id!, editingEvent)}
+                        disabled={!editingEvent.eventDate || !editingEvent.title}
+                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                       >
-                        <option value="applied">Applied</option>
-                        <option value="interview_scheduled">Interview Scheduled</option>
-                        <option value="interview">Interview Completed</option>
-                        <option value="interview_result">Interview Result</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="offer_received">Offer Received</option>
-                        <option value="offer_accepted">Offer Accepted</option>
-                        <option value="withdrawn">Withdrawn</option>
-                        <option value="ghosted">Ghosted</option>
-                      </select>
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Update Event
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setEditingEvent(null)}
+                        className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </Button>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
-                      <input
-                        type="date"
-                        value={(() => {
-                          const date = new Date(editingEvent.eventDate)
-                          const year = date.getFullYear()
-                          const month = String(date.getMonth() + 1).padStart(2, "0")
-                          const day = String(date.getDate()).padStart(2, "0")
-                          return `${year}-${month}-${day}`
-                        })()}
-                        onChange={(e) => {
-                          const [year, month, day] = e.target.value.split("-").map(Number)
-                          const localDate = new Date(year, month - 1, day)
-                          setEditingEvent({ ...editingEvent, eventDate: localDate })
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={editingEvent.title}
-                        onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Event title"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <input
-                        type="text"
-                        value={editingEvent.description || ""}
-                        onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Event description"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                      <textarea
-                        value={editingEvent.notes || ""}
-                        onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        rows={2}
-                        placeholder="Additional notes"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      onClick={() => setEditingEvent(null)}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => updateEvent(editingEvent.id!, editingEvent)}
-                      disabled={!editingEvent.eventDate || !editingEvent.title}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200"
-                    >
-                      Update Event
-                    </button>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
 
-              <div className="space-y-3">
-                {jobEvents.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-slate-500 italic">No events recorded yet</p>
-                  </div>
-                ) : (
-                  jobEvents
-                    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
-                    .map((event) => (
-                      <Card key={event.id} className="border-slate-100 hover:border-slate-200 transition-colors">
-                        <CardContent className="p-4">
-                          <div className="flex items-start space-x-3">
-                            <div className="flex-shrink-0 w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
-                            <div className="flex-grow min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h5 className="text-sm font-semibold text-slate-800">{event.title}</h5>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs text-slate-500 font-medium">
-                                    {new Date(event.eventDate).toLocaleString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </span>
-                                  <div className="flex space-x-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setEditingEvent(event)}
-                                      className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
-                                    >
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteEvent(event.id!)}
-                                      className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
+              {/* Added clear dividing line before event list */}
+              <div className="border-t border-slate-200 pt-6">
+                <div className="space-y-3">
+                  {jobEvents.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-slate-500 italic">No events recorded yet</p>
+                    </div>
+                  ) : (
+                    jobEvents
+                      .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+                      .map((event) => (
+                        <Card key={event.id} className="border-slate-100 hover:border-slate-200 transition-colors">
+                          <CardContent className="p-4">
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0 w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
+                              <div className="flex-grow min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h5 className="text-sm font-semibold text-slate-800">{event.title}</h5>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs text-slate-500 font-medium">
+                                      {new Date(event.eventDate).toLocaleString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                    <div className="flex space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingEvent(event)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteEvent(event.id!)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              {event.description && <p className="text-sm text-slate-600 mt-1">{event.description}</p>}
-                              {event.notes && <p className="text-xs text-slate-500 mt-1">{event.notes}</p>}
-                              <div className="flex items-center mt-2 space-x-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {event.eventType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                                </Badge>
-                                {event.interviewRound && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Round {event.interviewRound}
-                                  </Badge>
+                                {event.description && (
+                                  <p className="text-sm text-slate-600 mt-1">{event.description}</p>
                                 )}
+                                {event.notes && <p className="text-xs text-slate-500 mt-1">{event.notes}</p>}
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                )}
+                          </CardContent>
+                        </Card>
+                      ))
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
