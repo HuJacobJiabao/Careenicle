@@ -435,144 +435,174 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
               </Card>
             ) : (
               <div className="space-y-6">
-                {/* Interview Flow Layout with arrows */}
-                <div className="flex flex-wrap items-center gap-4">
-                  {interviews
-                    .sort((a, b) => (a.interviewRound || 0) - (b.interviewRound || 0))
-                    .map((interview, index) => {
-                      const typeConfig = getTypeConfig(interview.interviewType || "technical")
-                      const resultConfig = getResultConfig(interview.interviewResult || "pending")
-                      const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
+                <div className="space-y-4">
+                  {(() => {
+                    const sortedInterviews = interviews.sort(
+                      (a, b) => (a.interviewRound || 0) - (b.interviewRound || 0),
+                    )
+                    const rows = []
 
-                      return (
-                        <React.Fragment key={interview.id}>
-                          <Card 
-                            className="hover:shadow-lg transition-all duration-200 border-slate-200 flex-shrink-0"
-                            style={{ width: 'calc(33.333% - 32px)', minWidth: '300px' }}
-                          >
-                            <CardHeader className="pb-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                                    {interview.interviewRound || 1}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <CardTitle className="text-base text-slate-800">
-                                      Round {interview.interviewRound || 1}
-                                    </CardTitle>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      // Populate the form with existing interview data
-                                      const eventDate = new Date(interview.eventDate)
-                                      const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}T${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes()).padStart(2, "0")}`
+                    // Group interviews into rows of maximum 3
+                    for (let i = 0; i < sortedInterviews.length; i += 3) {
+                      const rowInterviews = sortedInterviews.slice(i, i + 3)
+                      const isLastRow = i + 3 >= sortedInterviews.length
+                      const hasMoreInterviews = !isLastRow
 
-                                      setNewInterview({
-                                        round: interview.interviewRound || 1,
-                                        type: interview.interviewType || "technical",
-                                        scheduledDate: formattedDate,
-                                        interviewLink: interview.interviewLink || "",
-                                        notes: interview.notes || "",
-                                      })
-                                      setEditingInterview(interview)
-                                      setShowNewInterviewForm(true)
-                                    }}
-                                    className="text-slate-600 hover:text-blue-600 h-6 w-6 p-0"
-                                  >
-                                    <Edit className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteInterview(interview.id!)}
-                                    className="text-slate-600 hover:text-red-600 h-6 w-6 p-0"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardHeader>
+                      rows.push(
+                        <div key={`row-${i}`} className="flex items-center justify-start gap-4">
+                          {rowInterviews.map((interview, index) => {
+                            const typeConfig = getTypeConfig(interview.interviewType || "technical")
+                            const resultConfig = getResultConfig(interview.interviewResult || "pending")
+                            const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
 
-                            {!isEditing && (
-                              <CardContent className="pt-0 space-y-3">
-                                {/* Type and Result Badges */}
-                                <div className="flex flex-col space-y-2">
-                                  <Badge className={`${typeConfig.color} border font-medium text-xs w-fit`}>
-                                    {typeConfig.icon}
-                                    <span className="ml-1">{typeConfig.label}</span>
-                                  </Badge>
-                                  <Select
-                                    value={interview.interviewResult || "pending"}
-                                    onValueChange={(value) => updateEvent(interview.id!, { interviewResult: value as any })}
-                                  >
-                                    <SelectTrigger className={`w-fit h-6 text-xs border-0 ${resultConfig.color} font-medium px-2 rounded-full`}>
-                                      <div className="flex items-center">
-                                        {resultConfig.icon}
-                                        <span className="ml-1">{resultConfig.label}</span>
+                            // Calculate card width based on number of interviews in this row
+                            const cardCount = rowInterviews.length
+                            const arrowCount = cardCount - 1 + (hasMoreInterviews && index === cardCount - 1 ? 1 : 0)
+                            const arrowWidth = 32 // 24px icon + 8px margin
+                            const gapWidth = 16 * (cardCount - 1) // 16px gap between cards
+                            const totalArrowWidth = arrowCount * arrowWidth
+                            const availableWidth = `calc(100% - ${totalArrowWidth + gapWidth}px)`
+                            const cardWidth = `calc(${availableWidth} / ${cardCount})`
+
+                            return (
+                              <React.Fragment key={interview.id}>
+                                <Card
+                                  className="hover:shadow-lg transition-all duration-200 border-slate-200 flex-shrink-0"
+                                  style={{ width: cardWidth, minWidth: "280px" }}
+                                >
+                                  <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                          {interview.interviewRound || 1}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <CardTitle className="text-base text-slate-800">
+                                            Round {interview.interviewRound || 1}
+                                          </CardTitle>
+                                        </div>
                                       </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="pending">Pending</SelectItem>
-                                      <SelectItem value="passed">Passed</SelectItem>
-                                      <SelectItem value="failed">Failed</SelectItem>
-                                      <SelectItem value="waiting">Waiting</SelectItem>
-                                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                                      <div className="flex items-center space-x-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            // Populate the form with existing interview data
+                                            const eventDate = new Date(interview.eventDate)
+                                            const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}T${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes()).padStart(2, "0")}`
 
-                                {/* Date and Link */}
-                                <div className="space-y-2 text-xs">
-                                  <div className="flex items-center text-slate-600">
-                                    <Calendar className="w-3 h-3 mr-2 text-slate-400" />
-                                    <span className="truncate">
-                                      {new Date(interview.eventDate).toLocaleString("en-US", {
-                                        weekday: "short",
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                  </div>
-                                  {interview.interviewLink && (
-                                    <div className="flex items-center text-slate-600">
-                                      <MessageSquare className="w-3 h-3 mr-2 text-slate-400 flex-shrink-0" />
-                                      <a
-                                        href={interview.interviewLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:text-blue-800 hover:underline truncate text-xs"
-                                      >
-                                        Interview Link
-                                      </a>
+                                            setNewInterview({
+                                              round: interview.interviewRound || 1,
+                                              type: interview.interviewType || "technical",
+                                              scheduledDate: formattedDate,
+                                              interviewLink: interview.interviewLink || "",
+                                              notes: interview.notes || "",
+                                            })
+                                            setEditingInterview(interview)
+                                            setShowNewInterviewForm(true)
+                                          }}
+                                          className="text-slate-600 hover:text-blue-600 h-6 w-6 p-0"
+                                        >
+                                          <Edit className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => deleteInterview(interview.id!)}
+                                          className="text-slate-600 hover:text-red-600 h-6 w-6 p-0"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
+                                  </CardHeader>
 
-                                {/* Notes */}
-                                {interview.notes && (
-                                  <div className="p-2 bg-slate-50 rounded-lg">
-                                    <p className="text-xs text-slate-600 line-clamp-2">{interview.notes}</p>
+                                  {!isEditing && (
+                                    <CardContent className="pt-0 space-y-3">
+                                      {/* Type and Result Badges */}
+                                      <div className="flex flex-col space-y-2">
+                                        <Badge className={`${typeConfig.color} border font-medium text-xs w-fit`}>
+                                          {typeConfig.icon}
+                                          <span className="ml-1">{typeConfig.label}</span>
+                                        </Badge>
+                                        <Select
+                                          value={interview.interviewResult || "pending"}
+                                          onValueChange={(value) =>
+                                            updateEvent(interview.id!, { interviewResult: value as any })
+                                          }
+                                        >
+                                          <SelectTrigger
+                                            className={`w-fit h-6 text-xs border-0 ${resultConfig.color} font-medium px-2 rounded-full`}
+                                          >
+                                            <div className="flex items-center">
+                                              {resultConfig.icon}
+                                              <span className="ml-1">{resultConfig.label}</span>
+                                            </div>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="pending">Pending</SelectItem>
+                                            <SelectItem value="passed">Passed</SelectItem>
+                                            <SelectItem value="failed">Failed</SelectItem>
+                                            <SelectItem value="waiting">Waiting</SelectItem>
+                                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+
+                                      {/* Date and Link */}
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center text-slate-600">
+                                          <Calendar className="w-3 h-3 mr-2 text-slate-400" />
+                                          <span className="truncate">
+                                            {new Date(interview.eventDate).toLocaleString("en-US", {
+                                              weekday: "short",
+                                              month: "short",
+                                              day: "numeric",
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })}
+                                          </span>
+                                        </div>
+                                        {interview.interviewLink && (
+                                          <div className="flex items-center text-slate-600">
+                                            <MessageSquare className="w-3 h-3 mr-2 text-slate-400 flex-shrink-0" />
+                                            <a
+                                              href={interview.interviewLink}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-600 hover:text-blue-800 hover:underline truncate text-xs"
+                                            >
+                                              Interview Link
+                                            </a>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Notes */}
+                                      {interview.notes && (
+                                        <div className="p-2 bg-slate-50 rounded-lg">
+                                          <p className="text-xs text-slate-600 line-clamp-2">{interview.notes}</p>
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                  )}
+                                </Card>
+
+                                {(index < rowInterviews.length - 1 ||
+                                  (hasMoreInterviews && index === rowInterviews.length - 1)) && (
+                                  <div className="flex items-center justify-center flex-shrink-0">
+                                    <ChevronRight className="w-6 h-6 text-slate-400" />
                                   </div>
                                 )}
-                              </CardContent>
-                            )}
-                          </Card>
-
-                          {/* Arrow between interviews */}
-                          {index < interviews.length - 1 && (
-                            <div className="flex items-center justify-center flex-shrink-0">
-                              <ChevronRight className="w-6 h-6 text-slate-400" />
-                            </div>
-                          )}
-                        </React.Fragment>
+                              </React.Fragment>
+                            )
+                          })}
+                        </div>,
                       )
-                    })}
+                    }
+
+                    return rows
+                  })()}
                 </div>
               </div>
             )}
