@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { googlePlacesService } from "@/lib/googlePlacesService"
+import { DataService } from "@/lib/dataService"
 import LocationAutocomplete from "./LocationAutocomplete"
 import type { Job } from "@/lib/types"
 import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
@@ -61,11 +62,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
         place_id: locationData?.placeId || job.place_id,
       }
 
-      await fetch(`/api/jobs/${job.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      })
+      await DataService.updateJob(job.id!, updateData)
       onUpdate()
     } catch (error) {
       console.error("Failed to update job:", error)

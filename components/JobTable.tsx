@@ -171,9 +171,8 @@ const JobTable: React.FC = () => {
 
   const fetchJobEvents = async () => {
     try {
-      // Fetch all job events
-      const response = await fetch("/api/job-events")
-      const data = await response.json()
+      // Use DataService to fetch job events (this will handle mock vs real data)
+      const data = await DataService.fetchJobEvents()
       setJobEvents(data)
     } catch (error) {
       console.error("Failed to fetch job events:", error)

@@ -151,6 +151,62 @@ export class DataService {
     }
   }
 
+  static async createJobEvent(eventData: Partial<JobEvent>): Promise<JobEvent> {
+    if (this.useMockData) {
+      const newEvent: JobEvent = {
+        id: Math.max(...mockJobEvents.map((e) => e.id!)) + 1,
+        jobId: eventData.jobId!,
+        eventType: eventData.eventType!,
+        eventDate: eventData.eventDate!,
+        title: eventData.title!,
+        description: eventData.description,
+        interviewRound: eventData.interviewRound,
+        interviewType: eventData.interviewType,
+        interviewLink: eventData.interviewLink,
+        interviewResult: eventData.interviewResult,
+        notes: eventData.notes,
+        metadata: eventData.metadata,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      mockJobEvents.unshift(newEvent)
+      return newEvent
+    } else {
+      const response = await fetch("/api/job-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      })
+      return await response.json()
+    }
+  }
+
+  static async updateJobEvent(eventId: number, updates: Partial<JobEvent>): Promise<void> {
+    if (this.useMockData) {
+      const eventIndex = mockJobEvents.findIndex((event) => event.id === eventId)
+      if (eventIndex !== -1) {
+        mockJobEvents[eventIndex] = { ...mockJobEvents[eventIndex], ...updates, updatedAt: new Date() }
+      }
+    } else {
+      await fetch(`/api/job-events/${eventId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      })
+    }
+  }
+
+  static async deleteJobEvent(eventId: number): Promise<void> {
+    if (this.useMockData) {
+      const eventIndex = mockJobEvents.findIndex((event) => event.id === eventId)
+      if (eventIndex !== -1) {
+        mockJobEvents.splice(eventIndex, 1)
+      }
+    } else {
+      await fetch(`/api/job-events/${eventId}`, { method: "DELETE" })
+    }
+  }
+
   static async toggleFavorite(jobId: number, isFavorite: boolean): Promise<void> {
     if (this.useMockData) {
       const job = mockJobs.find((job) => job.id === jobId)

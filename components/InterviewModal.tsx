@@ -3,6 +3,7 @@
 import React from "react"
 import { useState, useEffect } from "react"
 import type { Job, JobEvent } from "@/lib/types"
+import { DataService } from "@/lib/dataService"
 import {
   X,
   Calendar,
@@ -61,10 +62,19 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     fetchJobEvents()
   }, [job.id])
 
+  // Listen for data source changes
+  useEffect(() => {
+    const handleDataSourceChange = () => {
+      fetchJobEvents()
+    }
+
+    window.addEventListener("dataSourceChanged", handleDataSourceChange)
+    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
+  }, [job.id])
+
   const fetchJobEvents = async () => {
     try {
-      const response = await fetch(`/api/job-events?jobId=${job.id}`)
-      const events = await response.json()
+      const events = await DataService.fetchJobEvents(job.id)
       setJobEvents(events)
     } catch (error) {
       console.error("Failed to fetch job events:", error)
@@ -87,13 +97,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
       }
 
-      await fetch("/api/job-events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...dataToSend,
-          jobId: job.id,
-        }),
+      await DataService.createJobEvent({
+        ...dataToSend,
+        jobId: job.id,
       })
       fetchJobEvents()
     } catch (error) {
@@ -195,11 +201,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
       }
 
-      await fetch(`/api/job-events/${eventId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
-      })
+      await DataService.updateJobEvent(eventId, dataToSend)
       onUpdate()
       fetchJobEvents() // Refresh the local data
       setEditingEvent(null)
@@ -212,9 +214,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!confirm("Are you sure you want to delete this event?")) return
 
     try {
-      await fetch(`/api/job-events/${eventId}`, {
-        method: "DELETE",
-      })
+      await DataService.deleteJobEvent(eventId)
       onUpdate() // Call parent update first
       fetchJobEvents() // Then refresh local data
     } catch (error) {
@@ -235,9 +235,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       )
 
       for (const event of relatedEvents) {
-        await fetch(`/api/job-events/${event.id}`, {
-          method: "DELETE",
-        })
+        await DataService.deleteJobEvent(event.id!)
       }
 
       onUpdate() // Call parent update first
@@ -261,20 +259,16 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       const eventDateToSend = `${scheduledLocalDate.getFullYear()}-${String(scheduledLocalDate.getMonth() + 1).padStart(2, "0")}-${String(scheduledLocalDate.getDate()).padStart(2, "0")}T${String(scheduledLocalDate.getHours()).padStart(2, "0")}:${String(scheduledLocalDate.getMinutes()).padStart(2, "0")}:${String(scheduledLocalDate.getSeconds()).padStart(2, "0")}`
 
       // Update the interview event with the new form data
-      await fetch(`/api/job-events/${editingInterview.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventType: editingInterview.eventType,
-          eventDate: eventDateToSend,
-          title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
-          description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
-          interviewRound: newInterview.round,
-          interviewType: newInterview.type,
-          interviewLink: newInterview.interviewLink,
-          interviewResult: editingInterview.interviewResult,
-          notes: newInterview.notes,
-        }),
+      await DataService.updateJobEvent(editingInterview.id!, {
+        eventType: editingInterview.eventType,
+        eventDate: eventDateToSend as any,
+        title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
+        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
+        interviewRound: newInterview.round,
+        interviewType: newInterview.type,
+        interviewLink: newInterview.interviewLink,
+        interviewResult: editingInterview.interviewResult,
+        notes: newInterview.notes,
       })
 
       onUpdate() // Call parent update first
