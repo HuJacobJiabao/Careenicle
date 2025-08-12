@@ -130,8 +130,6 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: newInterview.notes,
       })
 
-      onUpdate()
-      fetchJobEvents() // Refresh the local data
       setNewInterview({
         round: interviews.length + 2,
         type: "technical",
@@ -140,6 +138,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: "",
       })
       setShowNewInterviewForm(false) // Hide the form after successful creation
+      onUpdate() // Call parent update after local state changes
     } catch (error) {
       console.error("Failed to add interview:", error)
     }
@@ -154,8 +153,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       })
       
       if (response.ok) {
-        await fetchJobEvents()
-        onUpdate()
+        onUpdate() // Call parent update first
+        await fetchJobEvents() // Then refresh local data
       }
     } catch (error) {
       console.error("Failed to update job event:", error)
@@ -198,7 +197,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: "",
       })
       setShowEventForm(false)
-      onUpdate()
+      onUpdate() // Call parent update after local state changes
       fetchJobEvents() // Refresh the local data
     } catch (error) {
       console.error("Failed to add custom event:", error)
@@ -240,8 +239,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       await fetch(`/api/job-events/${eventId}`, {
         method: "DELETE",
       })
-      onUpdate()
-      fetchJobEvents() // Refresh the local data
+      onUpdate() // Call parent update first
+      fetchJobEvents() // Then refresh local data
     } catch (error) {
       console.error("Failed to delete event:", error)
     }
@@ -264,8 +263,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         })
       }
 
-      onUpdate()
-      fetchJobEvents() // Refresh the local data
+      onUpdate() // Call parent update first
+      fetchJobEvents() // Then refresh local data
     } catch (error) {
       console.error("Failed to delete interview events:", error)
     }
@@ -303,8 +302,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           notes: editingInterview.notes,
         }),
       })
-      onUpdate()
-      fetchJobEvents() // Refresh the local data
+      onUpdate() // Call parent update first
+      fetchJobEvents() // Then refresh local data
       setEditingInterview(null)
     } catch (error) {
       console.error("Failed to update interview:", error)

@@ -330,6 +330,7 @@ const JobTable: React.FC = () => {
       {upcomingInterviewJobs.length > 0 && (
         <div className="mb-10 animate-slide-in-right">
           <UpcomingInterviewsTable
+            key={`upcoming-${jobEvents.length}-${jobs.length}`}
             jobs={upcomingInterviewJobs}
             onManageInterview={(job) => {
               setSelectedJob(job)
@@ -649,6 +650,9 @@ const JobTable: React.FC = () => {
           onClose={() => {
             setShowInterviewModal(false)
             setSelectedJob(null)
+            // Refresh data when modal closes to ensure UI is up to date
+            fetchJobEvents()
+            fetchJobs()
           }}
           onUpdate={() => {
             fetchJobEvents()
