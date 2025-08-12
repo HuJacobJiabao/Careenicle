@@ -51,9 +51,9 @@ export async function PUT(
       values.push(body.interviewType)
       paramCount++
     }
-    if (body.interviewer !== undefined) {
-      updateFields.push(`interviewer = $${paramCount}`)
-      values.push(body.interviewer)
+    if (body.interviewLink !== undefined) {
+      updateFields.push(`interview_link = $${paramCount}`)
+      values.push(body.interviewLink)
       paramCount++
     }
     if (body.interviewResult !== undefined) {

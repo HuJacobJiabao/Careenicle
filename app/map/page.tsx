@@ -1,29 +1,137 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { DataService } from '@/lib/dataService'
 import GoogleJobMap from '@/components/GoogleJobMap'
+import { MapPin, Building2, Target, Globe } from 'lucide-react'
 import type { Job } from '@/lib/types'
+
+interface LocationData {
+  city: string
+  state: string
+  lat: number
+  lng: number
+  count: number
+  jobs: Job[]
+}
 
 export default function MapPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const data = await DataService.fetchJobs({ limit: 1000 }) // Get all jobs for map
-        setJobs(data.jobs)
-      } catch (error) {
-        console.error('Failed to fetch jobs:', error)
-      } finally {
-        setLoading(false)
-      }
+  const fetchJobs = async () => {
+    setLoading(true)
+    try {
+      const data = await DataService.fetchJobs({ limit: 1000 }) // Get all jobs for map
+      setJobs(data.jobs)
+    } catch (error) {
+      console.error('Failed to fetch jobs:', error)
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchJobs()
   }, [])
+
+  // Listen for data source changes from Header
+  useEffect(() => {
+    const handleStorageChange = () => {
+      fetchJobs()
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    // Also listen for custom events
+    window.addEventListener('dataSourceChanged', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('dataSourceChanged', handleStorageChange)
+    }
+  }, [])
+
+  // Process location data for statistics and city display
+  const locationData = useMemo(() => {
+    const locationMap = new Map<string, LocationData>()
+
+    jobs.forEach((job) => {
+      // Skip jobs without location data
+      if (!job.latitude || !job.longitude) return
+
+      let city = 'Unknown'
+      let state = 'Unknown'
+
+      // Try to extract city and state from formatted_address first
+      if (job.formatted_address) {
+        const addressParts = job.formatted_address.split(', ')
+        if (addressParts.length >= 2) {
+          city = addressParts[0] || 'Unknown'
+          // Handle state extraction - look for state abbreviation pattern
+          const stateMatch = addressParts.find(part => /^[A-Z]{2}(\s|$)/.test(part))
+          if (stateMatch) {
+            state = stateMatch.split(' ')[0]
+          } else if (addressParts.length >= 2) {
+            state = addressParts[1] || 'Unknown'
+          }
+        }
+      } else if (job.location) {
+        // Fallback to location field
+        const locationParts = job.location.split(', ')
+        city = locationParts[0] || 'Unknown'
+        state = locationParts[1] || 'Unknown'
+      }
+      
+      const key = `${city}, ${state}`
+
+      if (locationMap.has(key)) {
+        const existing = locationMap.get(key)!
+        existing.count += 1
+        existing.jobs.push(job)
+      } else {
+        locationMap.set(key, {
+          city,
+          state,
+          lat: job.latitude,
+          lng: job.longitude,
+          count: 1,
+          jobs: [job],
+        })
+      }
+    })
+
+    return Array.from(locationMap.values())
+  }, [jobs])
+
+  // Statistics calculations
+  const stats = useMemo(() => {
+    const totalLocations = locationData.length
+    const totalApplications = jobs.length
+    const jobsWithLocation = jobs.filter(job => job.latitude && job.longitude).length
+    const topLocation = locationData.length > 0 
+      ? locationData.reduce((prev, current) => (prev.count > current.count ? prev : current))
+      : null
+    const statesCovered = new Set(locationData.map((loc) => loc.state).filter(state => state !== 'Unknown')).size
+
+    // Debug logging
+    console.log('Statistics Debug:', {
+      totalJobs: jobs.length,
+      jobsWithLocation,
+      locationData: locationData.slice(0, 3),
+      totalLocations,
+      statesCovered,
+      uniqueStates: Array.from(new Set(locationData.map((loc) => loc.state)))
+    })
+
+    return {
+      totalLocations,
+      totalApplications: jobsWithLocation, // Show jobs with location data
+      topLocation: topLocation ? `${topLocation.city}, ${topLocation.state}` : 'N/A',
+      statesCovered
+    }
+  }, [locationData, jobs])
 
   if (loading) {
     return (
@@ -37,19 +145,179 @@ export default function MapPage() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Job Map</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Job Applications Map</h1>
         <p className="text-gray-600">
-          Geographic view of your job applications. Jobs are plotted based on company locations or city coordinates.
+          Visualize your job applications across different locations with real geographic data.
         </p>
       </div>
-      
-      <GoogleJobMap 
-        jobs={jobs}
-        selectedStatuses={selectedStatuses}
-        onStatusFilterChange={setSelectedStatuses}
-      />
+
+      {/* Statistics Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center">
+            <div className="bg-blue-500 rounded-lg p-3 text-white text-xl">
+              <MapPin className="w-6 h-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Locations</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalLocations}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center">
+            <div className="bg-green-500 rounded-lg p-3 text-white text-xl">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Applications w/ Location</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalApplications}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center">
+            <div className="bg-orange-500 rounded-lg p-3 text-white text-xl">
+              <Target className="w-6 h-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Top Location</p>
+              <p className="text-lg font-bold text-gray-900">{stats.topLocation}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center">
+            <div className="bg-purple-500 rounded-lg p-3 text-white text-xl">
+              <Globe className="w-6 h-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">States Covered</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.statesCovered}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-8">
+        {/* Map Container - Full Width */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <GoogleJobMap 
+            jobs={jobs}
+            selectedStatuses={selectedStatuses}
+            onStatusFilterChange={setSelectedStatuses}
+          />
+        </div>
+
+        {/* Location Details - Horizontal Layout */}
+        <div className="space-y-6">
+          {/* Location List - Horizontal Scrolling */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Locations</h2>
+            <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+              {locationData
+                .sort((a, b) => b.count - a.count)
+                .map((location, index) => (
+                  <div
+                    key={index}
+                    className={`flex-shrink-0 w-48 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedLocation === location
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                    onClick={() => setSelectedLocation(location)}
+                  >
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between mb-2">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                            location.count === 1
+                              ? "bg-blue-500"
+                              : location.count <= 3
+                                ? "bg-green-500"
+                                : location.count <= 5
+                                  ? "bg-orange-500"
+                                  : "bg-red-500"
+                          }`}
+                        >
+                          {location.count}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">
+                          {location.city}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {location.state}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {location.count} app{location.count !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Selected Location Details */}
+          {selectedLocation && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                {selectedLocation.city}, {selectedLocation.state}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {selectedLocation.jobs.map((job, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        <img
+                          src={`https://logo.clearbit.com/${job.company.toLowerCase().replace(/\s+/g, "")}.com`}
+                          alt={`${job.company} logo`}
+                          className="w-8 h-8 rounded-lg mr-3"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = "/placeholder.svg?height=32&width=32&text=" + job.company.charAt(0)
+                          }}
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">{job.position}</div>
+                          <div className="text-sm text-gray-600">{job.company}</div>
+                          <div className="text-xs text-gray-500">
+                            Applied: {new Date(job.applicationDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          job.status === "applied"
+                            ? "bg-blue-100 text-blue-800"
+                            : job.status === "interview"
+                              ? "bg-amber-100 text-amber-800"
+                              : job.status === "rejected"
+                                ? "bg-red-100 text-red-800"
+                                : job.status === "offer"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-purple-100 text-purple-800"
+                        }`}
+                      >
+                        {job.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

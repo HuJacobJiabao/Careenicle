@@ -80,6 +80,9 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                   Date & Time
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Interview Link
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -162,6 +165,21 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                           </div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {interview.interviewLink ? (
+                        <a
+                          href={interview.interviewLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors duration-150 text-sm"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                          Join Interview
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No link available</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button

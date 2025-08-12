@@ -5,7 +5,7 @@ import { useState } from "react"
 import { DataService } from "@/lib/dataService"
 import { googlePlacesService } from "@/lib/googlePlacesService"
 import LocationAutocomplete from "./LocationAutocomplete"
-import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Heart } from "lucide-react"
+import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
 
 interface AddJobModalProps {
   onClose: () => void
@@ -168,16 +168,16 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
               />
             </div>
 
-            <div className="flex items-center p-4 bg-red-50 rounded-xl border border-red-200">
+            <div className="flex items-center p-4 bg-yellow-50 rounded-xl border border-yellow-200">
               <input
                 type="checkbox"
                 id="isFavorite"
                 checked={formData.isFavorite}
                 onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
-                className="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                className="w-5 h-5 text-yellow-600 bg-gray-100 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
               />
-              <label htmlFor="isFavorite" className="ml-3 text-sm font-bold text-red-700 flex items-center">
-                <Heart className="w-5 h-5 mr-2" />
+              <label htmlFor="isFavorite" className="ml-3 text-sm font-bold text-yellow-700 flex items-center">
+                <Star className="w-5 h-5 mr-2 fill-current" />
                 Mark as favorite position
               </label>
             </div>

@@ -24,7 +24,7 @@ export interface Interview {
   scheduledDate: Date
   actualDate?: Date
   duration?: number
-  interviewer?: string
+  interviewLink?: string
   result: "pending" | "passed" | "failed" | "cancelled"
   feedback?: string
   notes?: string
@@ -53,7 +53,7 @@ export interface JobEvent {
   // Interview specific fields
   interviewRound?: number
   interviewType?: "phone" | "video" | "onsite" | "technical" | "hr" | "final" | "oa" | "vo"  // Added oa and vo to existing types
-  interviewer?: string
+  interviewLink?: string
   interviewResult?: "pending" | "passed" | "failed" | "cancelled"
   
   // General fields

@@ -37,7 +37,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     round: interviews.length + 1,
     type: "technical" as JobEvent["interviewType"],
     scheduledDate: "",
-    interviewer: "",
+    interviewLink: "",
     notes: "",
   })
   const [editingInterview, setEditingInterview] = useState<JobEvent | null>(null)
@@ -111,10 +111,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         eventType: "interview_scheduled",
         eventDate: new Date(), // Current time
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label} Scheduled`,
-        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewer ? ` with ${newInterview.interviewer}` : ""} scheduled for ${scheduledLocalDate.toLocaleString()}`,
+        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""} scheduled for ${scheduledLocalDate.toLocaleString()}`,
         interviewRound: newInterview.round,
         interviewType: newInterview.type,
-        interviewer: newInterview.interviewer,
+        interviewLink: newInterview.interviewLink,
         notes: newInterview.notes,
       })
 
@@ -123,10 +123,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         eventType: "interview",
         eventDate: scheduledLocalDate,
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
-        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewer ? ` with ${newInterview.interviewer}` : ""}`,
+        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
         interviewRound: newInterview.round,
         interviewType: newInterview.type,
-        interviewer: newInterview.interviewer,
+        interviewLink: newInterview.interviewLink,
         notes: newInterview.notes,
       })
 
@@ -134,7 +134,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         round: interviews.length + 2,
         type: "technical",
         scheduledDate: "",
-        interviewer: "",
+        interviewLink: "",
         notes: "",
       })
       setShowNewInterviewForm(false) // Hide the form after successful creation
@@ -271,40 +271,46 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   const saveEditingInterview = async () => {
-    if (!editingInterview) return
+    if (!editingInterview || !newInterview.scheduledDate) return
 
     try {
-      // Convert eventDate to local ISO string if it's a Date object
-      const eventDateToSend = editingInterview.eventDate instanceof Date ? (() => {
-        const date = editingInterview.eventDate
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        const seconds = String(date.getSeconds()).padStart(2, '0')
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
-      })() : editingInterview.eventDate
+      // Parse the datetime-local input to create a proper local date
+      const [dateStr, timeStr] = newInterview.scheduledDate.split('T')
+      const [year, month, day] = dateStr.split('-').map(Number)
+      const [hour, minute] = timeStr.split(':').map(Number)
+      const scheduledLocalDate = new Date(year, month - 1, day, hour, minute)
+
+      // Convert to local ISO string for the API
+      const eventDateToSend = `${scheduledLocalDate.getFullYear()}-${String(scheduledLocalDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledLocalDate.getDate()).padStart(2, '0')}T${String(scheduledLocalDate.getHours()).padStart(2, '0')}:${String(scheduledLocalDate.getMinutes()).padStart(2, '0')}:${String(scheduledLocalDate.getSeconds()).padStart(2, '0')}`
       
-      // Since editingInterview is now a JobEvent, we update the job event directly
+      // Update the interview event with the new form data
       await fetch(`/api/job-events/${editingInterview.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventType: editingInterview.eventType,
           eventDate: eventDateToSend,
-          title: editingInterview.title,
-          description: editingInterview.description,
-          interviewRound: editingInterview.interviewRound,
-          interviewType: editingInterview.interviewType,
-          interviewer: editingInterview.interviewer,
+          title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
+          description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
+          interviewRound: newInterview.round,
+          interviewType: newInterview.type,
+          interviewLink: newInterview.interviewLink,
           interviewResult: editingInterview.interviewResult,
-          notes: editingInterview.notes,
+          notes: newInterview.notes,
         }),
       })
+      
       onUpdate() // Call parent update first
       fetchJobEvents() // Then refresh local data
       setEditingInterview(null)
+      setShowNewInterviewForm(false)
+      setNewInterview({
+        round: interviews.length + 1,
+        type: "technical",
+        scheduledDate: "",
+        interviewLink: "",
+        notes: "",
+      })
     } catch (error) {
       console.error("Failed to update interview:", error)
     }
@@ -394,7 +400,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                 {interviews.map((interview) => {
                   const typeConfig = getTypeConfig(interview.interviewType || "technical")
                   const resultConfig = getResultConfig(interview.interviewResult || "pending")
-                  const isEditing = editingInterview?.id === interview.id
+                  // Only show the old editing form if we're not using the new schedule interview form
+                  const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
 
                   return (
                     <div
@@ -480,15 +487,15 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Interviewer</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Interview Link</label>
                               <input
                                 type="text"
-                                value={editingInterview?.interviewer || ""}
+                                value={editingInterview?.interviewLink || ""}
                                 onChange={(e) =>
-                                  updateEditingInterview({ interviewer: e.target.value })
+                                  updateEditingInterview({ interviewLink: e.target.value })
                                 }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                placeholder="Interviewer name"
+                                placeholder="Meeting link, phone number, or location"
                               />
                             </div>
 
@@ -555,10 +562,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                   minute: "2-digit",
                                 })}
                               </div>
-                              {interview.interviewer && (
+                              {interview.interviewLink && (
                                 <div className="flex items-center">
                                   <User className="w-4 h-4 mr-2" />
-                                  {interview.interviewer}
+                                  <a 
+                                    href={interview.interviewLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 underline"
+                                  >
+                                    {interview.interviewLink}
+                                  </a>
                                 </div>
                               )}
                               {interview.metadata?.duration && (
@@ -608,7 +622,21 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       {!isEditing && (
                         <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-200">
                           <button
-                            onClick={() => setEditingEvent(interview)}
+                            onClick={() => {
+                              // Populate the form with existing interview data
+                              const eventDate = new Date(interview.eventDate)
+                              const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}T${String(eventDate.getHours()).padStart(2, '0')}:${String(eventDate.getMinutes()).padStart(2, '0')}`
+                              
+                              setNewInterview({
+                                round: interview.interviewRound || 1,
+                                type: interview.interviewType || "technical",
+                                scheduledDate: formattedDate,
+                                interviewLink: interview.interviewLink || "",
+                                notes: interview.notes || "",
+                              })
+                              setEditingInterview(interview)
+                              setShowNewInterviewForm(true)
+                            }}
                             className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-sm transition-colors duration-150"
                           >
                             <Edit className="w-4 h-4 mr-1" />
@@ -635,7 +663,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
             <div className="border-t border-gray-200 pt-8">
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">Schedule New Interview</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    {editingInterview ? 'Edit Interview' : 'Schedule New Interview'}
+                  </h3>
                   <button
                     onClick={() => setShowNewInterviewForm(false)}
                     className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -684,13 +714,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Interviewer</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Interview Link</label>
                   <input
                     type="text"
-                    value={newInterview.interviewer}
-                    onChange={(e) => setNewInterview({ ...newInterview, interviewer: e.target.value })}
+                    value={newInterview.interviewLink}
+                    onChange={(e) => setNewInterview({ ...newInterview, interviewLink: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Interviewer name"
+                    placeholder="Meeting link, phone number, or location"
                   />
                 </div>
               </div>
@@ -708,15 +738,25 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
                   <div className="flex gap-3">
                     <button
-                      onClick={addInterview}
+                      onClick={editingInterview ? saveEditingInterview : addInterview}
                       disabled={!newInterview.scheduledDate}
                       className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
                     >
                       <Calendar className="w-5 h-5 mr-2" />
-                      Schedule Interview
+                      {editingInterview ? 'Update Interview' : 'Schedule Interview'}
                     </button>
                     <button
-                      onClick={() => setShowNewInterviewForm(false)}
+                      onClick={() => {
+                        setShowNewInterviewForm(false)
+                        setEditingInterview(null)
+                        setNewInterview({
+                          round: interviews.length + 1,
+                          type: "technical",
+                          scheduledDate: "",
+                          interviewLink: "",
+                          notes: "",
+                        })
+                      }}
                       className="inline-flex items-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg shadow-sm transition-colors duration-200"
                     >
                       Cancel

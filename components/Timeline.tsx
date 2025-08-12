@@ -305,7 +305,7 @@ const Timeline: React.FC = () => {
                     >
                       <IconComponent className="w-6 h-6 text-white" />
                     </div>
-                    <div className="w-0.5 h-8 bg-gray-300 mt-2 opacity-50"></div>
+                    <div className="w-0.5 h-8 bg-gray-300 mt-2 opacity-0"></div>
                   </div>
 
                   {/* Right side content */}

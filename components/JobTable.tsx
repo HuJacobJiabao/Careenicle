@@ -37,6 +37,7 @@ const JobTable: React.FC = () => {
   const [showAddJobModal, setShowAddJobModal] = useState(false)
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [databaseStatus, setDatabaseStatus] = useState<'checking' | 'connected' | 'no-tables' | 'failed'>('checking')
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [showFavorites, setShowFavorites] = useState(false)
@@ -50,19 +51,43 @@ const JobTable: React.FC = () => {
   // Check database connectivity and decide between PostgreSQL or mock data
   useEffect(() => {
     const checkDataSource = async () => {
+      // If user has manually set to use mock data, don't check database
+      if (DataService.getUseMockData()) {
+        setDatabaseStatus('connected') // Don't show error when using mock data intentionally
+        return
+      }
+
       try {
         // Try to fetch a small amount of data to test database connection
         const response = await fetch('/api/jobs?limit=1')
         if (response.ok) {
-          // Database is working, use PostgreSQL
-          DataService.setUseMockData(false)
-          console.log('Using PostgreSQL database')
+          const data = await response.json()
+          if (data.jobs !== undefined) {
+            // Database is working and has tables
+            DataService.setUseMockData(false)
+            setDatabaseStatus('connected')
+            console.log('Using PostgreSQL database')
+          } else {
+            // Database connected but no tables or unexpected response
+            setDatabaseStatus('no-tables')
+            DataService.setUseMockData(true)
+          }
+        } else if (response.status === 500) {
+          // Check if it's a table not found error
+          const errorText = await response.text()
+          if (errorText.includes('does not exist') || errorText.includes('relation') || errorText.includes('table')) {
+            setDatabaseStatus('no-tables')
+            DataService.setUseMockData(true)
+          } else {
+            throw new Error('Database connection failed')
+          }
         } else {
           throw new Error('Database connection failed')
         }
       } catch (error) {
         // Database failed, use mock data
         console.warn('Database connection failed, using mock data:', error)
+        setDatabaseStatus('failed')
         DataService.setUseMockData(true)
       }
     }
@@ -75,6 +100,41 @@ const JobTable: React.FC = () => {
     fetchJobEvents()
   }, [pagination.page, statusFilter, searchTerm, showFavorites, DataService.getUseMockData()])
 
+  // Update database status when user manually switches data source
+  useEffect(() => {
+    const handleDataSourceChange = () => {
+      if (DataService.getUseMockData()) {
+        // User switched to mock data manually, don't show database errors
+        setDatabaseStatus('connected')
+      } else {
+        // User switched back to database, re-check connection
+        setDatabaseStatus('checking')
+        const recheckDatabase = async () => {
+          try {
+            const response = await fetch('/api/jobs?limit=1')
+            if (response.ok) {
+              const data = await response.json()
+              if (data.jobs !== undefined) {
+                setDatabaseStatus('connected')
+              } else {
+                setDatabaseStatus('no-tables')
+              }
+            } else {
+              setDatabaseStatus('failed')
+            }
+          } catch (error) {
+            setDatabaseStatus('failed')
+          }
+        }
+        recheckDatabase()
+      }
+    }
+
+    // Listen for data source changes
+    window.addEventListener('dataSourceChanged', handleDataSourceChange)
+    return () => window.removeEventListener('dataSourceChanged', handleDataSourceChange)
+  }, [])
+
   const fetchJobs = async () => {
     try {
       const data = await DataService.fetchJobs({
@@ -84,12 +144,21 @@ const JobTable: React.FC = () => {
         status: statusFilter,
         favorites: showFavorites,
       })
-      setJobs(data.jobs)
-      if (data.pagination) {
+      
+      // Ensure jobs is always an array
+      if (data && data.jobs && Array.isArray(data.jobs)) {
+        setJobs(data.jobs)
+      } else {
+        console.warn("Invalid jobs data received:", data)
+        setJobs([])
+      }
+      
+      if (data && data.pagination) {
         setPagination(data.pagination)
       }
     } catch (error) {
       console.error("Failed to fetch jobs:", error)
+      setJobs([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -137,6 +206,9 @@ const JobTable: React.FC = () => {
   }
 
   const getJobInterviewEvents = (jobId: number) => {
+    if (!jobEvents || !Array.isArray(jobEvents)) {
+      return []
+    }
     return jobEvents.filter((event) => 
       event.jobId === jobId && 
        event.eventType === 'interview'
@@ -153,6 +225,11 @@ const JobTable: React.FC = () => {
   }
 
   const getUpcomingInterviewJobs = (): UpcomingInterviewJob[] => {
+    // Handle case when jobs is undefined or not iterable
+    if (!jobs || !Array.isArray(jobs)) {
+      return []
+    }
+    
     const allJobs = [...jobs]
     const upcomingJobs = allJobs
       .map((job) => ({
@@ -230,12 +307,92 @@ const JobTable: React.FC = () => {
 
   const upcomingInterviewJobs = getUpcomingInterviewJobs()
 
-  if (loading) {
+  if (loading || databaseStatus === 'checking') {
     return (
       <div className="flex justify-center items-center h-96">
         <div className="relative">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show database initialization prompt if tables don't exist
+  if (databaseStatus === 'no-tables') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <div className="mb-8">
+            <div className="bg-yellow-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <Building2 className="w-12 h-12 text-yellow-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Database Tables Not Found</h1>
+            <p className="text-lg text-gray-600 mb-8">
+              It looks like the database tables haven't been initialized yet. Please run the initialization script to set up your job tracker.
+            </p>
+          </div>
+          
+          <div className="bg-gray-50 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">To initialize your database:</h2>
+            <div className="text-left space-y-3">
+              <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
+                <div># Navigate to your project directory</div>
+                <div>cd /path/to/job-tracker</div>
+                <div className="mt-2"># Run the database initialization script</div>
+                <div>psql -d your_database_name -f scripts/init-database-updated.sql</div>
+              </div>
+              <p className="text-sm text-gray-600 mt-4">
+                Replace <code className="bg-gray-200 px-2 py-1 rounded">your_database_name</code> with your actual database name.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Refresh Page After Setup
+            </button>
+            <div>
+              <button 
+                onClick={() => {
+                  DataService.setUseMockData(true)
+                  setDatabaseStatus('connected')
+                }} 
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                Use Demo Data Instead
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show connection error if database failed completely and user is not intentionally using mock data
+  if (databaseStatus === 'failed' && !DataService.getUseMockData()) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <div className="mb-8">
+            <div className="bg-red-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <Building2 className="w-12 h-12 text-red-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Database Connection Failed</h1>
+            <p className="text-lg text-gray-600 mb-8">
+              Unable to connect to the database. Using demo data for now.
+            </p>
+          </div>
+          
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     )
@@ -330,7 +487,7 @@ const JobTable: React.FC = () => {
       {upcomingInterviewJobs.length > 0 && (
         <div className="mb-10 animate-slide-in-right">
           <UpcomingInterviewsTable
-            key={`upcoming-${jobEvents.length}-${jobs.length}`}
+            key={`upcoming-${jobEvents.length}-${jobs?.length || 0}`}
             jobs={upcomingInterviewJobs}
             onManageInterview={(job) => {
               setSelectedJob(job)
@@ -353,7 +510,7 @@ const JobTable: React.FC = () => {
           },
           {
             label: "Active Interviews",
-            value: jobs.filter((j) => j.status === "interview").length,
+            value: jobs ? jobs.filter((j) => j.status === "interview").length : 0,
             color: "from-amber-500 to-orange-500",
             icon: <Target className="w-6 h-6" />,
             bgColor: "bg-amber-50",
@@ -361,7 +518,7 @@ const JobTable: React.FC = () => {
           },
           {
             label: "Offers Received",
-            value: jobs.filter((j) => j.status === "offer").length,
+            value: jobs ? jobs.filter((j) => j.status === "offer").length : 0,
             color: "from-green-500 to-emerald-500",
             icon: <Award className="w-6 h-6" />,
             bgColor: "bg-green-50",
@@ -369,7 +526,7 @@ const JobTable: React.FC = () => {
           },
           {
             label: "Favorites",
-            value: jobs.filter((j) => j.isFavorite).length,
+            value: jobs ? jobs.filter((j) => j.isFavorite).length : 0,
             color: "from-yellow-500 to-amber-500",
             icon: <Star className="w-6 h-6" />,
             bgColor: "bg-yellow-50",
@@ -419,7 +576,7 @@ const JobTable: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {jobs.map((job, index) => {
+              {jobs && jobs.length > 0 ? jobs.map((job, index) => {
                 const jobInterviewEvents = getJobInterviewEvents(job.id!)
                 const statusConfig = getStatusConfig(job.status)
                 const interviewSummary = getInterviewSummary(jobInterviewEvents)
@@ -561,7 +718,24 @@ const JobTable: React.FC = () => {
                     </td>
                   </tr>
                 )
-              })}
+              }) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <Building2 className="w-12 h-12 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+                      <p className="text-gray-500 mb-4">Get started by adding your first job application.</p>
+                      <button 
+                        onClick={() => setShowAddJobModal(true)}
+                        className="btn-primary inline-flex items-center"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Job
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -626,7 +800,7 @@ const JobTable: React.FC = () => {
           </div>
         </div>
 
-        {jobs.length === 0 && (
+        {/* {(!jobs || jobs.length === 0) && (
           <div className="text-center py-16">
             <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-6" />
             <h3 className="text-2xl font-bold text-gray-900 mb-3">
@@ -646,7 +820,7 @@ const JobTable: React.FC = () => {
               </button>
             )}
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Modals */}

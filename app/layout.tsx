@@ -17,13 +17,17 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "JobTracker",
+  title: "Careenicle",
   description:
     "Track your job applications, interviews, and career progress with our comprehensive job search management platform.",
   generator: "JobTracker",
   keywords: ["job search", "career", "applications", "interviews", "job tracker"],
   authors: [{ name: "Jiabao Hu" }],
-  viewport: "width=device-width, initial-scale=1",
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({

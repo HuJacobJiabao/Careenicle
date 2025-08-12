@@ -80,7 +80,35 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
       ],
     })
 
-    infoWindowRef.current = new google.maps.InfoWindow()
+    infoWindowRef.current = new google.maps.InfoWindow({
+      disableAutoPan: false,
+      maxWidth: 280,
+    })
+
+    // Hide the close button and fix InfoWindow styling
+    const style = document.createElement('style')
+    style.textContent = `
+      .gm-ui-hover-effect {
+        display: none !important;
+      }
+      .gm-style-iw button {
+        display: none !important;
+      }
+      .gm-style-iw-d {
+        overflow: visible !important;
+        padding: 12px !important;
+        max-width: 280px !important;
+      }
+      .gm-style-iw {
+        max-width: 280px !important;
+        border-radius: 8px !important;
+      }
+      .gm-style-iw-c {
+        padding: 0 !important;
+        border-radius: 8px !important;
+      }
+    `
+    document.head.appendChild(style)
   }, [isLoaded])
 
   // Get company logo URL
@@ -93,27 +121,60 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
   const createMarkerContent = (job: Job) => {
     const logoUrl = getCompanyLogo(job.company)
     return `
-      <div class="p-4 max-w-sm">
-        <div class="flex items-center mb-3">
-          <img 
-            src="${logoUrl}" 
-            alt="${job.company} logo" 
-            class="w-8 h-8 rounded-lg mr-3"
-            onerror="this.src='/placeholder.svg?height=32&width=32&text=${job.company.charAt(0)}'"
+      <div style="width: 256px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px;">
+        <!-- Header -->
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <img
+            src="${logoUrl}"
+            alt="${job.company} logo"
+            style="height: 40px; width: 40px; border-radius: 8px; object-fit: cover; border: 1px solid #e5e7eb;"
+            onerror="this.src='/placeholder.svg?height=40&width=40&text=${job.company?.charAt(0) ?? '·'}'"
           />
-          <div>
-            <h3 class="font-semibold text-gray-900">${job.company}</h3>
-            <p class="text-sm text-gray-600">${job.position}</p>
+          <div style="min-width: 0; flex: 1;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827; line-height: 1.2; word-wrap: break-word;">
+              ${job.company}
+            </h3>
+            <p style="margin: 2px 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.2; word-wrap: break-word;">
+              ${job.position}
+            </p>
           </div>
         </div>
-        <div class="flex items-center justify-between">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
-                style="background-color: ${statusColors[job.status]}20; color: ${statusColors[job.status]}">
+
+        <!-- Meta -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+          <!-- Status Badge -->
+          <span
+            style="
+              display: inline-flex;
+              align-items: center;
+              border-radius: 9999px;
+              padding: 4px 10px;
+              font-size: 13px;
+              font-weight: 500;
+              color: ${statusColors[job.status]};
+              background-color: ${statusColors[job.status]}20;
+              border: 1px solid ${statusColors[job.status]}33;
+            "
+          >
             ${statusLabels[job.status]}
           </span>
-          ${job.location ? `<span class="text-xs text-gray-500">${job.location}</span>` : ''}
+
+          ${job.location ? `
+            <span style="display: flex; align-items: center; gap: 4px; font-size: 14px; color: #6b7280; flex-shrink: 0;">
+              <svg xmlns="http://www.w3.org/2000/svg" style="height: 12px; width: 12px;" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
+              </svg>
+              <span style="word-wrap: break-word; max-width: 120px;" title="${job.location}">${job.location}</span>
+            </span>
+          ` : ``}
         </div>
-        ${job.notes ? `<p class="text-xs text-gray-600 mt-2">${job.notes.substring(0, 100)}${job.notes.length > 100 ? '...' : ''}</p>` : ''}
+
+        <!-- Notes -->
+        ${job.notes ? `
+          <p style="margin: 8px 0 0 0; font-size: 14px; line-height: 1.4; color: #374151; word-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+            ${job.notes}
+          </p>
+        ` : ``}
       </div>
     `
   }
@@ -165,11 +226,17 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
 
       marker.jobData = job
 
-      // Add click listener for info window
-      marker.addListener('click', () => {
+      // Add hover listeners for info window
+      marker.addListener('mouseover', () => {
         if (infoWindowRef.current) {
           infoWindowRef.current.setContent(createMarkerContent(job))
           infoWindowRef.current.open(mapInstanceRef.current, marker)
+        }
+      })
+
+      marker.addListener('mouseout', () => {
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close()
         }
       })
 

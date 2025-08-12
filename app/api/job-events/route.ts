@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         description,
         interview_round as "interviewRound",
         interview_type as "interviewType",
-        interviewer,
+        interview_link as "interviewLink",
         interview_result as "interviewResult",
         notes,
         metadata,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       description,
       interviewRound,
       interviewType,
-      interviewer,
+      interviewLink,
       interviewResult,
       notes,
       metadata
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(
       `INSERT INTO job_events (
         job_id, event_type, event_date, title, description,
-        interview_round, interview_type, interviewer, interview_result,
+        interview_round, interview_type, interview_link, interview_result,
         notes, metadata
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING 
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         description,
         interview_round as "interviewRound",
         interview_type as "interviewType",
-        interviewer,
+        interview_link as "interviewLink",
         interview_result as "interviewResult",
         notes,
         metadata,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         description,
         interviewRound,
         interviewType,
-        interviewer,
+        interviewLink,
         interviewResult,
         notes,
         metadata ? JSON.stringify(metadata) : null

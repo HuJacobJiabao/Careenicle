@@ -5,7 +5,7 @@ import { useState } from "react"
 import { googlePlacesService } from "@/lib/googlePlacesService"
 import LocationAutocomplete from "./LocationAutocomplete"
 import type { Job } from "@/lib/types"
-import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Heart } from "lucide-react"
+import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
 
 interface EditJobModalProps {
   job: Job
@@ -190,10 +190,10 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 id="isFavorite"
                 checked={formData.isFavorite}
                 onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
-                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
               />
               <label htmlFor="isFavorite" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
-                <Heart className="w-4 h-4 mr-1" />
+                <Star className="w-4 h-4 mr-1 fill-current text-yellow-500" />
                 Mark as favorite
               </label>
             </div>
