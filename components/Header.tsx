@@ -19,10 +19,10 @@ const Header: React.FC = () => {
     const newValue = !useMockData
     setUseMockData(newValue)
     DataService.setUseMockData(newValue)
-    
+
     // Trigger custom event for other components to listen
-    window.dispatchEvent(new CustomEvent('dataSourceChanged'))
-    
+    window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+
     router.refresh() // This will re-fetch data for the current route
   }
 
@@ -39,9 +39,7 @@ const Header: React.FC = () => {
           {/* Logo */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                Careenicle
-              </h1>
+              <h1 className="text-2xl font-bold text-blue-600">Careenicle</h1>
             </div>
           </div>
 

@@ -36,35 +36,35 @@ Before you begin, ensure you have the following installed:
 
 First, install the project dependencies using pnpm:
 
-```bash
+\`\`\`bash
 pnpm install
-```
+\`\`\`
 
 ### 2. Database Setup
 
 #### Create PostgreSQL Database
 
-```sql
+\`\`\`sql
 CREATE DATABASE jobtracker;
-```
+\`\`\`
 
 #### Initialize Database Schema
 
 Run the database initialization script to create the required tables and schema:
 
-```bash
+\`\`\`bash
 # Connect to your PostgreSQL database and run the schema script
 psql -U your_username -d jobtracker -f scripts/init-scheme.sql
-```
+\`\`\`
 
 #### Initialize Sample Data (Optional)
 
 If you want to populate the database with sample data for testing:
 
-```bash
+\`\`\`bash
 # Run the sample data script
 psql -U your_username -d jobtracker -f scripts/init-sample-data.sql
-```
+\`\`\`
 
 Alternatively, you can copy the contents of these scripts and run them in your preferred PostgreSQL client (pgAdmin, DBeaver, etc.).
 
@@ -74,15 +74,15 @@ Alternatively, you can copy the contents of these scripts and run them in your p
 
 Copy the example environment file and create your local configuration:
 
-```bash
+\`\`\`bash
 cp env.example .env.local
-```
+\`\`\`
 
 #### Configure Environment Variables
 
 Edit the `.env.local` file and configure the following variables:
 
-```bash
+\`\`\`bash
 # Database Configuration
 DB_USER=your_postgres_username
 DB_HOST=localhost
@@ -92,7 +92,7 @@ DB_PORT=5432
 
 # Google Maps Configuration
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-```
+\`\`\`
 
 **Important Configuration Notes:**
 
@@ -114,9 +114,9 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
 Run the development server:
 
-```bash
+\`\`\`bash
 pnpm dev
-```
+\`\`\`
 
 The application will be available at `http://localhost:3000`.
 
@@ -147,7 +147,7 @@ The application will be available at `http://localhost:3000`.
 
 ## Project Structure
 
-```
+\`\`\`
 careenicle/
 ├── app/                    # Next.js 15 App Router
 │   ├── api/               # API routes
@@ -176,7 +176,7 @@ careenicle/
 │   ├── init-database.sql  # Database schema initialization
 │   └── init-sample-data.sql # Sample data (optional)
 └── public/               # Static assets
-```
+\`\`\`
 
 ## Database Schema
 

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo } from 'react'
-import { DataService } from '@/lib/dataService'
-import GoogleJobMap from '@/components/GoogleJobMap'
-import { MapPin, Building2, Target, Globe } from 'lucide-react'
-import type { Job } from '@/lib/types'
+import { useState, useEffect, useMemo } from "react"
+import { DataService } from "@/lib/dataService"
+import GoogleJobMap from "@/components/GoogleJobMap"
+import { MapPin, Building2, Target, Globe } from "lucide-react"
+import type { Job } from "@/lib/types"
 
 interface LocationData {
   city: string
@@ -27,7 +27,7 @@ export default function MapPage() {
       const data = await DataService.fetchJobs({ limit: 1000 }) // Get all jobs for map
       setJobs(data.jobs)
     } catch (error) {
-      console.error('Failed to fetch jobs:', error)
+      console.error("Failed to fetch jobs:", error)
     } finally {
       setLoading(false)
     }
@@ -43,13 +43,13 @@ export default function MapPage() {
       fetchJobs()
     }
 
-    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener("storage", handleStorageChange)
     // Also listen for custom events
-    window.addEventListener('dataSourceChanged', handleStorageChange)
+    window.addEventListener("dataSourceChanged", handleStorageChange)
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('dataSourceChanged', handleStorageChange)
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("dataSourceChanged", handleStorageChange)
     }
   }, [])
 
@@ -61,29 +61,29 @@ export default function MapPage() {
       // Skip jobs without location data
       if (!job.latitude || !job.longitude) return
 
-      let city = 'Unknown'
-      let state = 'Unknown'
+      let city = "Unknown"
+      let state = "Unknown"
 
       // Try to extract city and state from formatted_address first
       if (job.formatted_address) {
-        const addressParts = job.formatted_address.split(', ')
+        const addressParts = job.formatted_address.split(", ")
         if (addressParts.length >= 2) {
-          city = addressParts[0] || 'Unknown'
+          city = addressParts[0] || "Unknown"
           // Handle state extraction - look for state abbreviation pattern
-          const stateMatch = addressParts.find(part => /^[A-Z]{2}(\s|$)/.test(part))
+          const stateMatch = addressParts.find((part) => /^[A-Z]{2}(\s|$)/.test(part))
           if (stateMatch) {
-            state = stateMatch.split(' ')[0]
+            state = stateMatch.split(" ")[0]
           } else if (addressParts.length >= 2) {
-            state = addressParts[1] || 'Unknown'
+            state = addressParts[1] || "Unknown"
           }
         }
       } else if (job.location) {
         // Fallback to location field
-        const locationParts = job.location.split(', ')
-        city = locationParts[0] || 'Unknown'
-        state = locationParts[1] || 'Unknown'
+        const locationParts = job.location.split(", ")
+        city = locationParts[0] || "Unknown"
+        state = locationParts[1] || "Unknown"
       }
-      
+
       const key = `${city}, ${state}`
 
       if (locationMap.has(key)) {
@@ -109,27 +109,28 @@ export default function MapPage() {
   const stats = useMemo(() => {
     const totalLocations = locationData.length
     const totalApplications = jobs.length
-    const jobsWithLocation = jobs.filter(job => job.latitude && job.longitude).length
-    const topLocation = locationData.length > 0 
-      ? locationData.reduce((prev, current) => (prev.count > current.count ? prev : current))
-      : null
-    const statesCovered = new Set(locationData.map((loc) => loc.state).filter(state => state !== 'Unknown')).size
+    const jobsWithLocation = jobs.filter((job) => job.latitude && job.longitude).length
+    const topLocation =
+      locationData.length > 0
+        ? locationData.reduce((prev, current) => (prev.count > current.count ? prev : current))
+        : null
+    const statesCovered = new Set(locationData.map((loc) => loc.state).filter((state) => state !== "Unknown")).size
 
     // Debug logging
-    console.log('Statistics Debug:', {
+    console.log("Statistics Debug:", {
       totalJobs: jobs.length,
       jobsWithLocation,
       locationData: locationData.slice(0, 3),
       totalLocations,
       statesCovered,
-      uniqueStates: Array.from(new Set(locationData.map((loc) => loc.state)))
+      uniqueStates: Array.from(new Set(locationData.map((loc) => loc.state))),
     })
 
     return {
       totalLocations,
       totalApplications: jobsWithLocation, // Show jobs with location data
-      topLocation: topLocation ? `${topLocation.city}, ${topLocation.state}` : 'N/A',
-      statesCovered
+      topLocation: topLocation ? `${topLocation.city}, ${topLocation.state}` : "N/A",
+      statesCovered,
     }
   }, [locationData, jobs])
 
@@ -148,8 +149,8 @@ export default function MapPage() {
     <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Job Applications Map</h1>
-        <p className="text-gray-600">
+        <h1 className="text-4xl font-bold text-slate-800 mb-4">Job Applications Map</h1>
+        <p className="text-lg text-gray-600">
           Visualize your job applications across different locations with real geographic data.
         </p>
       </div>
@@ -167,7 +168,7 @@ export default function MapPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="bg-green-500 rounded-lg p-3 text-white text-xl">
@@ -179,7 +180,7 @@ export default function MapPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="bg-orange-500 rounded-lg p-3 text-white text-xl">
@@ -191,7 +192,7 @@ export default function MapPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="bg-purple-500 rounded-lg p-3 text-white text-xl">
@@ -208,19 +209,15 @@ export default function MapPage() {
       <div className="space-y-8">
         {/* Map Container - Full Width */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <GoogleJobMap 
-            jobs={jobs}
-            selectedStatuses={selectedStatuses}
-            onStatusFilterChange={setSelectedStatuses}
-          />
+          <GoogleJobMap jobs={jobs} selectedStatuses={selectedStatuses} onStatusFilterChange={setSelectedStatuses} />
         </div>
 
         {/* Location Details - Horizontal Layout */}
         <div className="space-y-6">
           {/* Location List - Horizontal Scrolling */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Locations</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">Locations</h2>
+            <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
               {locationData
                 .sort((a, b) => b.count - a.count)
                 .map((location, index) => (
@@ -251,12 +248,8 @@ export default function MapPage() {
                         </div>
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {location.city}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {location.state}
-                        </div>
+                        <div className="font-medium text-gray-900 text-sm">{location.city}</div>
+                        <div className="text-xs text-gray-600">{location.state}</div>
                         <div className="text-xs text-gray-500 mt-1">
                           {location.count} app{location.count !== 1 ? "s" : ""}
                         </div>
@@ -270,7 +263,7 @@ export default function MapPage() {
           {/* Selected Location Details */}
           {selectedLocation && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-800 mb-4">
                 {selectedLocation.city}, {selectedLocation.state}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
