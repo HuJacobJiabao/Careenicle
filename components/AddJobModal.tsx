@@ -1,4 +1,4 @@
-"use import { GooglePlacesService, LocationResult } from '@/lib/googlePlacesService'lient"
+"use client"
 
 import type React from "react"
 import { useState } from "react"
@@ -6,6 +6,12 @@ import { DataService } from "@/lib/dataService"
 import { googlePlacesService } from "@/lib/googlePlacesService"
 import LocationAutocomplete from "./LocationAutocomplete"
 import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 
 interface AddJobModalProps {
   onClose: () => void
@@ -33,12 +39,9 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
       if (formData.location) {
         if (formData.company && formData.location) {
           // Try to find company-specific location first
-          locationData = await googlePlacesService.geocodeCompanyLocation(
-            formData.company, 
-            formData.location
-          )
+          locationData = await googlePlacesService.geocodeCompanyLocation(formData.company, formData.location)
         }
-        
+
         // If no company-specific location found, use city coordinates
         if (!locationData) {
           locationData = await googlePlacesService.geocodeLocation(formData.location)
@@ -63,59 +66,63 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl animate-scale-in">
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Add New Job Application</h2>
-              <p className="text-gray-600 font-medium">Track a new job opportunity in your pipeline</p>
+      <Card className="max-w-2xl w-full shadow-2xl animate-scale-in border-0">
+        <CardHeader className="pb-6">
+          <div className="flex justify-between items-start">
+            <div className="space-y-2">
+              <CardTitle className="text-3xl font-bold text-slate-800">Add New Job Application</CardTitle>
+              <p className="text-slate-600 font-medium">Track a new job opportunity in your pipeline</p>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="p-3 hover:bg-gray-100 rounded-full transition-colors duration-200 focus-ring"
+              className="rounded-full hover:bg-slate-100 transition-colors duration-200"
             >
-              <X className="w-6 h-6 text-gray-400" />
-            </button>
+              <X className="w-5 h-5 text-slate-400" />
+            </Button>
           </div>
+        </CardHeader>
 
+        <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                  <Building2 className="w-5 h-5 mr-2 text-blue-600" />
+              <div className="space-y-3">
+                <Label className="flex items-center text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                  <Building2 className="w-4 h-4 mr-2 text-blue-600" />
                   Company Name *
-                </label>
-                <input
+                </Label>
+                <Input
                   type="text"
                   required
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  className="form-input"
                   placeholder="e.g., Google, Microsoft, Apple"
+                  className="h-11 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                 />
               </div>
 
-              <div>
-                <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                  <Briefcase className="w-5 h-5 mr-2 text-purple-600" />
+              <div className="space-y-3">
+                <Label className="flex items-center text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                  <Briefcase className="w-4 h-4 mr-2 text-purple-600" />
                   Position Title *
-                </label>
-                <input
+                </Label>
+                <Input
                   type="text"
                   required
                   value={formData.position}
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                  className="form-input"
                   placeholder="e.g., Senior Software Engineer"
+                  className="h-11 border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                <MapPin className="w-5 h-5 mr-2 text-green-600" />
+            <div className="space-y-3">
+              <Label className="flex items-center text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                <MapPin className="w-4 h-4 mr-2 text-green-600" />
                 Location
-              </label>
+              </Label>
               <LocationAutocomplete
                 value={formData.location}
                 onChange={(value, placeId) => {
@@ -123,76 +130,90 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
                   setSelectedPlaceId(placeId || "")
                 }}
                 placeholder="e.g., San Francisco, CA or New York, NY"
-                className="form-input"
+                className="h-11 border-slate-200 focus:border-green-500 focus:ring-green-500/20"
               />
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                <Link className="w-5 h-5 mr-2 text-indigo-600" />
+            <div className="space-y-3">
+              <Label className="flex items-center text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                <Link className="w-4 h-4 mr-2 text-indigo-600" />
                 Job Posting URL
-              </label>
-              <input
+              </Label>
+              <Input
                 type="url"
                 value={formData.jobUrl}
                 onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
-                className="form-input"
                 placeholder="https://... (optional)"
+                className="h-11 border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20"
               />
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                <Calendar className="w-5 h-5 mr-2 text-amber-600" />
+            <div className="space-y-3">
+              <Label className="flex items-center text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                <Calendar className="w-4 h-4 mr-2 text-amber-600" />
                 Application Date
-              </label>
-              <input
+              </Label>
+              <Input
                 type="date"
                 value={formData.applicationDate}
                 onChange={(e) => setFormData({ ...formData, applicationDate: e.target.value })}
-                className="form-input"
+                className="h-11 border-slate-200 focus:border-amber-500 focus:ring-amber-500/20"
               />
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                <FileText className="w-5 h-5 mr-2 text-gray-600" />
+            <div className="space-y-3">
+              <Label className="flex items-center text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                <FileText className="w-4 h-4 mr-2 text-slate-600" />
                 Notes
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="form-input resize-none"
-                rows={4}
                 placeholder="Job requirements, company culture, salary range, etc..."
+                rows={4}
+                className="resize-none border-slate-200 focus:border-slate-500 focus:ring-slate-500/20"
               />
             </div>
 
-            <div className="flex items-center p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-              <input
-                type="checkbox"
-                id="isFavorite"
-                checked={formData.isFavorite}
-                onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
-                className="w-5 h-5 text-yellow-600 bg-gray-100 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
-              />
-              <label htmlFor="isFavorite" className="ml-3 text-sm font-bold text-yellow-700 flex items-center">
-                <Star className="w-5 h-5 mr-2 fill-current" />
-                Mark as favorite position
-              </label>
-            </div>
+            <Card className="bg-yellow-50 border-yellow-200">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    id="isFavorite"
+                    checked={formData.isFavorite}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isFavorite: !!checked })}
+                    className="data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
+                  />
+                  <Label
+                    htmlFor="isFavorite"
+                    className="text-sm font-semibold text-yellow-700 flex items-center cursor-pointer"
+                  >
+                    <Star className="w-4 h-4 mr-2 fill-current" />
+                    Mark as favorite position
+                  </Label>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="flex justify-end space-x-4 pt-8 border-t border-gray-200">
-              <button type="button" onClick={onClose} className="btn-secondary">
+            <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="px-6 py-2 border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
+              >
                 Cancel
-              </button>
-              <button type="submit" className="btn-primary">
+              </Button>
+              <Button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+              >
                 Add Job Application
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

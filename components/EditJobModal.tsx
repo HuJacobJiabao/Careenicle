@@ -6,6 +6,14 @@ import { googlePlacesService } from "@/lib/googlePlacesService"
 import LocationAutocomplete from "./LocationAutocomplete"
 import type { Job } from "@/lib/types"
 import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 
 interface EditJobModalProps {
   job: Job
@@ -34,12 +42,9 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
       if (formData.location && formData.location !== job.location) {
         if (formData.company && formData.location) {
           // Try to find company-specific location first
-          locationData = await googlePlacesService.geocodeCompanyLocation(
-            formData.company, 
-            formData.location
-          )
+          locationData = await googlePlacesService.geocodeCompanyLocation(formData.company, formData.location)
         }
-        
+
         // If no company-specific location found, use city coordinates
         if (!locationData) {
           locationData = await googlePlacesService.geocodeLocation(formData.location)
@@ -67,56 +72,87 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "applied":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "interview":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "rejected":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "offer":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "accepted":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Edit Job Application</h2>
-              <p className="text-gray-600 mt-1">Update job details</p>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <Card className="max-w-2xl w-full shadow-2xl border-0 bg-white/95 backdrop-blur">
+        <CardHeader className="pb-6">
+          <div className="flex justify-between items-start">
+            <div className="space-y-2">
+              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Briefcase className="w-5 h-5 text-blue-600" />
+                </div>
+                Edit Job Application
+              </CardTitle>
+              <p className="text-slate-600">Update your job application details</p>
+              <Badge className={`w-fit ${getStatusColor(formData.status)}`}>
+                {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
+              </Badge>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-150">
-              <X className="w-6 h-6 text-gray-400" />
-            </button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full hover:bg-gray-100">
+              <X className="w-4 h-4" />
+            </Button>
           </div>
+        </CardHeader>
 
+        <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <Building2 className="w-4 h-4 mr-2" />
-                Company Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.company}
-                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="e.g., Google, Microsoft, Apple"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="company" className="flex items-center gap-2 text-sm font-medium">
+                  <Building2 className="w-4 h-4 text-slate-600" />
+                  Company Name *
+                </Label>
+                <Input
+                  id="company"
+                  type="text"
+                  required
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  placeholder="e.g., Google, Microsoft, Apple"
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="position" className="flex items-center gap-2 text-sm font-medium">
+                  <Briefcase className="w-4 h-4 text-slate-600" />
+                  Position Title *
+                </Label>
+                <Input
+                  id="position"
+                  type="text"
+                  required
+                  value={formData.position}
+                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  placeholder="e.g., Senior Software Engineer"
+                  className="h-11"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <Briefcase className="w-4 h-4 mr-2" />
-                Position Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.position}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="e.g., Senior Software Engineer"
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <MapPin className="w-4 h-4 mr-2" />
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="w-4 h-4 text-slate-600" />
                 Location
-              </label>
+              </Label>
               <LocationAutocomplete
                 value={formData.location}
                 onChange={(value, placeId) => {
@@ -124,98 +160,99 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   setSelectedPlaceId(placeId || "")
                 }}
                 placeholder="e.g., San Francisco, CA or New York, NY"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="h-11 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <Link className="w-4 h-4 mr-2" />
-                Job Posting URL
-              </label>
-              <input
-                type="url"
-                value={formData.jobUrl}
-                onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://... (optional)"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="jobUrl" className="flex items-center gap-2 text-sm font-medium">
+                  <Link className="w-4 h-4 text-slate-600" />
+                  Job Posting URL
+                </Label>
+                <Input
+                  id="jobUrl"
+                  type="url"
+                  value={formData.jobUrl}
+                  onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
+                  placeholder="https://... (optional)"
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="applicationDate" className="flex items-center gap-2 text-sm font-medium">
+                  <Calendar className="w-4 h-4 text-slate-600" />
+                  Application Date
+                </Label>
+                <Input
+                  id="applicationDate"
+                  type="date"
+                  value={formData.applicationDate}
+                  onChange={(e) => setFormData({ ...formData, applicationDate: e.target.value })}
+                  className="h-11"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 mr-2" />
-                Application Date
-              </label>
-              <input
-                type="date"
-                value={formData.applicationDate}
-                onChange={(e) => setFormData({ ...formData, applicationDate: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Status</Label>
+              <Select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as Job["status"] })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onValueChange={(value) => setFormData({ ...formData, status: value as Job["status"] })}
               >
-                <option value="applied">Applied</option>
-                <option value="interview">Interview</option>
-                <option value="rejected">Rejected</option>
-                <option value="offer">Offer</option>
-                <option value="accepted">Accepted</option>
-              </select>
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="applied">Applied</SelectItem>
+                  <SelectItem value="interview">Interview</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="offer">Offer</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <FileText className="w-4 h-4 mr-2" />
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="flex items-center gap-2 text-sm font-medium">
+                <FileText className="w-4 h-4 text-slate-600" />
                 Notes
-              </label>
-              <textarea
+              </Label>
+              <Textarea
+                id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={4}
                 placeholder="Job requirements, company culture, salary range, etc..."
+                rows={4}
+                className="resize-none"
               />
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
+            <div className="flex items-center space-x-2 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <Checkbox
                 id="isFavorite"
                 checked={formData.isFavorite}
-                onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
-                className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
+                onCheckedChange={(checked) => setFormData({ ...formData, isFavorite: checked as boolean })}
+                className="data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
               />
-              <label htmlFor="isFavorite" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
-                <Star className="w-4 h-4 mr-1 fill-current text-yellow-500" />
+              <Label htmlFor="isFavorite" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
                 Mark as favorite
-              </label>
+              </Label>
             </div>
 
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors duration-150"
-              >
+            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+              <Button type="button" variant="outline" onClick={onClose} className="px-6 bg-transparent">
                 Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
-              >
+              </Button>
+              <Button type="submit" className="px-6 bg-blue-600 hover:bg-blue-700">
                 Update Job Application
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -460,13 +460,15 @@ const JobTable: React.FC = () => {
                   setShowFavorites(!showFavorites)
                   setPagination({ ...pagination, page: 1 })
                 }}
-                className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap ${
+                className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap border-2 ${
                   showFavorites
-                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 shadow-lg"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 shadow-lg border-yellow-300"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 shadow-sm hover:shadow-md"
                 }`}
               >
-                <Star className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : ""}`} />
+                <Star
+                  className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : "text-gray-500"}`}
+                />
                 Favorites
               </button>
 
@@ -723,13 +725,26 @@ const JobTable: React.FC = () => {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
-                      <Building2 className="w-12 h-12 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-slate-800 mb-2">No jobs found</h3>
-                      <p className="text-gray-500 mb-4">Get started by adding your first job application.</p>
-                      <button onClick={() => setShowAddJobModal(true)} className="btn-primary inline-flex items-center">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Job
-                      </button>
+                      <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+                      <h3 className="text-2xl font-bold text-slate-800 mb-3">
+                        {statusFilter === "all" && !searchTerm && !showFavorites
+                          ? "No job applications yet"
+                          : "No matching applications found"}
+                      </h3>
+                      <p className="text-gray-600 mb-6 text-lg">
+                        {statusFilter === "all" && !searchTerm && !showFavorites
+                          ? "Start tracking your job search by adding your first application."
+                          : "Try adjusting your search or filter criteria."}
+                      </p>
+                      {statusFilter === "all" && !searchTerm && !showFavorites && (
+                        <button
+                          onClick={() => setShowAddJobModal(true)}
+                          className="btn-primary inline-flex items-center"
+                        >
+                          <Plus className="w-5 h-5 mr-2" />
+                          Add Your First Job
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

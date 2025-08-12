@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react'
-import { MapPin, ChevronDown } from 'lucide-react'
-import { googlePlacesService, type PlaceAutocomplete } from '@/lib/googlePlacesService'
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
+import { MapPin } from "lucide-react"
+import { googlePlacesService, type PlaceAutocomplete } from "@/lib/googlePlacesService"
 
 interface LocationAutocompleteProps {
   value: string
@@ -15,19 +16,20 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   value,
   onChange,
   placeholder = "e.g., San Francisco, CA",
-  className = ""
+  className = "",
 }) => {
   const [suggestions, setSuggestions] = useState<PlaceAutocomplete[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (value.length < 2) {
+      if (!isFocused || value.length < 2) {
         setSuggestions([])
         setSelectedIndex(-1)
         return
@@ -40,7 +42,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         setIsOpen(predictions.length > 0)
         setSelectedIndex(-1)
       } catch (error) {
-        console.error('Error fetching suggestions:', error)
+        console.error("Error fetching suggestions:", error)
         setSuggestions([])
         setSelectedIndex(-1)
       } finally {
@@ -50,7 +52,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
     const debounceTimer = setTimeout(fetchSuggestions, 300)
     return () => clearTimeout(debounceTimer)
-  }, [value])
+  }, [value, isFocused])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,16 +66,16 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
   // Scroll selected item into view
   useEffect(() => {
     if (selectedIndex >= 0 && suggestionRefs.current[selectedIndex]) {
       suggestionRefs.current[selectedIndex]?.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth'
+        block: "nearest",
+        behavior: "smooth",
       })
     }
   }, [selectedIndex])
@@ -95,39 +97,42 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   }
 
   const handleInputFocus = () => {
+    setIsFocused(true)
     if (suggestions.length > 0) {
       setIsOpen(true)
     }
+  }
+
+  const handleInputBlur = () => {
+    setTimeout(() => {
+      setIsFocused(false)
+    }, 150)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen || suggestions.length === 0) return
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault()
-        setSelectedIndex(prev => 
-          prev < suggestions.length - 1 ? prev + 1 : 0
-        )
+        setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
         break
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault()
-        setSelectedIndex(prev => 
-          prev > 0 ? prev - 1 : suggestions.length - 1
-        )
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
         break
-      case 'Enter':
+      case "Enter":
         e.preventDefault()
         if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
           handleSuggestionClick(suggestions[selectedIndex])
         }
         break
-      case 'Escape':
+      case "Escape":
         setIsOpen(false)
         setSelectedIndex(-1)
         inputRef.current?.blur()
         break
-      case 'Tab':
+      case "Tab":
         if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
           e.preventDefault()
           handleSuggestionClick(suggestions[selectedIndex])
@@ -145,6 +150,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           value={value}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
           onKeyDown={handleKeyDown}
           className={`form-input pr-10 ${className}`}
           placeholder={placeholder}
@@ -172,13 +178,11 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           {suggestions.map((suggestion, index) => (
             <div
               key={suggestion.place_id}
-              ref={el => {
+              ref={(el) => {
                 suggestionRefs.current[index] = el
               }}
               className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                index === selectedIndex 
-                  ? 'bg-blue-50 border-blue-200' 
-                  : 'hover:bg-gray-50'
+                index === selectedIndex ? "bg-blue-50 border-blue-200" : "hover:bg-gray-50"
               }`}
               onClick={() => handleSuggestionClick(suggestion)}
               role="option"

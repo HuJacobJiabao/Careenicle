@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import type { Job, Interview, JobEvent } from "@/lib/types"
+import type { Job, JobEvent } from "@/lib/types"
 import {
   X,
   Calendar,
@@ -19,8 +19,14 @@ import {
   FileText,
   Award,
   UserCheck,
-  UserX,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 
 interface InterviewModalProps {
   job: Job
@@ -30,9 +36,7 @@ interface InterviewModalProps {
 
 const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate }) => {
   const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
-  const interviews = jobEvents.filter(event => 
-    event.eventType === 'interview'
-  )
+  const interviews = jobEvents.filter((event) => event.eventType === "interview")
   const [newInterview, setNewInterview] = useState({
     round: interviews.length + 1,
     type: "technical" as JobEvent["interviewType"],
@@ -74,14 +78,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         // Create local ISO string without timezone conversion
         const date = dataToSend.eventDate
         const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        const seconds = String(date.getSeconds()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const day = String(date.getDate()).padStart(2, "0")
+        const hours = String(date.getHours()).padStart(2, "0")
+        const minutes = String(date.getMinutes()).padStart(2, "0")
+        const seconds = String(date.getSeconds()).padStart(2, "0")
         dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
       }
-      
+
       await fetch("/api/job-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,9 +104,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!newInterview.scheduledDate) return
 
     // Parse the datetime-local input to create a proper local date
-    const [dateStr, timeStr] = newInterview.scheduledDate.split('T')
-    const [year, month, day] = dateStr.split('-').map(Number)
-    const [hour, minute] = timeStr.split(':').map(Number)
+    const [dateStr, timeStr] = newInterview.scheduledDate.split("T")
+    const [year, month, day] = dateStr.split("-").map(Number)
+    const [hour, minute] = timeStr.split(":").map(Number)
     const scheduledLocalDate = new Date(year, month - 1, day, hour, minute)
 
     try {
@@ -151,7 +155,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       })
-      
+
       if (response.ok) {
         onUpdate() // Call parent update first
         await fetchJobEvents() // Then refresh local data
@@ -162,9 +166,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   // Helper function to safely update editing interview
-    const updateEditingInterview = (updates: Partial<JobEvent>) => {
+  const updateEditingInterview = (updates: Partial<JobEvent>) => {
     if (!editingInterview) return
-    setEditingInterview(prev => {
+    setEditingInterview((prev) => {
       if (!prev) return null
       return {
         ...prev,
@@ -178,9 +182,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
     try {
       // Create a local date without timezone conversion
-      const [year, month, day] = newEvent.eventDate.split('-').map(Number)
+      const [year, month, day] = newEvent.eventDate.split("-").map(Number)
       const localDate = new Date(year, month - 1, day) // month is 0-indexed
-      
+
       await createJobEvent({
         eventType: newEvent.eventType,
         eventDate: localDate,
@@ -211,14 +215,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
         const date = dataToSend.eventDate
         const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        const seconds = String(date.getSeconds()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const day = String(date.getDate()).padStart(2, "0")
+        const hours = String(date.getHours()).padStart(2, "0")
+        const minutes = String(date.getMinutes()).padStart(2, "0")
+        const seconds = String(date.getSeconds()).padStart(2, "0")
         dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
       }
-      
+
       await fetch(`/api/job-events/${eventId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -251,12 +255,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
     try {
       // Delete related events by matching round and type
-      const relatedEvents = jobEvents.filter(event => 
-        event.interviewRound === interviewRound && 
-        event.interviewType === interviewType &&
-        (event.eventType === 'interview_scheduled' || event.eventType === 'interview')
+      const relatedEvents = jobEvents.filter(
+        (event) =>
+          event.interviewRound === interviewRound &&
+          event.interviewType === interviewType &&
+          (event.eventType === "interview_scheduled" || event.eventType === "interview"),
       )
-      
+
       for (const event of relatedEvents) {
         await fetch(`/api/job-events/${event.id}`, {
           method: "DELETE",
@@ -275,14 +280,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
     try {
       // Parse the datetime-local input to create a proper local date
-      const [dateStr, timeStr] = newInterview.scheduledDate.split('T')
-      const [year, month, day] = dateStr.split('-').map(Number)
-      const [hour, minute] = timeStr.split(':').map(Number)
+      const [dateStr, timeStr] = newInterview.scheduledDate.split("T")
+      const [year, month, day] = dateStr.split("-").map(Number)
+      const [hour, minute] = timeStr.split(":").map(Number)
       const scheduledLocalDate = new Date(year, month - 1, day, hour, minute)
 
       // Convert to local ISO string for the API
-      const eventDateToSend = `${scheduledLocalDate.getFullYear()}-${String(scheduledLocalDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledLocalDate.getDate()).padStart(2, '0')}T${String(scheduledLocalDate.getHours()).padStart(2, '0')}:${String(scheduledLocalDate.getMinutes()).padStart(2, '0')}:${String(scheduledLocalDate.getSeconds()).padStart(2, '0')}`
-      
+      const eventDateToSend = `${scheduledLocalDate.getFullYear()}-${String(scheduledLocalDate.getMonth() + 1).padStart(2, "0")}-${String(scheduledLocalDate.getDate()).padStart(2, "0")}T${String(scheduledLocalDate.getHours()).padStart(2, "0")}:${String(scheduledLocalDate.getMinutes()).padStart(2, "0")}:${String(scheduledLocalDate.getSeconds()).padStart(2, "0")}`
+
       // Update the interview event with the new form data
       await fetch(`/api/job-events/${editingInterview.id}`, {
         method: "PUT",
@@ -299,7 +304,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           notes: newInterview.notes,
         }),
       })
-      
+
       onUpdate() // Call parent update first
       fetchJobEvents() // Then refresh local data
       setEditingInterview(null)
@@ -316,244 +321,218 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     }
   }
 
-  const getTypeConfig = (type: JobEvent["interviewType"]) => {
+  const getTypeConfig = (type: string | undefined) => {
     const configs = {
-      phone: { label: "Phone Interview", color: "bg-blue-100 text-blue-800", icon: "📞" },
-      video: { label: "Video Interview", color: "bg-green-100 text-green-800", icon: "📹" },
-      onsite: { label: "Onsite Interview", color: "bg-purple-100 text-purple-800", icon: "🏢" },
-      technical: { label: "Technical Interview", color: "bg-orange-100 text-orange-800", icon: "💻" },
-      hr: { label: "HR Interview", color: "bg-pink-100 text-pink-800", icon: "👥" },
-      final: { label: "Final Interview", color: "bg-indigo-100 text-indigo-800", icon: "🎯" },
-      oa: { label: "Online Assessment", color: "bg-cyan-100 text-cyan-800", icon: "📝" },
-      vo: { label: "Virtual Onsite", color: "bg-emerald-100 text-emerald-800", icon: "🖥️" },
+      technical: {
+        label: "Technical Interview",
+        color: "bg-blue-50 text-blue-700 border-blue-200",
+        icon: <FileText className="w-4 h-4" />,
+      },
+      hr: {
+        label: "HR Interview",
+        color: "bg-green-50 text-green-700 border-green-200",
+        icon: <User className="w-4 h-4" />,
+      },
+      phone: {
+        label: "Phone Interview",
+        color: "bg-purple-50 text-purple-700 border-purple-200",
+        icon: <MessageSquare className="w-4 h-4" />,
+      },
+      video: {
+        label: "Video Interview",
+        color: "bg-indigo-50 text-indigo-700 border-indigo-200",
+        icon: <Calendar className="w-4 h-4" />,
+      },
+      onsite: {
+        label: "Onsite Interview",
+        color: "bg-orange-50 text-orange-700 border-orange-200",
+        icon: <Award className="w-4 h-4" />,
+      },
+      final: {
+        label: "Final Interview",
+        color: "bg-red-50 text-red-700 border-red-200",
+        icon: <UserCheck className="w-4 h-4" />,
+      },
+      oa: {
+        label: "Online Assessment",
+        color: "bg-cyan-50 text-cyan-700 border-cyan-200",
+        icon: <FileText className="w-4 h-4" />,
+      },
+      vo: {
+        label: "Virtual Onsite",
+        color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        icon: <Calendar className="w-4 h-4" />,
+      },
     }
-    return type ? configs[type] : configs.technical
+    return configs[type as keyof typeof configs] || configs.technical
   }
 
-  const getResultConfig = (result: JobEvent["interviewResult"]) => {
+  const getResultConfig = (result: string | undefined) => {
     const configs = {
       pending: {
         label: "Pending",
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        icon: <AlertCircle className="w-4 h-4" />,
+        color: "bg-yellow-50 text-yellow-700 border-yellow-200",
+        icon: <Clock className="w-4 h-4" />,
       },
       passed: {
         label: "Passed",
-        color: "bg-green-100 text-green-800 border-green-200",
+        color: "bg-green-50 text-green-700 border-green-200",
         icon: <CheckCircle className="w-4 h-4" />,
       },
       failed: {
         label: "Failed",
-        color: "bg-red-100 text-red-800 border-red-200",
+        color: "bg-red-50 text-red-700 border-red-200",
         icon: <XCircle className="w-4 h-4" />,
+      },
+      waiting: {
+        label: "Waiting",
+        color: "bg-blue-50 text-blue-700 border-blue-200",
+        icon: <AlertCircle className="w-4 h-4" />,
       },
       cancelled: {
         label: "Cancelled",
-        color: "bg-gray-100 text-gray-800 border-gray-200",
+        color: "bg-gray-50 text-gray-700 border-gray-200",
         icon: <Pause className="w-4 h-4" />,
       },
     }
     return result ? configs[result] : configs.pending
   }
 
+  const deleteInterview = async (interviewId: number) => {
+    if (!confirm("Are you sure you want to delete this interview and all related events?")) return
+
+    try {
+      // Find the interview event
+      const interviewEvent = jobEvents.find((event) => event.id === interviewId)
+
+      if (interviewEvent) {
+        // Delete related events by matching round and type
+        await deleteInterviewEvents(interviewEvent.interviewRound!, interviewEvent.interviewType!)
+      } else {
+        console.warn("Interview event not found for deletion.")
+      }
+
+      onUpdate() // Call parent update first
+      fetchJobEvents() // Then refresh local data
+    } catch (error) {
+      console.error("Failed to delete interview events:", error)
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-3xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl animate-scale-in">
         <div className="p-8">
-          {/* Header */}
           <div className="flex justify-between items-start mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Interview Management</h2>
-              <div className="flex items-center text-lg text-gray-600">
-                <span className="font-medium text-blue-600">{job.position}</span>
-                <span className="mx-2">at</span>
-                <span className="font-medium">{job.company}</span>
+            <div className="space-y-2">
+              <h2 className="text-4xl font-bold text-slate-800 tracking-tight">Interview Management</h2>
+              <div className="flex items-center text-lg text-slate-600">
+                <Badge variant="secondary" className="mr-2 px-3 py-1 text-sm font-medium">
+                  {job.position}
+                </Badge>
+                <span className="text-slate-400">at</span>
+                <span className="ml-2 font-semibold text-slate-700">{job.company}</span>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-150">
-              <X className="w-6 h-6 text-gray-400" />
-            </button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 rounded-full hover:bg-slate-100">
+              <X className="w-5 h-5" />
+            </Button>
           </div>
 
-          {/* Existing Interviews */}
           <div className="mb-10">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">Interview Rounds</h3>
+              <h3 className="text-2xl font-semibold text-slate-800">Interview Rounds</h3>
               {!showNewInterviewForm && (
-                <button
+                <Button
                   onClick={() => setShowNewInterviewForm(true)}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Schedule New Interview
-                </button>
+                </Button>
               )}
             </div>
+
             {interviews.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-xl">
-                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg">No interviews scheduled yet</p>
-                <p className="text-gray-500">Add your first interview below</p>
-              </div>
+              <Card className="border-dashed border-2 border-slate-200">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Calendar className="w-16 h-16 text-slate-400 mb-4" />
+                  <CardTitle className="text-xl text-slate-600 mb-2">No interviews scheduled yet</CardTitle>
+                  <CardDescription className="text-slate-500">Add your first interview below</CardDescription>
+                </CardContent>
+              </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="grid gap-6">
                 {interviews.map((interview) => {
                   const typeConfig = getTypeConfig(interview.interviewType || "technical")
                   const resultConfig = getResultConfig(interview.interviewResult || "pending")
-                  // Only show the old editing form if we're not using the new schedule interview form
                   const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
 
                   return (
-                    <div
-                      key={interview.id}
-                      className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
-                    >
-                      {isEditing ? (
-                        // Edit Mode
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-lg font-semibold text-gray-900">Edit Interview</h4>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={saveEditingInterview}
-                                className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-md text-sm"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={() => setEditingInterview(null)}
-                                className="px-3 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md text-sm"
-                              >
-                                Cancel
-                              </button>
+                    <Card key={interview.id} className="hover:shadow-lg transition-all duration-200 border-slate-200">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                              {interview.interviewRound || 1}
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg text-slate-800">
+                                Round {interview.interviewRound || 1}
+                              </CardTitle>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <Badge className={`${typeConfig.color} border font-medium`}>
+                                  {typeConfig.icon}
+                                  <span className="ml-1">{typeConfig.label}</span>
+                                </Badge>
+                                <Badge className={`${resultConfig.color} border font-medium`}>
+                                  {resultConfig.icon}
+                                  <span className="ml-1">{resultConfig.label}</span>
+                                </Badge>
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                // Populate the form with existing interview data
+                                const eventDate = new Date(interview.eventDate)
+                                const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}T${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes()).padStart(2, "0")}`
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Round</label>
-                              <input
-                                type="number"
-                                value={editingInterview?.interviewRound || 1}
-                                onChange={(e) =>
-                                  updateEditingInterview({ interviewRound: Number.parseInt(e.target.value) })
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                              <select
-                                value={editingInterview?.interviewType || "technical"}
-                                onChange={(e) =>
-                                  updateEditingInterview({ interviewType: e.target.value as JobEvent["interviewType"] })
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                              >
-                                <option value="technical">Technical Interview</option>
-                                <option value="hr">HR Interview</option>
-                                <option value="phone">Phone Interview</option>
-                                <option value="video">Video Interview</option>
-                                <option value="onsite">Onsite Interview</option>
-                                <option value="final">Final Interview</option>
-                                <option value="oa">Online Assessment</option>
-                                <option value="vo">Virtual Onsite</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
-                              <input
-                                type="datetime-local"
-                                value={editingInterview?.eventDate ? (() => {
-                                  const date = new Date(editingInterview.eventDate)
-                                  const year = date.getFullYear()
-                                  const month = String(date.getMonth() + 1).padStart(2, '0')
-                                  const day = String(date.getDate()).padStart(2, '0')
-                                  const hours = String(date.getHours()).padStart(2, '0')
-                                  const minutes = String(date.getMinutes()).padStart(2, '0')
-                                  return `${year}-${month}-${day}T${hours}:${minutes}`
-                                })() : ""}
-                                onChange={(e) => {
-                                  const [dateStr, timeStr] = e.target.value.split('T')
-                                  const [year, month, day] = dateStr.split('-').map(Number)
-                                  const [hour, minute] = timeStr.split(':').map(Number)
-                                  const localDate = new Date(year, month - 1, day, hour, minute)
-                                  updateEditingInterview({ eventDate: localDate })
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Interview Link</label>
-                              <input
-                                type="text"
-                                value={editingInterview?.interviewLink || ""}
-                                onChange={(e) =>
-                                  updateEditingInterview({ interviewLink: e.target.value })
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                placeholder="Meeting link, phone number, or location"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Result</label>
-                              <select
-                                value={editingInterview?.interviewResult || "pending"}
-                                onChange={async (e) => {
-                                  const newResult = e.target.value as JobEvent["interviewResult"]
-                                  updateEditingInterview({ interviewResult: newResult })
-                                  
-                                  // Immediately save the result change
-                                  if (editingInterview?.id) {
-                                    try {
-                                      await updateEvent(editingInterview.id, { interviewResult: newResult })
-                                    } catch (error) {
-                                      console.error("Failed to update interview result:", error)
-                                    }
-                                  }
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="passed">Passed</option>
-                                <option value="failed">Failed</option>
-                                <option value="cancelled">Cancelled</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
-                            <textarea
-                              value={editingInterview?.notes || ""}
-                              onChange={(e) =>
-                                updateEditingInterview({ notes: e.target.value })
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                              rows={3}
-                              placeholder="Interview feedback and notes..."
-                            />
+                                setNewInterview({
+                                  round: interview.interviewRound || 1,
+                                  type: interview.interviewType || "technical",
+                                  scheduledDate: formattedDate,
+                                  interviewLink: interview.interviewLink || "",
+                                  notes: interview.notes || "",
+                                })
+                                setEditingInterview(interview)
+                                setShowNewInterviewForm(true)
+                              }}
+                              className="text-slate-600 hover:text-blue-600"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteInterview(interview.id!)}
+                              className="text-slate-600 hover:text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
-                      ) : (
-                        // View Mode
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                          {/* Interview Info */}
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-lg font-semibold text-gray-900">Round {interview.interviewRound || 1}</h4>
-                              <span className={`px-3 py-1 text-xs font-medium rounded-full ${typeConfig.color}`}>
-                                {typeConfig.icon} {typeConfig.label}
-                              </span>
-                            </div>
+                      </CardHeader>
 
-                            <div className="space-y-2 text-sm text-gray-600">
-                              <div className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-2" />
+                      {!isEditing && (
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div className="flex items-center text-slate-600">
+                              <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+                              <span>
                                 {new Date(interview.eventDate).toLocaleString("en-US", {
                                   weekday: "short",
                                   month: "short",
@@ -561,470 +540,433 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 })}
-                              </div>
-                              {interview.interviewLink && (
-                                <div className="flex items-center">
-                                  <User className="w-4 h-4 mr-2" />
-                                  <a 
-                                    href={interview.interviewLink} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:text-blue-800 underline"
-                                  >
-                                    {interview.interviewLink}
-                                  </a>
-                                </div>
-                              )}
-                              {interview.metadata?.duration && (
-                                <div className="flex items-center">
-                                  <Clock className="w-4 h-4 mr-2" />
-                                  {interview.metadata.duration} minutes
-                                </div>
-                              )}
+                              </span>
                             </div>
+                            {interview.interviewLink && (
+                              <div className="flex items-center text-slate-600">
+                                <MessageSquare className="w-4 h-4 mr-2 text-slate-400" />
+                                <a
+                                  href={interview.interviewLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                >
+                                  Interview Link
+                                </a>
+                              </div>
+                            )}
                           </div>
-
-                          {/* Result */}
-                          <div className="space-y-3">
-                            <label className="block text-sm font-medium text-gray-700">Result</label>
-                            <select
-                              value={interview.interviewResult || "pending"}
-                              onChange={(e) =>
-                                updateJobEvent(interview.id!, { interviewResult: e.target.value as JobEvent["interviewResult"] })
-                              }
-                              className={`w-full px-3 py-2 text-sm font-medium rounded-lg border ${resultConfig.color} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="passed">Passed</option>
-                              <option value="failed">Failed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
-                          </div>
-
-                          {/* Feedback */}
-                          <div className="space-y-3">
-                            <label className="block text-sm font-medium text-gray-700">
-                              <MessageSquare className="w-4 h-4 inline mr-1" />
-                              Feedback
-                            </label>
-                            <textarea
-                              value={interview.notes || ""}
-                              onChange={(e) => updateJobEvent(interview.id!, { notes: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              rows={3}
-                              placeholder="Interview feedback and notes..."
-                            />
-                          </div>
-                        </div>
+                          {interview.notes && (
+                            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                              <p className="text-sm text-slate-600">{interview.notes}</p>
+                            </div>
+                          )}
+                        </CardContent>
                       )}
-
-                      {/* Action Buttons */}
-                      {!isEditing && (
-                        <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-200">
-                          <button
-                            onClick={() => {
-                              // Populate the form with existing interview data
-                              const eventDate = new Date(interview.eventDate)
-                              const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}T${String(eventDate.getHours()).padStart(2, '0')}:${String(eventDate.getMinutes()).padStart(2, '0')}`
-                              
-                              setNewInterview({
-                                round: interview.interviewRound || 1,
-                                type: interview.interviewType || "technical",
-                                scheduledDate: formattedDate,
-                                interviewLink: interview.interviewLink || "",
-                                notes: interview.notes || "",
-                              })
-                              setEditingInterview(interview)
-                              setShowNewInterviewForm(true)
-                            }}
-                            className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-sm transition-colors duration-150"
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteInterviewEvents(interview.interviewRound!, interview.interviewType!)}
-                            className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md text-sm transition-colors duration-150"
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    </Card>
                   )
                 })}
               </div>
             )}
           </div>
 
-          {/* Add New Interview */}
           {showNewInterviewForm && (
-            <div className="border-t border-gray-200 pt-8">
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {editingInterview ? 'Edit Interview' : 'Schedule New Interview'}
-                  </h3>
-                  <button
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl text-slate-800">
+                      {editingInterview ? "Edit Interview" : "Schedule New Interview"}
+                    </CardTitle>
+                    <CardDescription>
+                      {editingInterview ? "Update interview details" : "Add a new interview round to your application"}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowNewInterviewForm(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="h-8 w-8"
                   >
-                    <X className="w-6 h-6" />
-                  </button>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-                <div className="bg-blue-50 rounded-xl p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Round Number</label>
-                  <input
-                    type="number"
-                    value={newInterview.round}
-                    onChange={(e) => setNewInterview({ ...newInterview, round: Number.parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="round" className="text-sm font-medium text-slate-700">
+                      Round Number
+                    </Label>
+                    <Input
+                      id="round"
+                      type="number"
+                      value={newInterview.round}
+                      onChange={(e) => setNewInterview({ ...newInterview, round: Number.parseInt(e.target.value) })}
+                      className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Interview Type</label>
-                  <select
-                    value={newInterview.type}
-                    onChange={(e) => setNewInterview({ ...newInterview, type: e.target.value as JobEvent["interviewType"] })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="technical">Technical Interview</option>
-                    <option value="hr">HR Interview</option>
-                    <option value="phone">Phone Interview</option>
-                    <option value="video">Video Interview</option>
-                    <option value="onsite">Onsite Interview</option>
-                    <option value="final">Final Interview</option>
-                    <option value="oa">Online Assessment</option>
-                    <option value="vo">Virtual Onsite</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Scheduled Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    value={newInterview.scheduledDate}
-                    onChange={(e) => setNewInterview({ ...newInterview, scheduledDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Interview Link</label>
-                  <input
-                    type="text"
-                    value={newInterview.interviewLink}
-                    onChange={(e) => setNewInterview({ ...newInterview, interviewLink: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Meeting link, phone number, or location"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={newInterview.notes}
-                  onChange={(e) => setNewInterview({ ...newInterview, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Preparation notes, topics to discuss, etc..."
-                />
-              </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={editingInterview ? saveEditingInterview : addInterview}
-                      disabled={!newInterview.scheduledDate}
-                      className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors duration-200"
+                  <div className="space-y-2">
+                    <Label htmlFor="type" className="text-sm font-medium text-slate-700">
+                      Interview Type
+                    </Label>
+                    <Select
+                      value={newInterview.type}
+                      onValueChange={(value) =>
+                        setNewInterview({ ...newInterview, type: value as JobEvent["interviewType"] })
+                      }
                     >
-                      <Calendar className="w-5 h-5 mr-2" />
-                      {editingInterview ? 'Update Interview' : 'Schedule Interview'}
-                    </button>
+                      <SelectTrigger className="border-slate-300 focus:border-blue-500 focus:ring-blue-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="technical">Technical Interview</SelectItem>
+                        <SelectItem value="hr">HR Interview</SelectItem>
+                        <SelectItem value="phone">Phone Interview</SelectItem>
+                        <SelectItem value="video">Video Interview</SelectItem>
+                        <SelectItem value="onsite">Onsite Interview</SelectItem>
+                        <SelectItem value="final">Final Interview</SelectItem>
+                        <SelectItem value="oa">Online Assessment</SelectItem>
+                        <SelectItem value="vo">Virtual Onsite</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduledDate" className="text-sm font-medium text-slate-700">
+                      Scheduled Date & Time
+                    </Label>
+                    <Input
+                      id="scheduledDate"
+                      type="datetime-local"
+                      value={newInterview.scheduledDate}
+                      onChange={(e) => setNewInterview({ ...newInterview, scheduledDate: e.target.value })}
+                      className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="interviewLink" className="text-sm font-medium text-slate-700">
+                      Interview Link
+                    </Label>
+                    <Input
+                      id="interviewLink"
+                      type="text"
+                      value={newInterview.interviewLink}
+                      onChange={(e) => setNewInterview({ ...newInterview, interviewLink: e.target.value })}
+                      placeholder="Meeting link, phone number, or location"
+                      className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes" className="text-sm font-medium text-slate-700">
+                    Notes
+                  </Label>
+                  <Textarea
+                    id="notes"
+                    value={newInterview.notes}
+                    onChange={(e) => setNewInterview({ ...newInterview, notes: e.target.value })}
+                    placeholder="Preparation notes, topics to discuss, etc..."
+                    rows={3}
+                    className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={editingInterview ? saveEditingInterview : addInterview}
+                    disabled={!newInterview.scheduledDate}
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {editingInterview ? "Update Interview" : "Schedule Interview"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowNewInterviewForm(false)
+                      setEditingInterview(null)
+                      setNewInterview({
+                        round: interviews.length + 1,
+                        type: "technical",
+                        scheduledDate: "",
+                        interviewLink: "",
+                        notes: "",
+                      })
+                    }}
+                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="border-slate-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl text-slate-800">Event Timeline</CardTitle>
+                  <CardDescription>Track all events related to this job application</CardDescription>
+                </div>
+                <Button
+                  onClick={() => setShowEventForm(!showEventForm)}
+                  variant="outline"
+                  className="border-green-200 text-green-700 hover:bg-green-50"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Event
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {/* Custom Event Form */}
+              {showEventForm && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">Add Custom Event</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                      <select
+                        value={newEvent.eventType}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, eventType: e.target.value as JobEvent["eventType"] })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="applied">Applied</option>
+                        <option value="interview_scheduled">Interview Scheduled</option>
+                        <option value="interview">Interview Completed</option>
+                        <option value="interview_result">Interview Result</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="offer_received">Offer Received</option>
+                        <option value="offer_accepted">Offer Accepted</option>
+                        <option value="withdrawn">Withdrawn</option>
+                        <option value="ghosted">Ghosted</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
+                      <input
+                        type="date"
+                        value={newEvent.eventDate}
+                        onChange={(e) => setNewEvent({ ...newEvent, eventDate: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={newEvent.title}
+                        onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Event title"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={newEvent.description}
+                        onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Event description"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                      <textarea
+                        value={newEvent.notes}
+                        onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Additional notes"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-3 mt-4">
                     <button
-                      onClick={() => {
-                        setShowNewInterviewForm(false)
-                        setEditingInterview(null)
-                        setNewInterview({
-                          round: interviews.length + 1,
-                          type: "technical",
-                          scheduledDate: "",
-                          interviewLink: "",
-                          notes: "",
-                        })
-                      }}
-                      className="inline-flex items-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg shadow-sm transition-colors duration-200"
+                      onClick={() => setShowEventForm(false)}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
                     >
                       Cancel
                     </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Events Timeline Section */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Event Timeline</h3>
-              <button
-                onClick={() => setShowEventForm(!showEventForm)}
-                className="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Event
-              </button>
-            </div>
-
-            {/* Custom Event Form */}
-            {showEventForm && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className="text-md font-medium text-gray-900 mb-3">Add Custom Event</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                    <select
-                      value={newEvent.eventType}
-                      onChange={(e) => setNewEvent({ ...newEvent, eventType: e.target.value as JobEvent["eventType"] })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    <button
+                      onClick={addCustomEvent}
+                      disabled={!newEvent.eventDate || !newEvent.title}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200"
                     >
-                      <option value="applied">Applied</option>
-                      <option value="interview_scheduled">Interview Scheduled</option>
-                      <option value="interview">Interview Completed</option>
-                      <option value="interview_result">Interview Result</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="offer_received">Offer Received</option>
-                      <option value="offer_accepted">Offer Accepted</option>
-                      <option value="withdrawn">Withdrawn</option>
-                      <option value="ghosted">Ghosted</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
-                    <input
-                      type="date"
-                      value={newEvent.eventDate}
-                      onChange={(e) => setNewEvent({ ...newEvent, eventDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input
-                      type="text"
-                      value={newEvent.title}
-                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Event title"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <input
-                      type="text"
-                      value={newEvent.description}
-                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Event description"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea
-                      value={newEvent.notes}
-                      onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      rows={2}
-                      placeholder="Additional notes"
-                    />
+                      Add Event
+                    </button>
                   </div>
                 </div>
-                <div className="flex justify-end space-x-3 mt-4">
-                  <button
-                    onClick={() => setShowEventForm(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={addCustomEvent}
-                    disabled={!newEvent.eventDate || !newEvent.title}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200"
-                  >
-                    Add Event
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Edit Event Form */}
-            {editingEvent && (
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="text-md font-medium text-gray-900 mb-3">Edit Event</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                    <select
-                      value={editingEvent.eventType}
-                      onChange={(e) => setEditingEvent({ ...editingEvent, eventType: e.target.value as JobEvent["eventType"] })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              {/* Edit Event Form */}
+              {editingEvent && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">Edit Event</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                      <select
+                        value={editingEvent.eventType}
+                        onChange={(e) =>
+                          setEditingEvent({ ...editingEvent, eventType: e.target.value as JobEvent["eventType"] })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="applied">Applied</option>
+                        <option value="interview_scheduled">Interview Scheduled</option>
+                        <option value="interview">Interview Completed</option>
+                        <option value="interview_result">Interview Result</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="offer_received">Offer Received</option>
+                        <option value="offer_accepted">Offer Accepted</option>
+                        <option value="withdrawn">Withdrawn</option>
+                        <option value="ghosted">Ghosted</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
+                      <input
+                        type="date"
+                        value={(() => {
+                          const date = new Date(editingEvent.eventDate)
+                          const year = date.getFullYear()
+                          const month = String(date.getMonth() + 1).padStart(2, "0")
+                          const day = String(date.getDate()).padStart(2, "0")
+                          return `${year}-${month}-${day}`
+                        })()}
+                        onChange={(e) => {
+                          const [year, month, day] = e.target.value.split("-").map(Number)
+                          const localDate = new Date(year, month - 1, day)
+                          setEditingEvent({ ...editingEvent, eventDate: localDate })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={editingEvent.title}
+                        onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Event title"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={editingEvent.description || ""}
+                        onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Event description"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                      <textarea
+                        value={editingEvent.notes || ""}
+                        onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Additional notes"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-3 mt-4">
+                    <button
+                      onClick={() => setEditingEvent(null)}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
                     >
-                      <option value="applied">Applied</option>
-                      <option value="interview_scheduled">Interview Scheduled</option>
-                      <option value="interview">Interview Completed</option>
-                      <option value="interview_result">Interview Result</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="offer_received">Offer Received</option>
-                      <option value="offer_accepted">Offer Accepted</option>
-                      <option value="withdrawn">Withdrawn</option>
-                      <option value="ghosted">Ghosted</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
-                    <input
-                      type="date"
-                      value={(() => {
-                        const date = new Date(editingEvent.eventDate)
-                        const year = date.getFullYear()
-                        const month = String(date.getMonth() + 1).padStart(2, '0')
-                        const day = String(date.getDate()).padStart(2, '0')
-                        return `${year}-${month}-${day}`
-                      })()}
-                      onChange={(e) => {
-                        const [year, month, day] = e.target.value.split('-').map(Number)
-                        const localDate = new Date(year, month - 1, day)
-                        setEditingEvent({ ...editingEvent, eventDate: localDate })
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input
-                      type="text"
-                      value={editingEvent.title}
-                      onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Event title"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <input
-                      type="text"
-                      value={editingEvent.description || ""}
-                      onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Event description"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea
-                      value={editingEvent.notes || ""}
-                      onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      rows={2}
-                      placeholder="Additional notes"
-                    />
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => updateEvent(editingEvent.id!, editingEvent)}
+                      disabled={!editingEvent.eventDate || !editingEvent.title}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200"
+                    >
+                      Update Event
+                    </button>
                   </div>
                 </div>
-                <div className="flex justify-end space-x-3 mt-4">
-                  <button
-                    onClick={() => setEditingEvent(null)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => updateEvent(editingEvent.id!, editingEvent)}
-                    disabled={!editingEvent.eventDate || !editingEvent.title}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200"
-                  >
-                    Update Event
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Events List */}
-            <div className="space-y-3">
-              {jobEvents.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No events recorded yet</p>
-              ) : (
-                jobEvents
-                  .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
-                  .map((event) => (
-                    <div key={event.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div className="flex-grow min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-sm font-medium text-gray-900">{event.title}</h5>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500">
-                              {new Date(event.eventDate).toLocaleString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => setEditingEvent(event)}
-                                className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-150"
-                                title="Edit event"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => deleteEvent(event.id!)}
-                                className="p-1 text-gray-400 hover:text-red-600 transition-colors duration-150"
-                                title="Delete event"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+              <div className="space-y-3">
+                {jobEvents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-slate-500 italic">No events recorded yet</p>
+                  </div>
+                ) : (
+                  jobEvents
+                    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+                    .map((event) => (
+                      <Card key={event.id} className="border-slate-100 hover:border-slate-200 transition-colors">
+                        <CardContent className="p-4">
+                          <div className="flex items-start space-x-3">
+                            <div className="flex-shrink-0 w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
+                            <div className="flex-grow min-w-0">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold text-slate-800">{event.title}</h5>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-slate-500 font-medium">
+                                    {new Date(event.eventDate).toLocaleString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                  <div className="flex space-x-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingEvent(event)}
+                                      className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteEvent(event.id!)}
+                                      className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                              {event.description && <p className="text-sm text-slate-600 mt-1">{event.description}</p>}
+                              {event.notes && <p className="text-xs text-slate-500 mt-1">{event.notes}</p>}
+                              <div className="flex items-center mt-2 space-x-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {event.eventType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                                </Badge>
+                                {event.interviewRound && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Round {event.interviewRound}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        {event.description && (
-                          <p className="text-sm text-gray-600 mt-1">{event.description}</p>
-                        )}
-                        {event.notes && (
-                          <p className="text-xs text-gray-500 mt-1">{event.notes}</p>
-                        )}
-                        <div className="flex items-center mt-2">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            event.eventType === "applied" ? "bg-blue-100 text-blue-800" :
-                            event.eventType === "interview_scheduled" ? "bg-yellow-100 text-yellow-800" :
-                            event.eventType === "interview" ? "bg-purple-100 text-purple-800" :
-                            event.eventType === "interview_result" ? "bg-indigo-100 text-indigo-800" :
-                            event.eventType === "rejected" ? "bg-red-100 text-red-800" :
-                            event.eventType === "offer_received" ? "bg-green-100 text-green-800" :
-                            event.eventType === "offer_accepted" ? "bg-emerald-100 text-emerald-800" :
-                            event.eventType === "withdrawn" ? "bg-gray-100 text-gray-800" :
-                            event.eventType === "ghosted" ? "bg-slate-100 text-slate-800" :
-                            "bg-gray-100 text-gray-800"
-                          }`}>
-                            {event.eventType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
-                          </span>
-                          {event.interviewRound && (
-                            <span className="ml-2 text-xs text-gray-500">
-                              Round {event.interviewRound}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
