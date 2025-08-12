@@ -131,6 +131,18 @@ export const mockJobs: Job[] = [
     createdAt: new Date("2024-02-20"),
     updatedAt: new Date("2024-02-20"),
   },
+  {
+    id: 11,
+    company: "Local Startup",
+    position: "Full Stack Developer",
+    applicationDate: new Date("2025-01-10"),
+    status: "applied",
+    location: "Remote",
+    notes: "Found through networking, no formal job posting",
+    isFavorite: false,
+    createdAt: new Date("2025-01-10"),
+    updatedAt: new Date("2025-01-10"),
+  },
 ]
 
 export const mockInterviews: Interview[] = [

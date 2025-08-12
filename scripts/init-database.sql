@@ -10,7 +10,7 @@ CREATE TABLE jobs (
     id SERIAL PRIMARY KEY,
     company VARCHAR(255) NOT NULL,
     position VARCHAR(255) NOT NULL,
-    job_url TEXT NOT NULL,
+    job_url TEXT,
     application_date DATE NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'interview', 'rejected', 'offer', 'accepted')),
     location VARCHAR(255),
@@ -92,7 +92,8 @@ INSERT INTO jobs (company, position, job_url, application_date, status, location
 ('Spotify', 'Backend Engineer', 'https://www.lifeatspotify.com/jobs/234', '2025-03-15', 'applied', 'New York, NY', 'Music streaming backend', false),
 ('Uber', 'Senior Backend Engineer', 'https://www.uber.com/careers/list/567', '2025-02-18', 'applied', 'San Francisco, CA', 'Ride-sharing platform backend', false),
 ('Airbnb', 'Product Manager', 'https://careers.airbnb.com/positions/890', '2025-02-20', 'applied', 'San Francisco, CA', 'Travel platform product management', true),
-('Xiaomi', 'Software Engineer', 'https://careers.xiaomi.com/jobs/123', '2025-08-13', 'interview', 'Beijing, China', 'Mobile technology company', false);
+('Xiaomi', 'Software Engineer', 'https://careers.xiaomi.com/jobs/123', '2025-08-13', 'interview', 'Beijing, China', 'Mobile technology company', false),
+('Local Startup', 'Full Stack Developer', NULL, '2025-03-01', 'applied', 'Remote', 'Found through networking, no formal job posting', false);
 
 -- Insert sample job_events data
 INSERT INTO job_events (job_id, event_type, event_date, title, description, interview_round, interview_type, interviewer, interview_result, notes) VALUES
@@ -147,7 +148,10 @@ INSERT INTO job_events (job_id, event_type, event_date, title, description, inte
 (11, 'applied', '2025-08-13 10:00:00', 'Application Submitted', 'Applied for Software Engineer position at Xiaomi', NULL, NULL, NULL, NULL, 'Mobile technology company'),
 (11, 'interview_scheduled', '2025-08-20 14:00:00', 'Round 1 Technical Interview Scheduled', 'Technical screening with engineer', 1, 'technical', 'Zhang Wei', 'pending', 'Algorithm and data structures'),
 (11, 'interview', '2025-08-13 14:00:00', 'Round 1 Technical Interview', 'Technical screening with engineer', 1, 'technical', 'Zhang Wei', 'passed', 'Strong problem-solving skills'),
-(11, 'interview_scheduled', '2025-08-27 16:00:00', 'Virtual Onsite Scheduled', 'Full day virtual onsite interviews', 2, 'vo', 'Engineering Team', 'pending', '4-hour virtual onsite session');
+(11, 'interview_scheduled', '2025-08-27 16:00:00', 'Virtual Onsite Scheduled', 'Full day virtual onsite interviews', 2, 'vo', 'Engineering Team', 'pending', '4-hour virtual onsite session'),
+
+-- Local Startup events (ID 12)
+(12, 'applied', '2025-03-01 09:00:00', 'Application Submitted', 'Applied for Full Stack Developer position at Local Startup', NULL, NULL, NULL, NULL, 'Found through networking event');
 
 -- Print success message
 SELECT 'Database setup completed successfully! Created ' || 

@@ -15,7 +15,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
   const [formData, setFormData] = useState({
     company: job.company,
     position: job.position,
-    jobUrl: job.jobUrl,
+    jobUrl: job.jobUrl || "",
     applicationDate: new Date(job.applicationDate).toISOString().split("T")[0],
     status: job.status,
     location: job.location || "",
@@ -26,10 +26,15 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const updateData = {
+        ...formData,
+        applicationDate: new Date(formData.applicationDate),
+        jobUrl: formData.jobUrl || undefined, // Convert empty string to undefined
+      }
       await fetch(`/api/jobs/${job.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(updateData),
       })
       onUpdate()
     } catch (error) {
@@ -99,15 +104,14 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                 <Link className="w-4 h-4 mr-2" />
-                Job Posting URL *
+                Job Posting URL
               </label>
               <input
                 type="url"
-                required
                 value={formData.jobUrl}
                 onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://..."
+                placeholder="https://... (optional)"
               />
             </div>
 

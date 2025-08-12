@@ -80,9 +80,6 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                   Date & Time
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Interviewer
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -115,15 +112,21 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                         </div>
                         <div className="ml-4">
                           <div className="flex items-center">
-                            <a
-                              href={job.jobUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline flex items-center"
-                            >
-                              {job.position}
-                              <ExternalLink className="w-3 h-3 ml-1" />
-                            </a>
+                            {job.jobUrl ? (
+                              <a
+                                href={job.jobUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+                              >
+                                {job.position}
+                                <ExternalLink className="w-3 h-3 ml-1" />
+                              </a>
+                            ) : (
+                              <span className="text-sm font-medium text-gray-900">
+                                {job.position}
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-900 font-medium">{job.company}</div>
                           {job.location && (
@@ -159,16 +162,6 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                           </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {interview.interviewer ? (
-                        <div className="flex items-center text-sm text-gray-900">
-                          <User className="w-4 h-4 mr-2 text-gray-400" />
-                          {interview.interviewer}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">Not specified</span>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button

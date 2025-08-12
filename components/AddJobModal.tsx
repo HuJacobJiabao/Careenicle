@@ -25,7 +25,10 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await DataService.createJob(formData)
+      await DataService.createJob({
+        ...formData,
+        applicationDate: new Date(formData.applicationDate),
+      })
       onAdd()
     } catch (error) {
       console.error("Failed to add job:", error)
@@ -99,15 +102,14 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
             <div>
               <label className="flex items-center text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
                 <Link className="w-5 h-5 mr-2 text-indigo-600" />
-                Job Posting URL *
+                Job Posting URL
               </label>
               <input
                 type="url"
-                required
                 value={formData.jobUrl}
                 onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
                 className="form-input"
-                placeholder="https://..."
+                placeholder="https://... (optional)"
               />
             </div>
 

@@ -460,15 +460,21 @@ const JobTable: React.FC = () => {
                         </div>
                         <div className="ml-4 flex-1">
                           <div className="flex items-center">
-                            <a
-                              href={job.jobUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-base font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center group-hover:text-blue-700 transition-colors duration-200"
-                            >
-                              {job.position}
-                              <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                            </a>
+                            {job.jobUrl ? (
+                              <a
+                                href={job.jobUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-base font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center group-hover:text-blue-700 transition-colors duration-200"
+                              >
+                                {job.position}
+                                <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                              </a>
+                            ) : (
+                              <span className="text-base font-semibold text-gray-900">
+                                {job.position}
+                              </span>
+                            )}
                           </div>
                           <div className="text-base font-bold text-gray-900 mt-1">{job.company}</div>
                           {job.location && (

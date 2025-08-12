@@ -2,7 +2,7 @@ export interface Job {
   id?: number
   company: string
   position: string
-  jobUrl: string
+  jobUrl?: string
   applicationDate: Date
   status: "applied" | "interview" | "rejected" | "offer" | "accepted"
   location?: string

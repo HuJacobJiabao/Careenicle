@@ -88,7 +88,7 @@ export class DataService {
         id: Math.max(...mockJobs.map((j) => j.id!)) + 1,
         company: jobData.company!,
         position: jobData.position!,
-        jobUrl: jobData.jobUrl!,
+        jobUrl: jobData.jobUrl,
         applicationDate: jobData.applicationDate!,
         status: jobData.status || "applied",
         location: jobData.location,
