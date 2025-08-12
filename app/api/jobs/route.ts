@@ -47,6 +47,10 @@ export async function GET(request: NextRequest) {
         application_date as "applicationDate",
         status,
         location,
+        CAST(latitude AS FLOAT) as latitude,
+        CAST(longitude AS FLOAT) as longitude,
+        formatted_address as "formattedAddress",
+        place_id as "placeId",
         notes,
         is_favorite as "isFavorite",
         created_at as "createdAt",
@@ -60,7 +64,11 @@ export async function GET(request: NextRequest) {
     )
 
     return NextResponse.json({
-      jobs: result.rows,
+      jobs: result.rows.map((job: any) => ({
+        ...job,
+        latitude: job.latitude ? parseFloat(job.latitude) : null,
+        longitude: job.longitude ? parseFloat(job.longitude) : null,
+      })),
       pagination: {
         page,
         limit,
@@ -77,7 +85,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { company, position, jobUrl, applicationDate, status = "applied", location, notes, isFavorite = false } = body
+    const { 
+      company, 
+      position, 
+      jobUrl, 
+      applicationDate, 
+      status = "applied", 
+      location, 
+      latitude,
+      longitude,
+      formatted_address,
+      place_id,
+      notes, 
+      isFavorite = false 
+    } = body
 
     // Start a transaction
     const client = await pool.connect()
@@ -88,8 +109,8 @@ export async function POST(request: NextRequest) {
       // Insert the job
       const jobResult = await client.query(
         `
-        INSERT INTO jobs (company, position, job_url, application_date, status, location, notes, is_favorite)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO jobs (company, position, job_url, application_date, status, location, latitude, longitude, formatted_address, place_id, notes, is_favorite)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING 
           id,
           company,
@@ -98,12 +119,16 @@ export async function POST(request: NextRequest) {
           application_date as "applicationDate",
           status,
           location,
+          CAST(latitude AS FLOAT) as latitude,
+          CAST(longitude AS FLOAT) as longitude,
+          formatted_address as "formattedAddress",
+          place_id as "placeId",
           notes,
           is_favorite as "isFavorite",
           created_at as "createdAt",
           updated_at as "updatedAt"
       `,
-        [company, position, jobUrl, applicationDate, status, location, notes, isFavorite],
+        [company, position, jobUrl, applicationDate, status, location, latitude, longitude, formatted_address, place_id, notes, isFavorite],
       )
 
       const newJob = jobResult.rows[0]

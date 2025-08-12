@@ -6,6 +6,10 @@ export interface Job {
   applicationDate: Date
   status: "applied" | "interview" | "rejected" | "offer" | "accepted"
   location?: string
+  latitude?: number
+  longitude?: number
+  formatted_address?: string
+  place_id?: string
   notes?: string
   isFavorite?: boolean
   createdAt?: Date

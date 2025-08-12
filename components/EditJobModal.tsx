@@ -2,6 +2,8 @@
 
 import type React from "react"
 import { useState } from "react"
+import { googlePlacesService } from "@/lib/googlePlacesService"
+import LocationAutocomplete from "./LocationAutocomplete"
 import type { Job } from "@/lib/types"
 import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Heart } from "lucide-react"
 
@@ -22,15 +24,38 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
     notes: job.notes || "",
     isFavorite: job.isFavorite || false,
   })
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string>(job.place_id || "")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // Get geographic coordinates if location changed
+      let locationData = null
+      if (formData.location && formData.location !== job.location) {
+        if (formData.company && formData.location) {
+          // Try to find company-specific location first
+          locationData = await googlePlacesService.geocodeCompanyLocation(
+            formData.company, 
+            formData.location
+          )
+        }
+        
+        // If no company-specific location found, use city coordinates
+        if (!locationData) {
+          locationData = await googlePlacesService.geocodeLocation(formData.location)
+        }
+      }
+
       const updateData = {
         ...formData,
         applicationDate: new Date(formData.applicationDate),
         jobUrl: formData.jobUrl || undefined, // Convert empty string to undefined
+        latitude: locationData?.lat || job.latitude,
+        longitude: locationData?.lng || job.longitude,
+        formatted_address: locationData?.formattedAddress || job.formatted_address,
+        place_id: locationData?.placeId || job.place_id,
       }
+
       await fetch(`/api/jobs/${job.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -92,12 +117,14 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 <MapPin className="w-4 h-4 mr-2" />
                 Location
               </label>
-              <input
-                type="text"
+              <LocationAutocomplete
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(value, placeId) => {
+                  setFormData({ ...formData, location: value })
+                  setSelectedPlaceId(placeId || "")
+                }}
                 placeholder="e.g., San Francisco, CA or New York, NY"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 

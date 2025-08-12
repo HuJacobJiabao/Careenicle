@@ -1,11 +1,11 @@
--- Job Tracker Database Setup Script
--- This script creates the complete database schema and populates it with sample data
+-- Job Tracker Database Setup Script with Google Maps Integration
+-- This script creates the complete database schema with location support and populates it with sample data
 
 -- Drop existing tables if they exist (for clean setup)
 DROP TABLE IF EXISTS job_events CASCADE;
 DROP TABLE IF EXISTS jobs CASCADE;
 
--- Create jobs table
+-- Create jobs table with location support
 CREATE TABLE jobs (
     id SERIAL PRIMARY KEY,
     company VARCHAR(255) NOT NULL,
@@ -14,6 +14,10 @@ CREATE TABLE jobs (
     application_date DATE NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'interview', 'rejected', 'offer', 'accepted')),
     location VARCHAR(255),
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    formatted_address TEXT,
+    place_id VARCHAR(255),
     notes TEXT,
     is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -60,9 +64,18 @@ CREATE INDEX idx_jobs_status ON jobs(status);
 CREATE INDEX idx_jobs_company ON jobs(company);
 CREATE INDEX idx_jobs_position ON jobs(position);
 CREATE INDEX idx_jobs_favorite ON jobs(is_favorite);
+CREATE INDEX idx_jobs_latitude ON jobs(latitude);
+CREATE INDEX idx_jobs_longitude ON jobs(longitude);
+CREATE INDEX idx_jobs_location_coords ON jobs(latitude, longitude);
 CREATE INDEX idx_job_events_job_id ON job_events(job_id);
 CREATE INDEX idx_job_events_event_type ON job_events(event_type);
 CREATE INDEX idx_job_events_event_date ON job_events(event_date);
+
+-- Add comments for documentation
+COMMENT ON COLUMN jobs.latitude IS 'Latitude coordinate for job location';
+COMMENT ON COLUMN jobs.longitude IS 'Longitude coordinate for job location';
+COMMENT ON COLUMN jobs.formatted_address IS 'Google Maps formatted address';
+COMMENT ON COLUMN jobs.place_id IS 'Google Places API place ID for caching';
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -80,20 +93,23 @@ CREATE TRIGGER update_jobs_updated_at BEFORE UPDATE ON jobs
 CREATE TRIGGER update_job_events_updated_at BEFORE UPDATE ON job_events
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert sample jobs data
-INSERT INTO jobs (company, position, job_url, application_date, status, location, notes, is_favorite) VALUES
-('Google', 'Software Engineer', 'https://careers.google.com/jobs/123', '2025-01-15', 'applied', 'Mountain View, CA', 'Applied through university career portal', true),
-('Microsoft', 'Frontend Developer', 'https://careers.microsoft.com/us/en/job/456', '2025-01-25', 'interview', 'Seattle, WA', 'Referred by former colleague', false),
-('Apple', 'iOS Developer', 'https://jobs.apple.com/en-us/details/789', '2025-02-05', 'rejected', 'Cupertino, CA', 'Phone screen went well but rejected after technical', false),
-('Netflix', 'Data Engineer', 'https://jobs.netflix.com/jobs/012', '2025-02-15', 'offer', 'Los Gatos, CA', 'Great company culture', true),
-('Meta', 'Full Stack Engineer', 'https://www.metacareers.com/jobs/345', '2025-02-20', 'applied', 'Menlo Park, CA', 'Applied directly on website', false),
-('Amazon', 'Cloud Engineer', 'https://amazon.jobs/en/jobs/678', '2025-02-28', 'interview', 'Austin, TX', 'AWS focused role', false),
-('Tesla', 'Software Engineer', 'https://www.tesla.com/careers/job/901', '2025-03-10', 'applied', 'Palo Alto, CA', 'Automotive software position', true),
-('Spotify', 'Backend Engineer', 'https://www.lifeatspotify.com/jobs/234', '2025-03-15', 'applied', 'New York, NY', 'Music streaming backend', false),
-('Uber', 'Senior Backend Engineer', 'https://www.uber.com/careers/list/567', '2025-02-18', 'applied', 'San Francisco, CA', 'Ride-sharing platform backend', false),
-('Airbnb', 'Product Manager', 'https://careers.airbnb.com/positions/890', '2025-02-20', 'applied', 'San Francisco, CA', 'Travel platform product management', true),
-('Xiaomi', 'Software Engineer', 'https://careers.xiaomi.com/jobs/123', '2025-08-13', 'interview', 'Beijing, China', 'Mobile technology company', false),
-('Local Startup', 'Full Stack Developer', NULL, '2025-03-01', 'applied', 'Remote', 'Found through networking, no formal job posting', false);
+-- Insert sample jobs data with location coordinates
+INSERT INTO jobs (company, position, job_url, application_date, status, location, latitude, longitude, formatted_address, notes, is_favorite) VALUES
+('Google', 'Software Engineer', 'https://careers.google.com/jobs/123', '2025-01-15', 'applied', 'Mountain View, CA', 37.4419, -122.1430, 'Mountain View, CA, USA', 'Applied through university career portal', true),
+('Microsoft', 'Frontend Developer', 'https://careers.microsoft.com/us/en/job/456', '2025-01-25', 'interview', 'Seattle, WA', 47.6062, -122.3321, 'Seattle, WA, USA', 'Referred by former colleague', false),
+('Apple', 'iOS Developer', 'https://jobs.apple.com/en-us/details/789', '2025-02-05', 'rejected', 'Cupertino, CA', 37.3230, -122.0322, 'Cupertino, CA, USA', 'Phone screen went well but rejected after technical', false),
+('Netflix', 'Data Engineer', 'https://jobs.netflix.com/jobs/012', '2025-02-15', 'offer', 'Los Gatos, CA', 37.2358, -121.9623, 'Los Gatos, CA, USA', 'Great company culture', true),
+('Meta', 'Full Stack Engineer', 'https://www.metacareers.com/jobs/345', '2025-02-20', 'applied', 'Menlo Park, CA', 37.4529, -122.1817, 'Menlo Park, CA, USA', 'Applied directly on website', false),
+('Amazon', 'Cloud Engineer', 'https://amazon.jobs/en/jobs/678', '2025-02-28', 'interview', 'Austin, TX', 30.2672, -97.7431, 'Austin, TX, USA', 'AWS focused role', false),
+('Tesla', 'Software Engineer', 'https://www.tesla.com/careers/job/901', '2025-03-10', 'applied', 'Palo Alto, CA', 37.4419, -122.1430, 'Palo Alto, CA, USA', 'Automotive software position', true),
+('Spotify', 'Backend Engineer', 'https://www.lifeatspotify.com/jobs/234', '2025-03-15', 'applied', 'New York, NY', 40.7128, -74.0060, 'New York, NY, USA', 'Music streaming backend', false),
+('Uber', 'Senior Backend Engineer', 'https://www.uber.com/careers/list/567', '2025-02-18', 'applied', 'San Francisco, CA', 37.7749, -122.4194, 'San Francisco, CA, USA', 'Ride-sharing platform backend', false),
+('Airbnb', 'Product Manager', 'https://careers.airbnb.com/positions/890', '2025-02-20', 'applied', 'San Francisco, CA', 37.7749, -122.4194, 'San Francisco, CA, USA', 'Travel platform product management', true),
+('Xiaomi', 'Software Engineer', 'https://careers.xiaomi.com/jobs/123', '2025-08-13', 'interview', 'Beijing, China', 39.9042, 116.4074, 'Beijing, China', 'Mobile technology company', false),
+('Local Startup', 'Full Stack Developer', NULL, '2025-03-01', 'applied', 'Remote', NULL, NULL, NULL, 'Found through networking, no formal job posting', false),
+('IBM', 'AI Research Engineer', 'https://www.ibm.com/careers/123', '2025-03-05', 'applied', 'Armonk, NY', 41.1085, -73.7315, 'Armonk, NY, USA', 'AI and machine learning research', false),
+('LinkedIn', 'Software Engineer', 'https://careers.linkedin.com/jobs/456', '2025-03-08', 'interview', 'Sunnyvale, CA', 37.3688, -122.0363, 'Sunnyvale, CA, USA', 'Professional networking platform', true),
+('Salesforce', 'Cloud Solutions Architect', 'https://salesforce.com/careers/789', '2025-03-12', 'applied', 'San Francisco, CA', 37.7749, -122.4194, 'San Francisco, CA, USA', 'CRM and cloud solutions', false);
 
 -- Insert sample job_events data
 INSERT INTO job_events (job_id, event_type, event_date, title, description, interview_round, interview_type, interviewer, interview_result, notes) VALUES
@@ -144,16 +160,26 @@ INSERT INTO job_events (job_id, event_type, event_date, title, description, inte
 -- Airbnb events
 (10, 'applied', '2025-02-20 17:00:00', 'Application Submitted', 'Applied for Product Manager position at Airbnb', NULL, NULL, NULL, NULL, 'Travel platform PM role'),
 
--- Xiaomi events (with oa and vo interview types)
+-- Xiaomi events
 (11, 'applied', '2025-08-13 10:00:00', 'Application Submitted', 'Applied for Software Engineer position at Xiaomi', NULL, NULL, NULL, NULL, 'Mobile technology company'),
 (11, 'interview_scheduled', '2025-08-20 14:00:00', 'Round 1 Technical Interview Scheduled', 'Technical screening with engineer', 1, 'technical', 'Zhang Wei', 'pending', 'Algorithm and data structures'),
 (11, 'interview', '2025-08-13 14:00:00', 'Round 1 Technical Interview', 'Technical screening with engineer', 1, 'technical', 'Zhang Wei', 'passed', 'Strong problem-solving skills'),
 (11, 'interview_scheduled', '2025-08-27 16:00:00', 'Virtual Onsite Scheduled', 'Full day virtual onsite interviews', 2, 'vo', 'Engineering Team', 'pending', '4-hour virtual onsite session'),
 
 -- Local Startup events (ID 12)
-(12, 'applied', '2025-03-01 09:00:00', 'Application Submitted', 'Applied for Full Stack Developer position at Local Startup', NULL, NULL, NULL, NULL, 'Found through networking event');
+(12, 'applied', '2025-03-01 09:00:00', 'Application Submitted', 'Applied for Full Stack Developer position at Local Startup', NULL, NULL, NULL, NULL, 'Found through networking event'),
+
+-- IBM events (ID 13)
+(13, 'applied', '2025-03-05 10:00:00', 'Application Submitted', 'Applied for AI Research Engineer position at IBM', NULL, NULL, NULL, NULL, 'Research-focused role'),
+
+-- LinkedIn events (ID 14)
+(14, 'applied', '2025-03-08 11:00:00', 'Application Submitted', 'Applied for Software Engineer position at LinkedIn', NULL, NULL, NULL, NULL, 'Professional networking platform'),
+(14, 'interview_scheduled', '2025-03-15 14:00:00', 'Technical Phone Screen Scheduled', 'Initial technical screening', 1, 'phone', 'Alex Chen', 'pending', 'Data structures and algorithms'),
+
+-- Salesforce events (ID 15)
+(15, 'applied', '2025-03-12 13:00:00', 'Application Submitted', 'Applied for Cloud Solutions Architect position at Salesforce', NULL, NULL, NULL, NULL, 'CRM and cloud solutions');
 
 -- Print success message
 SELECT 'Database setup completed successfully! Created ' || 
        (SELECT COUNT(*) FROM jobs) || ' jobs and ' || 
-       (SELECT COUNT(*) FROM job_events) || ' job events.' as result;
+       (SELECT COUNT(*) FROM job_events) || ' job events with location support.' as result;

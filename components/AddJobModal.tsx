@@ -1,8 +1,10 @@
-"use client"
+"use import { GooglePlacesService, LocationResult } from '@/lib/googlePlacesService'lient"
 
 import type React from "react"
 import { useState } from "react"
 import { DataService } from "@/lib/dataService"
+import { googlePlacesService } from "@/lib/googlePlacesService"
+import LocationAutocomplete from "./LocationAutocomplete"
 import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Heart } from "lucide-react"
 
 interface AddJobModalProps {
@@ -21,14 +23,38 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
     notes: "",
     isFavorite: false,
   })
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string>("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await DataService.createJob({
+      // Get geographic coordinates for the job location
+      let locationData = null
+      if (formData.location) {
+        if (formData.company && formData.location) {
+          // Try to find company-specific location first
+          locationData = await googlePlacesService.geocodeCompanyLocation(
+            formData.company, 
+            formData.location
+          )
+        }
+        
+        // If no company-specific location found, use city coordinates
+        if (!locationData) {
+          locationData = await googlePlacesService.geocodeLocation(formData.location)
+        }
+      }
+
+      const jobData = {
         ...formData,
         applicationDate: new Date(formData.applicationDate),
-      })
+        latitude: locationData?.lat,
+        longitude: locationData?.lng,
+        formatted_address: locationData?.formattedAddress,
+        place_id: locationData?.placeId,
+      }
+
+      await DataService.createJob(jobData)
       onAdd()
     } catch (error) {
       console.error("Failed to add job:", error)
@@ -90,12 +116,14 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
                 <MapPin className="w-5 h-5 mr-2 text-green-600" />
                 Location
               </label>
-              <input
-                type="text"
+              <LocationAutocomplete
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="form-input"
+                onChange={(value, placeId) => {
+                  setFormData({ ...formData, location: value })
+                  setSelectedPlaceId(placeId || "")
+                }}
                 placeholder="e.g., San Francisco, CA or New York, NY"
+                className="form-input"
               />
             </div>
 

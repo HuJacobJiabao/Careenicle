@@ -11,7 +11,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Invalid job ID" }, { status: 400 })
     }
 
-    const { company, position, jobUrl, applicationDate, status, location, notes, isFavorite } = body
+    const { 
+      company, 
+      position, 
+      jobUrl, 
+      applicationDate, 
+      status, 
+      location, 
+      latitude,
+      longitude,
+      formatted_address,
+      place_id,
+      notes, 
+      isFavorite 
+    } = body
 
     const result = await pool.query(
       `
@@ -23,12 +36,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         application_date = COALESCE($4, application_date),
         status = COALESCE($5, status),
         location = COALESCE($6, location),
-        notes = COALESCE($7, notes),
-        is_favorite = COALESCE($8, is_favorite)
-      WHERE id = $9
+        latitude = COALESCE($7, latitude),
+        longitude = COALESCE($8, longitude),
+        formatted_address = COALESCE($9, formatted_address),
+        place_id = COALESCE($10, place_id),
+        notes = COALESCE($11, notes),
+        is_favorite = COALESCE($12, is_favorite)
+      WHERE id = $13
       RETURNING id
     `,
-      [company, position, jobUrl, applicationDate, status, location, notes, isFavorite, jobId],
+      [company, position, jobUrl, applicationDate, status, location, latitude, longitude, formatted_address, place_id, notes, isFavorite, jobId],
     )
 
     if (result.rows.length === 0) {
