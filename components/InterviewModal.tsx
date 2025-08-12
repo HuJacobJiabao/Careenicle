@@ -372,14 +372,23 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       const interviewEvent = jobEvents.find((event) => event.id === interviewId)
 
       if (interviewEvent) {
-        // Delete related events by matching round and type
-        await deleteInterviewEvents(interviewEvent.interviewRound!, interviewEvent.interviewType!)
+        // Delete related events by matching round and type (without additional confirmation)
+        const relatedEvents = jobEvents.filter(
+          (event) =>
+            event.interviewRound === interviewEvent.interviewRound &&
+            event.interviewType === interviewEvent.interviewType &&
+            (event.eventType === "interview_scheduled" || event.eventType === "interview"),
+        )
+
+        for (const event of relatedEvents) {
+          await DataService.deleteJobEvent(event.id!)
+        }
+
+        onUpdate() // Call parent update first
+        fetchJobEvents() // Then refresh local data
       } else {
         console.warn("Interview event not found for deletion.")
       }
-
-      onUpdate() // Call parent update first
-      fetchJobEvents() // Then refresh local data
     } catch (error) {
       console.error("Failed to delete interview events:", error)
     }
