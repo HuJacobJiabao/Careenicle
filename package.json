@@ -9,7 +9,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@emotion/react": "latest",
+    "@emotion/styled": "latest",
     "@hookform/resolvers": "^3.9.1",
+    "@mui/material": "latest",
+    "@mui/material-pigment-css": "latest",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
     "@radix-ui/react-aspect-ratio": "1.1.1",
@@ -20,7 +24,6 @@
     "@radix-ui/react-dialog": "1.1.4",
     "@radix-ui/react-dropdown-menu": "2.1.4",
     "@radix-ui/react-hover-card": "1.1.4",
-    "@radix-ui/react-icons": "latest",
     "@radix-ui/react-label": "latest",
     "@radix-ui/react-menubar": "1.1.4",
     "@radix-ui/react-navigation-menu": "1.2.3",
