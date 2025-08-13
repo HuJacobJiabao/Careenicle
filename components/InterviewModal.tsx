@@ -36,6 +36,17 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { CalendarIcon } from "@radix-ui/react-icons"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface InterviewModalProps {
   job: Job
@@ -67,6 +78,11 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
   })
 
   const [timelineSortOrder, setTimelineSortOrder] = useState<"desc" | "asc">("desc")
+
+  const [deleteEventDialog, setDeleteEventDialog] = useState<{ isOpen: boolean; eventId?: number }>({ isOpen: false })
+  const [deleteInterviewDialog, setDeleteInterviewDialog] = useState<{ isOpen: boolean; interviewId?: number }>({
+    isOpen: false,
+  })
 
   useEffect(() => {
     fetchJobEvents()
@@ -220,38 +236,43 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
     }
   }
 
+  const getEventNodeColor = (eventType: string) => {
+    const colors = {
+      application: "border-blue-500 bg-blue-100",
+      interview_scheduled: "border-purple-500 bg-purple-100",
+      interview: "border-green-500 bg-green-100",
+      interview_completed: "border-emerald-500 bg-emerald-100",
+      offer: "border-yellow-500 bg-yellow-100",
+      rejection: "border-red-500 bg-red-100",
+      follow_up: "border-orange-500 bg-orange-100",
+      other: "border-gray-500 bg-gray-100",
+    }
+    return colors[eventType as keyof typeof colors] || colors.other
+  }
+
   const deleteEvent = async (eventId: number) => {
-    if (!confirm("Are you sure you want to delete this event?")) return
+    setDeleteEventDialog({ isOpen: true, eventId })
+  }
+
+  const confirmDeleteEvent = async () => {
+    if (!deleteEventDialog.eventId) return
 
     try {
-      await DataService.deleteJobEvent(eventId)
+      await DataService.deleteJobEvent(deleteEventDialog.eventId)
       onUpdate() // Call parent update first
       fetchJobEvents() // Then refresh local data
+      setDeleteEventDialog({ isOpen: false })
     } catch (error) {
       console.error("Failed to delete event:", error)
     }
   }
 
   const deleteInterviewEvents = async (interviewRound: number, interviewType: string) => {
-    if (!confirm("Are you sure you want to delete this interview and all related events?")) return
-
-    try {
-      // Delete related events by matching round and type
-      const relatedEvents = jobEvents.filter(
-        (event) =>
-          event.interviewRound === interviewRound &&
-          event.interviewType === interviewType &&
-          (event.eventType === "interview_scheduled" || event.eventType === "interview"),
-      )
-
-      for (const event of relatedEvents) {
-        await DataService.deleteJobEvent(event.id!)
-      }
-
-      onUpdate() // Call parent update first
-      fetchJobEvents() // Then refresh local data
-    } catch (error) {
-      console.error("Failed to delete interview events:", error)
+    const interviewEvent = jobEvents.find(
+      (event) => event.interviewRound === interviewRound && event.interviewType === interviewType,
+    )
+    if (interviewEvent?.id) {
+      setDeleteInterviewDialog({ isOpen: true, interviewId: interviewEvent.id })
     }
   }
 
@@ -375,11 +396,15 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
   }
 
   const deleteInterview = async (interviewId: number) => {
-    if (!confirm("Are you sure you want to delete this interview and all related events?")) return
+    setDeleteInterviewDialog({ isOpen: true, interviewId })
+  }
+
+  const confirmDeleteInterview = async () => {
+    if (!deleteInterviewDialog.interviewId) return
 
     try {
       // Find the interview event
-      const interviewEvent = jobEvents.find((event) => event.id === interviewId)
+      const interviewEvent = jobEvents.find((event) => event.id === deleteInterviewDialog.interviewId)
 
       if (interviewEvent) {
         // Delete related events by matching round and type (without additional confirmation)
@@ -390,17 +415,19 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
             (event.eventType === "interview_scheduled" || event.eventType === "interview"),
         )
 
+        // Delete all related events
         for (const event of relatedEvents) {
-          await DataService.deleteJobEvent(event.id!)
+          if (event.id) {
+            await DataService.deleteJobEvent(event.id)
+          }
         }
 
         onUpdate() // Call parent update first
         fetchJobEvents() // Then refresh local data
-      } else {
-        console.warn("Interview event not found for deletion.")
       }
+      setDeleteInterviewDialog({ isOpen: false })
     } catch (error) {
-      console.error("Failed to delete interview events:", error)
+      console.error("Failed to delete interview:", error)
     }
   }
 
@@ -451,8 +478,13 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl animate-scale-in">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[90%] md:max-w-[80%] lg:max-w-[70%] xl:max-w-[60%]">
+        <DialogHeader>
+          <DialogTitle>Interview Management</DialogTitle>
+          <DialogDescription>Manage interviews and track your progress.</DialogDescription>
+        </DialogHeader>
+
         <div className="p-8">
           <div className="flex justify-between items-start mb-8">
             <div className="space-y-2">
@@ -1126,8 +1158,7 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
                     </div>
                   ) : (
                     <>
-                      {/* Timeline vertical line */}
-                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-green-200"></div>
+                      <div className="absolute left-[23px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-green-200"></div>
 
                       <div className="space-y-6">
                         {jobEvents
@@ -1138,8 +1169,9 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
                           })
                           .map((event, index) => (
                             <div key={event.id} className="relative flex items-start space-x-4">
-                              {/* Timeline node */}
-                              <div className="relative z-10 flex-shrink-0 w-3 h-3 bg-white border-2 border-blue-400 rounded-full mt-3 shadow-sm"></div>
+                              <div
+                                className={`relative z-10 flex-shrink-0 w-3 h-3 rounded-full mt-3 shadow-sm border-2 ${getEventNodeColor(event.eventType)}`}
+                              ></div>
 
                               {/* Event card */}
                               <div className="flex-grow min-w-0">
@@ -1203,7 +1235,44 @@ export default function InterviewModal({ job, isOpen, onClose, onUpdate }: Inter
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+
+        <AlertDialog open={deleteEventDialog.isOpen} onOpenChange={(open) => setDeleteEventDialog({ isOpen: open })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Event</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this event? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteEvent} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={deleteInterviewDialog.isOpen}
+          onOpenChange={(open) => setDeleteInterviewDialog({ isOpen: open })}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Interview</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this interview and all related events? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteInterview} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DialogContent>
+    </Dialog>
   )
 }
