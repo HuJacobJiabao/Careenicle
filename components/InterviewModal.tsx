@@ -21,6 +21,7 @@ import {
   Award,
   UserCheck,
   ChevronRight,
+  ArrowUpDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,8 +36,6 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { CalendarIcon } from "@radix-ui/react-icons"
-
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 
 interface InterviewModalProps {
   job: Job
@@ -58,6 +57,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   const [showEventForm, setShowEventForm] = useState(false)
   const [showNewInterviewForm, setShowNewInterviewForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<JobEvent | null>(null)
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // desc = newest first, asc = oldest first
   const [newEvent, setNewEvent] = useState({
     eventType: "interview_scheduled" as JobEvent["eventType"],
     eventDate: "",
@@ -92,6 +92,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       withdrawn: "Withdrawn",
     }
     return labels[eventType as keyof typeof labels] || eventType
+  }
+
+  const getSortedEvents = () => {
+    return [...jobEvents].sort((a, b) => {
+      const dateA = new Date(a.eventDate).getTime()
+      const dateB = new Date(b.eventDate).getTime()
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
+    })
+  }
+
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')
   }
 
   useEffect(() => {
@@ -428,16 +440,6 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     } catch (error) {
       console.error("Failed to delete interview events:", error)
     }
-  }
-
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return
-
-    const items = Array.from(jobEvents)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
-
-    setJobEvents(items)
   }
 
   return (
@@ -845,14 +847,27 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                   <CardTitle className="text-xl text-slate-800">Event Timeline</CardTitle>
                   <CardDescription>Track all events related to this job application</CardDescription>
                 </div>
-                {/* Made Add Event button solid like Schedule New Interview */}
-                <Button
-                  onClick={() => setShowEventForm(!showEventForm)}
-                  className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Event
-                </Button>
+                <div className="flex items-center space-x-3">
+                  {/* Sort Button */}
+                  <Button
+                    variant="outline"
+                    onClick={toggleSortOrder}
+                    className="flex items-center space-x-2 border-slate-300 hover:border-slate-400"
+                  >
+                    <ArrowUpDown className="w-4 h-4" />
+                    <span className="text-sm">
+                      {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+                    </span>
+                  </Button>
+                  {/* Made Add Event button solid like Schedule New Interview */}
+                  <Button
+                    onClick={() => setShowEventForm(!showEventForm)}
+                    className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Event
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
@@ -1106,91 +1121,70 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       <p className="text-slate-500 italic">No events recorded yet</p>
                     </div>
                   ) : (
-                    <DragDropContext onDragEnd={handleDragEnd}>
-                      <Droppable droppableId="events">
-                        {(provided) => (
-                          <div {...provided.droppableProps} ref={provided.innerRef} className="relative">
-                            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-slate-300"></div>
+                    <div className="relative">
+                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-slate-300"></div>
 
-                            <div className="space-y-4">
-                              {jobEvents
-                                .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
-                                .map((event, index) => (
-                                  <Draggable key={event.id} draggableId={event.id!.toString()} index={index}>
-                                    {(provided, snapshot) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        className={`relative ${snapshot.isDragging ? "z-10" : ""}`}
+                      <div className="space-y-4">
+                        {getSortedEvents()
+                          .map((event, index) => (
+                            <div key={event.id} className="relative">
+                              <Card className="border-slate-100 hover:border-slate-200 transition-all duration-200 ml-12 hover:shadow-md">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <span
+                                        className={`px-2 py-1 text-xs font-medium rounded-full ${getEventTypeBadgeColor(event.eventType)}`}
                                       >
-                                        <Card
-                                          className={`border-slate-100 hover:border-slate-200 transition-all duration-200 ml-12 ${
-                                            snapshot.isDragging ? "shadow-lg rotate-2" : "hover:shadow-md"
-                                          }`}
-                                        >
-                                          <CardContent className="p-4">
-                                            <div className="flex items-center justify-between mb-3">
-                                              <div className="flex items-center space-x-2">
-                                                <span
-                                                  className={`px-2 py-1 text-xs font-medium rounded-full ${getEventTypeBadgeColor(event.eventType)}`}
-                                                >
-                                                  {getEventTypeLabel(event.eventType)}
-                                                </span>
-                                                <span className="text-xs text-slate-500 font-medium">
-                                                  {new Date(event.eventDate).toLocaleString("en-US", {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                  })}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center space-x-1">
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => setEditingEvent(event)}
-                                                  className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
-                                                >
-                                                  <Edit className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => deleteEvent(event.id!)}
-                                                  className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
-                                                >
-                                                  <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                              </div>
-                                            </div>
+                                        {getEventTypeLabel(event.eventType)}
+                                      </span>
+                                      <span className="text-xs text-slate-500 font-medium">
+                                        {new Date(event.eventDate).toLocaleString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingEvent(event)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteEvent(event.id!)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
 
-                                            <div className="flex items-start space-x-3">
-                                              <div className="flex-grow min-w-0">
-                                                <h5 className="text-sm font-semibold text-slate-800 mb-1">
-                                                  {event.title}
-                                                </h5>
-                                                {event.description && (
-                                                  <p className="text-sm text-slate-600 mb-1">{event.description}</p>
-                                                )}
-                                                {event.notes && <p className="text-xs text-slate-500">{event.notes}</p>}
-                                              </div>
-                                            </div>
-                                          </CardContent>
-                                        </Card>
+                                  <div className="flex items-start space-x-3">
+                                    <div className="flex-grow min-w-0">
+                                      <h5 className="text-sm font-semibold text-slate-800 mb-1">
+                                        {event.title}
+                                      </h5>
+                                      {event.description && (
+                                        <p className="text-sm text-slate-600 mb-1">{event.description}</p>
+                                      )}
+                                      {event.notes && <p className="text-xs text-slate-500">{event.notes}</p>}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
 
-                                        <div className="absolute left-5 top-6 w-3 h-3 bg-white border-2 border-blue-500 rounded-full shadow-sm"></div>
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))}
+                              <div className="absolute left-5 top-6 w-3 h-3 bg-white border-2 border-blue-500 rounded-full shadow-sm"></div>
                             </div>
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
+                          ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
