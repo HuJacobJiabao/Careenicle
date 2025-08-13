@@ -110,17 +110,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
   const getEventTypeDotColor = (eventType: string) => {
     const colors = {
-      applied: "border-blue-500 bg-blue-500",
-      interview_scheduled: "border-yellow-500 bg-yellow-500",
-      interview: "border-purple-500 bg-purple-500",
-      interview_result: "border-indigo-500 bg-indigo-500",
-      rejected: "border-red-500 bg-red-500",
-      offer_received: "border-green-500 bg-green-500",
-      offer_accepted: "border-emerald-500 bg-emerald-500",
-      withdrawn: "border-gray-500 bg-gray-500",
-      ghosted: "border-orange-500 bg-orange-500",
+      applied: "border-blue-500",
+      interview_scheduled: "border-yellow-500",
+      interview: "border-purple-500",
+      interview_result: "border-indigo-500",
+      rejected: "border-red-500",
+      offer_received: "border-green-500",
+      offer_accepted: "border-emerald-500",
+      withdrawn: "border-gray-500",
+      ghosted: "border-orange-500",
     }
-    return colors[eventType as keyof typeof colors] || "border-blue-500 bg-blue-500"
+    return colors[eventType as keyof typeof colors] || "border-blue-500"
   }
 
   const getSortedEvents = () => {
