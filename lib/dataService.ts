@@ -1,24 +1,34 @@
 import type { Job, JobEvent } from "./types"
 import { mockJobs, mockJobEvents } from "./mockData"
 
-export class DataService {
-  private static useMockData = false
+export type DatabaseProvider = "mock" | "postgresql" | "supabase"
 
-  static setUseMockData(useMock: boolean) {
-    this.useMockData = useMock
+export class DataService {
+  private static databaseProvider: DatabaseProvider = "mock"
+
+  static setDatabaseProvider(provider: DatabaseProvider) {
+    this.databaseProvider = provider
     if (typeof window !== "undefined") {
-      localStorage.setItem("useMockData", useMock.toString())
+      localStorage.setItem("databaseProvider", provider)
     }
   }
 
-  static getUseMockData(): boolean {
+  static getDatabaseProvider(): DatabaseProvider {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("useMockData")
-      if (stored !== null) {
-        this.useMockData = stored === "true"
+      const stored = localStorage.getItem("databaseProvider") as DatabaseProvider
+      if (stored && ["mock", "postgresql", "supabase"].includes(stored)) {
+        this.databaseProvider = stored
       }
     }
-    return this.useMockData
+    return this.databaseProvider
+  }
+
+  static setUseMockData(useMock: boolean) {
+    this.setDatabaseProvider(useMock ? "mock" : "postgresql")
+  }
+
+  static getUseMockData(): boolean {
+    return this.getDatabaseProvider() === "mock"
   }
 
   static async fetchJobs(params?: {
@@ -28,7 +38,9 @@ export class DataService {
     status?: string
     favorites?: boolean
   }): Promise<{ jobs: Job[]; pagination?: any }> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       let filteredJobs = [...mockJobs]
 
       // Apply filters
@@ -64,13 +76,14 @@ export class DataService {
         },
       }
     } else {
-      // Real API call
       const searchParams = new URLSearchParams()
       if (params?.page) searchParams.set("page", params.page.toString())
       if (params?.limit) searchParams.set("limit", params.limit.toString())
       if (params?.search) searchParams.set("search", params.search)
       if (params?.status) searchParams.set("status", params.status)
       if (params?.favorites) searchParams.set("favorites", params.favorites.toString())
+
+      searchParams.set("provider", provider)
 
       const response = await fetch(`/api/jobs?${searchParams}`)
       return await response.json()
@@ -83,7 +96,9 @@ export class DataService {
   }
 
   static async createJob(jobData: Partial<Job>): Promise<Job> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const newJob: Job = {
         id: Math.max(...mockJobs.map((j) => j.id!)) + 1,
         company: jobData.company!,
@@ -103,14 +118,16 @@ export class DataService {
       const response = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jobData),
+        body: JSON.stringify({ ...jobData, provider }),
       })
       return await response.json()
     }
   }
 
   static async updateJob(jobId: number, updates: Partial<Job>): Promise<void> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const jobIndex = mockJobs.findIndex((job) => job.id === jobId)
       if (jobIndex !== -1) {
         mockJobs[jobIndex] = { ...mockJobs[jobIndex], ...updates, updatedAt: new Date() }
@@ -119,24 +136,28 @@ export class DataService {
       await fetch(`/api/jobs/${jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ ...updates, provider }),
       })
     }
   }
 
   static async deleteJob(jobId: number): Promise<void> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const jobIndex = mockJobs.findIndex((job) => job.id === jobId)
       if (jobIndex !== -1) {
         mockJobs.splice(jobIndex, 1)
       }
     } else {
-      await fetch(`/api/jobs/${jobId}`, { method: "DELETE" })
+      await fetch(`/api/jobs/${jobId}?provider=${provider}`, { method: "DELETE" })
     }
   }
 
   static async fetchJobEvents(jobId?: number): Promise<JobEvent[]> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       let events = [...mockJobEvents]
 
       if (jobId) {
@@ -145,14 +166,19 @@ export class DataService {
 
       return events.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
     } else {
-      const params = jobId ? `?jobId=${jobId}` : ""
-      const response = await fetch(`/api/job-events${params}`)
+      const params = new URLSearchParams()
+      if (jobId) params.set("jobId", jobId.toString())
+      params.set("provider", provider)
+
+      const response = await fetch(`/api/job-events?${params}`)
       return await response.json()
     }
   }
 
   static async createJobEvent(eventData: Partial<JobEvent>): Promise<JobEvent> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const newEvent: JobEvent = {
         id: Math.max(...mockJobEvents.map((e) => e.id!)) + 1,
         jobId: eventData.jobId!,
@@ -175,14 +201,16 @@ export class DataService {
       const response = await fetch("/api/job-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(eventData),
+        body: JSON.stringify({ ...eventData, provider }),
       })
       return await response.json()
     }
   }
 
   static async updateJobEvent(eventId: number, updates: Partial<JobEvent>): Promise<void> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const eventIndex = mockJobEvents.findIndex((event) => event.id === eventId)
       if (eventIndex !== -1) {
         mockJobEvents[eventIndex] = { ...mockJobEvents[eventIndex], ...updates, updatedAt: new Date() }
@@ -191,24 +219,28 @@ export class DataService {
       await fetch(`/api/job-events/${eventId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ ...updates, provider }),
       })
     }
   }
 
   static async deleteJobEvent(eventId: number): Promise<void> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const eventIndex = mockJobEvents.findIndex((event) => event.id === eventId)
       if (eventIndex !== -1) {
         mockJobEvents.splice(eventIndex, 1)
       }
     } else {
-      await fetch(`/api/job-events/${eventId}`, { method: "DELETE" })
+      await fetch(`/api/job-events/${eventId}?provider=${provider}`, { method: "DELETE" })
     }
   }
 
   static async toggleFavorite(jobId: number, isFavorite: boolean): Promise<void> {
-    if (this.useMockData) {
+    const provider = this.getDatabaseProvider()
+
+    if (provider === "mock") {
       const job = mockJobs.find((job) => job.id === jobId)
       if (job) {
         job.isFavorite = !isFavorite
@@ -218,7 +250,7 @@ export class DataService {
       await fetch(`/api/jobs/${jobId}/favorite`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isFavorite: !isFavorite }),
+        body: JSON.stringify({ isFavorite: !isFavorite, provider }),
       })
     }
   }

@@ -4,21 +4,23 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { DataService } from "@/lib/dataService"
-import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map } from "lucide-react"
+import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const Header: React.FC = () => {
-  const [useMockData, setUseMockData] = useState(false)
+  const [databaseProvider, setDatabaseProvider] = useState<"mock" | "postgresql" | "supabase">("mock")
   const pathname = usePathname()
-  const router = useRouter() // Add this line
+  const router = useRouter()
 
   useEffect(() => {
-    setUseMockData(DataService.getUseMockData())
+    setDatabaseProvider(DataService.getDatabaseProvider())
   }, [])
 
-  const toggleDataSource = () => {
-    const newValue = !useMockData
-    setUseMockData(newValue)
-    DataService.setUseMockData(newValue)
+  const handleProviderChange = (provider: "mock" | "postgresql" | "supabase") => {
+    setDatabaseProvider(provider)
+    DataService.setDatabaseProvider(provider)
 
     // Trigger custom event for other components to listen
     window.dispatchEvent(new CustomEvent("dataSourceChanged"))
@@ -26,11 +28,25 @@ const Header: React.FC = () => {
     router.refresh() // This will re-fetch data for the current route
   }
 
+  const getProviderInfo = (provider: "mock" | "postgresql" | "supabase") => {
+    switch (provider) {
+      case "mock":
+        return { icon: TestTube, label: "Mock Data", color: "text-orange-500" }
+      case "postgresql":
+        return { icon: Database, label: "PostgreSQL", color: "text-green-500" }
+      case "supabase":
+        return { icon: Database, label: "Supabase", color: "text-blue-500" }
+    }
+  }
+
   const getActiveClass = (path: string) => {
     return pathname === path
       ? "text-blue-600 hover:text-blue-700 font-semibold border-b-2 border-blue-600 pb-1"
       : "text-gray-600 hover:text-gray-700 font-medium transition-colors duration-200"
   }
+
+  const currentProvider = getProviderInfo(databaseProvider)
+  const CurrentIcon = currentProvider.icon
 
   return (
     <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
@@ -65,30 +81,58 @@ const Header: React.FC = () => {
             </a>
           </nav>
 
-          {/* Data Source Toggle */}
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 bg-gray-50 rounded-full px-4 py-2 border border-gray-200">
-              <div className="flex items-center space-x-2">
-                {useMockData ? (
-                  <TestTube className="w-4 h-4 text-orange-500" />
-                ) : (
-                  <Database className="w-4 h-4 text-green-500" />
-                )}
-                <span className="text-sm font-medium text-gray-700">{useMockData ? "Mock Data" : "PostgreSQL"}</span>
-              </div>
-              <button
-                onClick={toggleDataSource}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  useMockData ? "bg-orange-500" : "bg-green-500"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    useMockData ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 border-gray-200"
+                >
+                  <Settings className="w-4 h-4 text-gray-500" />
+                  <div className="flex items-center space-x-2">
+                    <CurrentIcon className={`w-4 h-4 ${currentProvider.color}`} />
+                    <span className="text-sm font-medium text-gray-700">{currentProvider.label}</span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-4" align="end">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Database Provider</h4>
+                    <p className="text-sm text-gray-600 mb-3">Choose your data source</p>
+                  </div>
+                  <Select value={databaseProvider} onValueChange={handleProviderChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mock">
+                        <div className="flex items-center space-x-2">
+                          <TestTube className="w-4 h-4 text-orange-500" />
+                          <span>Mock Data</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="postgresql">
+                        <div className="flex items-center space-x-2">
+                          <Database className="w-4 h-4 text-green-500" />
+                          <span>PostgreSQL</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="supabase">
+                        <div className="flex items-center space-x-2">
+                          <Database className="w-4 h-4 text-blue-500" />
+                          <span>Supabase</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-gray-500">
+                    Current: <span className="font-medium">{currentProvider.label}</span>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Mobile Navigation */}
