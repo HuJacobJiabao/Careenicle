@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import ConfirmDialog from "./ConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 
@@ -58,6 +59,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   const [showNewInterviewForm, setShowNewInterviewForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<JobEvent | null>(null)
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // desc = newest first, asc = oldest first
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  })
   const [newEvent, setNewEvent] = useState({
     eventType: "interview_scheduled" as JobEvent["eventType"],
     eventDate: "",
@@ -76,6 +88,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       offer_received: "bg-green-100 text-green-800",
       offer_accepted: "bg-emerald-100 text-emerald-800",
       withdrawn: "bg-gray-100 text-gray-800",
+      ghosted: "bg-orange-100 text-orange-800",
     }
     return colors[eventType as keyof typeof colors] || "bg-gray-100 text-gray-800"
   }
@@ -90,8 +103,24 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       offer_received: "Offer Received",
       offer_accepted: "Offer Accepted",
       withdrawn: "Withdrawn",
+      ghosted: "Ghosted",
     }
     return labels[eventType as keyof typeof labels] || eventType
+  }
+
+  const getEventTypeDotColor = (eventType: string) => {
+    const colors = {
+      applied: "border-blue-500 bg-blue-500",
+      interview_scheduled: "border-yellow-500 bg-yellow-500",
+      interview: "border-purple-500 bg-purple-500",
+      interview_result: "border-indigo-500 bg-indigo-500",
+      rejected: "border-red-500 bg-red-500",
+      offer_received: "border-green-500 bg-green-500",
+      offer_accepted: "border-emerald-500 bg-emerald-500",
+      withdrawn: "border-gray-500 bg-gray-500",
+      ghosted: "border-orange-500 bg-orange-500",
+    }
+    return colors[eventType as keyof typeof colors] || "border-blue-500 bg-blue-500"
   }
 
   const getSortedEvents = () => {
@@ -259,38 +288,48 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   const deleteEvent = async (eventId: number) => {
-    if (!confirm("Are you sure you want to delete this event?")) return
-
-    try {
-      await DataService.deleteJobEvent(eventId)
-      onUpdate() // Call parent update first
-      fetchJobEvents() // Then refresh local data
-    } catch (error) {
-      console.error("Failed to delete event:", error)
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Event",
+      message: "Are you sure you want to delete this event? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await DataService.deleteJobEvent(eventId)
+          onUpdate() // Call parent update first
+          fetchJobEvents() // Then refresh local data
+        } catch (error) {
+          console.error("Failed to delete event:", error)
+        }
+      }
+    })
   }
 
   const deleteInterviewEvents = async (interviewRound: number, interviewType: string) => {
-    if (!confirm("Are you sure you want to delete this interview and all related events?")) return
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Interview",
+      message: "Are you sure you want to delete this interview and all related events? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          // Delete related events by matching round and type
+          const relatedEvents = jobEvents.filter(
+            (event) =>
+              event.interviewRound === interviewRound &&
+              event.interviewType === interviewType &&
+              (event.eventType === "interview_scheduled" || event.eventType === "interview"),
+          )
 
-    try {
-      // Delete related events by matching round and type
-      const relatedEvents = jobEvents.filter(
-        (event) =>
-          event.interviewRound === interviewRound &&
-          event.interviewType === interviewType &&
-          (event.eventType === "interview_scheduled" || event.eventType === "interview"),
-      )
+          for (const event of relatedEvents) {
+            await DataService.deleteJobEvent(event.id!)
+          }
 
-      for (const event of relatedEvents) {
-        await DataService.deleteJobEvent(event.id!)
+          onUpdate() // Call parent update first
+          fetchJobEvents() // Then refresh local data
+        } catch (error) {
+          console.error("Failed to delete interview events:", error)
+        }
       }
-
-      onUpdate() // Call parent update first
-      fetchJobEvents() // Then refresh local data
-    } catch (error) {
-      console.error("Failed to delete interview events:", error)
-    }
+    })
   }
 
   const saveEditingInterview = async () => {
@@ -413,19 +452,22 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   const deleteInterview = async (interviewId: number) => {
-    if (!confirm("Are you sure you want to delete this interview and all related events?")) return
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Interview",
+      message: "Are you sure you want to delete this interview and all related events? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          // Find the interview event
+          const interviewEvent = jobEvents.find((event) => event.id === interviewId)
 
-    try {
-      // Find the interview event
-      const interviewEvent = jobEvents.find((event) => event.id === interviewId)
-
-      if (interviewEvent) {
-        // Delete related events by matching round and type (without additional confirmation)
-        const relatedEvents = jobEvents.filter(
-          (event) =>
-            event.interviewRound === interviewEvent.interviewRound &&
-            event.interviewType === interviewEvent.interviewType &&
-            (event.eventType === "interview_scheduled" || event.eventType === "interview"),
+          if (interviewEvent) {
+            // Delete related events by matching round and type (without additional confirmation)
+            const relatedEvents = jobEvents.filter(
+              (event) =>
+                event.interviewRound === interviewEvent.interviewRound &&
+                event.interviewType === interviewEvent.interviewType &&
+                (event.eventType === "interview_scheduled" || event.eventType === "interview"),
         )
 
         for (const event of relatedEvents) {
@@ -437,9 +479,11 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       } else {
         console.warn("Interview event not found for deletion.")
       }
-    } catch (error) {
-      console.error("Failed to delete interview events:", error)
-    }
+        } catch (error) {
+          console.error("Failed to delete interview events:", error)
+        }
+      }
+    })
   }
 
   return (
@@ -1122,7 +1166,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     </div>
                   ) : (
                     <div className="relative">
-                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-slate-300"></div>
+                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-400 to-pink-300"></div>
 
                       <div className="space-y-4">
                         {getSortedEvents()
@@ -1180,7 +1224,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                 </CardContent>
                               </Card>
 
-                              <div className="absolute left-5 top-6 w-3 h-3 bg-white border-2 border-blue-500 rounded-full shadow-sm"></div>
+                              <div className={`absolute w-3 h-3 border-2 rounded-full bg-white shadow-sm ${getEventTypeDotColor(event.eventType)}`} style={{left: 'calc(1.5rem - 6px)', top: '1.5rem'}}></div>
                             </div>
                           ))}
                       </div>
@@ -1192,6 +1236,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           </Card>
         </div>
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }

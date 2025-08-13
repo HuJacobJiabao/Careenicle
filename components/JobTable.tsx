@@ -8,6 +8,7 @@ import InterviewModal from "./InterviewModal"
 import AddJobModal from "./AddJobModal"
 import EditJobModal from "./EditJobModal"
 import UpcomingInterviewsTable from "./UpcomingInterviewsTable"
+import ConfirmDialog from "./ConfirmDialog"
 import {
   Building2,
   Calendar,
@@ -40,6 +41,17 @@ const JobTable: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [showFavorites, setShowFavorites] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  })
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -198,15 +210,20 @@ const JobTable: React.FC = () => {
   }
 
   const deleteJob = async (jobId: number) => {
-    if (confirm("Are you sure you want to delete this job application?")) {
-      try {
-        await DataService.deleteJob(jobId)
-        fetchJobs()
-        fetchJobEvents()
-      } catch (error) {
-        console.error("Failed to delete job:", error)
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Job Application",
+      message: "Are you sure you want to delete this job application? This will also delete all related events and cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await DataService.deleteJob(jobId)
+          fetchJobs()
+          fetchJobEvents()
+        } catch (error) {
+          console.error("Failed to delete job:", error)
+        }
       }
-    }
+    })
   }
 
   const getJobInterviewEvents = (jobId: number) => {
@@ -883,6 +900,18 @@ const JobTable: React.FC = () => {
           }}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }
