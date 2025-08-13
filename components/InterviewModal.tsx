@@ -445,6 +445,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     )
                     const rows = []
 
+                    // Calculate consistent card width based on maximum 3 cards per row
+                    const maxCardsPerRow = 3
+                    const arrowWidth = 40 // 24px icon + 16px margin
+                    const gapWidth = 16 // gap between elements
+                    const maxArrowsPerRow = maxCardsPerRow - 1 // arrows between cards
+                    const totalArrowAndGapWidth = maxArrowsPerRow * arrowWidth + maxArrowsPerRow * gapWidth
+                    const cardWidth = `calc((100% - ${totalArrowAndGapWidth}px) / ${maxCardsPerRow})`
+
                     // Group interviews into rows of maximum 3
                     for (let i = 0; i < sortedInterviews.length; i += 3) {
                       const rowInterviews = sortedInterviews.slice(i, i + 3)
@@ -452,26 +460,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       const hasMoreInterviews = !isLastRow
 
                       rows.push(
-                        <div key={`row-${i}`} className="flex items-center justify-start gap-4">
+                        <div key={`row-${i}`} className="flex items-center justify-start gap-4 overflow-hidden">
                           {rowInterviews.map((interview, index) => {
                             const typeConfig = getTypeConfig(interview.interviewType || "technical")
                             const resultConfig = getResultConfig(interview.interviewResult || "pending")
                             const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
 
-                            // Calculate card width based on number of interviews in this row
-                            const cardCount = rowInterviews.length
-                            const arrowCount = cardCount - 1 + (hasMoreInterviews && index === cardCount - 1 ? 1 : 0)
-                            const arrowWidth = 32 // 24px icon + 8px margin
-                            const gapWidth = 16 * (cardCount - 1) // 16px gap between cards
-                            const totalArrowWidth = arrowCount * arrowWidth
-                            const availableWidth = `calc(100% - ${totalArrowWidth + gapWidth}px)`
-                            const cardWidth = `calc(${availableWidth} / ${cardCount})`
-
                             return (
                               <React.Fragment key={interview.id}>
                                 <Card
                                   className="hover:shadow-lg transition-all duration-200 border-slate-200 flex-shrink-0"
-                                  style={{ width: cardWidth, minWidth: "280px" }}
+                                  style={{ width: cardWidth, maxWidth: cardWidth }}
                                 >
                                   <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
@@ -593,8 +592,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
                                 {(index < rowInterviews.length - 1 ||
                                   (hasMoreInterviews && index === rowInterviews.length - 1)) && (
-                                  <div className="flex items-center justify-center flex-shrink-0">
-                                    <ChevronRight className="w-6 h-6 text-slate-400" />
+                                  <div className="flex items-center justify-center flex-shrink-0 w-6">
+                                    <ChevronRight className="w-5 h-5 text-slate-400" />
                                   </div>
                                 )}
                               </React.Fragment>
