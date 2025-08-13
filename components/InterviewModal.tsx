@@ -21,6 +21,7 @@ import {
   Award,
   UserCheck,
   ChevronRight,
+  ArrowUpDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,13 +31,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { CalendarIcon } from "@radix-ui/react-icons"
+
 interface InterviewModalProps {
   job: Job
+  isOpen: boolean
   onClose: () => void
   onUpdate: () => void
 }
 
-const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate }) => {
+export default function InterviewModal({ job, isOpen, onClose, onUpdate }: InterviewModalProps) {
   const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
   const interviews = jobEvents.filter((event) => event.eventType === "interview")
   const [newInterview, setNewInterview] = useState({
@@ -57,6 +65,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     description: "",
     notes: "",
   })
+
+  const [timelineSortOrder, setTimelineSortOrder] = useState<"desc" | "asc">("desc")
 
   useEffect(() => {
     fetchJobEvents()
@@ -394,6 +404,52 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     }
   }
 
+  const getEventTypeBadgeColor = (eventType: JobEvent["eventType"]) => {
+    switch (eventType) {
+      case "applied":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "interview_scheduled":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      case "interview":
+        return "bg-indigo-100 text-indigo-800 border-indigo-200"
+      case "interview_result":
+        return "bg-cyan-100 text-cyan-800 border-cyan-200"
+      case "rejected":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "offer_received":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "offer_accepted":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200"
+      case "withdrawn":
+        return "bg-gray-100 text-gray-800 border-gray-200"
+      default:
+        return "bg-slate-100 text-slate-800 border-slate-200"
+    }
+  }
+
+  const getEventTypeLabel = (eventType: JobEvent["eventType"]) => {
+    switch (eventType) {
+      case "applied":
+        return "Applied"
+      case "interview_scheduled":
+        return "Interview Scheduled"
+      case "interview":
+        return "Interview"
+      case "interview_result":
+        return "Interview Result"
+      case "rejected":
+        return "Rejected"
+      case "offer_received":
+        return "Offer Received"
+      case "offer_accepted":
+        return "Offer Accepted"
+      case "withdrawn":
+        return "Withdrawn"
+      default:
+        return "Event"
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
       <div className="bg-white rounded-3xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl animate-scale-in">
@@ -677,13 +733,56 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     <Label htmlFor="scheduledDate" className="text-sm font-medium text-slate-700">
                       Scheduled Date & Time
                     </Label>
-                    <Input
-                      id="scheduledDate"
-                      type="datetime-local"
-                      value={newInterview.scheduledDate}
-                      onChange={(e) => setNewInterview({ ...newInterview, scheduledDate: e.target.value })}
-                      className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
+                    <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "flex-1 justify-start text-left font-normal border-slate-300 focus:border-blue-500",
+                              !newInterview.scheduledDate && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {newInterview.scheduledDate
+                              ? format(new Date(newInterview.scheduledDate), "PPP")
+                              : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={newInterview.scheduledDate ? new Date(newInterview.scheduledDate) : undefined}
+                            onSelect={(date) => {
+                              if (date) {
+                                const currentTime = newInterview.scheduledDate
+                                  ? new Date(newInterview.scheduledDate).toTimeString().slice(0, 5)
+                                  : "09:00"
+                                const dateTimeString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${currentTime}`
+                                setNewInterview({ ...newInterview, scheduledDate: dateTimeString })
+                              }
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Input
+                        type="time"
+                        value={
+                          newInterview.scheduledDate
+                            ? new Date(newInterview.scheduledDate).toTimeString().slice(0, 5)
+                            : "09:00"
+                        }
+                        onChange={(e) => {
+                          const currentDate = newInterview.scheduledDate
+                            ? new Date(newInterview.scheduledDate)
+                            : new Date()
+                          const dateTimeString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}T${e.target.value}`
+                          setNewInterview({ ...newInterview, scheduledDate: dateTimeString })
+                        }}
+                        className="w-32 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -756,14 +855,24 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                   <CardTitle className="text-xl text-slate-800">Event Timeline</CardTitle>
                   <CardDescription>Track all events related to this job application</CardDescription>
                 </div>
-                {/* Made Add Event button solid like Schedule New Interview */}
-                <Button
-                  onClick={() => setShowEventForm(!showEventForm)}
-                  className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Event
-                </Button>
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTimelineSortOrder(timelineSortOrder === "desc" ? "asc" : "desc")}
+                    className="text-slate-600 hover:text-slate-800"
+                  >
+                    <ArrowUpDown className="w-4 h-4 mr-2" />
+                    {timelineSortOrder === "desc" ? "Newest First" : "Oldest First"}
+                  </Button>
+                  <Button
+                    onClick={() => setShowEventForm(!showEventForm)}
+                    className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Event
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
@@ -807,13 +916,32 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         <Label htmlFor="eventDate" className="text-sm font-medium text-slate-700">
                           Event Date
                         </Label>
-                        <Input
-                          id="eventDate"
-                          type="date"
-                          value={newEvent.eventDate}
-                          onChange={(e) => setNewEvent({ ...newEvent, eventDate: e.target.value })}
-                          className="border-slate-300 focus:border-green-500 focus:ring-green-500"
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal border-slate-300 focus:border-green-500",
+                                !newEvent.eventDate && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {newEvent.eventDate ? format(new Date(newEvent.eventDate), "PPP") : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={newEvent.eventDate ? new Date(newEvent.eventDate) : undefined}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setNewEvent({ ...newEvent, eventDate: date.toISOString().split("T")[0] })
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <div className="md:col-span-2 space-y-2">
                         <Label htmlFor="eventTitle" className="text-sm font-medium text-slate-700">
@@ -902,23 +1030,32 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         <Label htmlFor="editEventDate" className="text-sm font-medium text-slate-700">
                           Event Date
                         </Label>
-                        <Input
-                          id="editEventDate"
-                          type="date"
-                          value={(() => {
-                            const date = new Date(editingEvent.eventDate)
-                            const year = date.getFullYear()
-                            const month = String(date.getMonth() + 1).padStart(2, "0")
-                            const day = String(date.getDate()).padStart(2, "0")
-                            return `${year}-${month}-${day}`
-                          })()}
-                          onChange={(e) => {
-                            const [year, month, day] = e.target.value.split("-").map(Number)
-                            const localDate = new Date(year, month - 1, day)
-                            setEditingEvent({ ...editingEvent, eventDate: localDate })
-                          }}
-                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal border-slate-300 focus:border-blue-500",
+                                !editingEvent.eventDate && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {editingEvent.eventDate ? format(new Date(editingEvent.eventDate), "PPP") : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={editingEvent.eventDate ? new Date(editingEvent.eventDate) : undefined}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setEditingEvent({ ...editingEvent, eventDate: date })
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <div className="md:col-span-2 space-y-2">
                         <Label htmlFor="editEventTitle" className="text-sm font-medium text-slate-700">
@@ -981,62 +1118,85 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                 </Card>
               )}
 
-              {/* Added clear dividing line before event list */}
               <div className="border-t border-slate-200 pt-6">
-                <div className="space-y-3">
+                <div className="relative">
                   {jobEvents.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-slate-500 italic">No events recorded yet</p>
                     </div>
                   ) : (
-                    jobEvents
-                      .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
-                      .map((event) => (
-                        <Card key={event.id} className="border-slate-100 hover:border-slate-200 transition-colors">
-                          <CardContent className="p-4">
-                            <div className="flex items-start space-x-3">
-                              <div className="flex-shrink-0 w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
+                    <>
+                      {/* Timeline vertical line */}
+                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-green-200"></div>
+
+                      <div className="space-y-6">
+                        {jobEvents
+                          .sort((a, b) => {
+                            const dateA = new Date(a.eventDate).getTime()
+                            const dateB = new Date(b.eventDate).getTime()
+                            return timelineSortOrder === "desc" ? dateB - dateA : dateA - dateB
+                          })
+                          .map((event, index) => (
+                            <div key={event.id} className="relative flex items-start space-x-4">
+                              {/* Timeline node */}
+                              <div className="relative z-10 flex-shrink-0 w-3 h-3 bg-white border-2 border-blue-400 rounded-full mt-3 shadow-sm"></div>
+
+                              {/* Event card */}
                               <div className="flex-grow min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <h5 className="text-sm font-semibold text-slate-800">{event.title}</h5>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-xs text-slate-500 font-medium">
-                                      {new Date(event.eventDate).toLocaleString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                    <div className="flex space-x-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setEditingEvent(event)}
-                                        className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
-                                      >
-                                        <Edit className="w-3 h-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => deleteEvent(event.id!)}
-                                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
+                                {/* Event type badge */}
+                                <div className="mb-2">
+                                  <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getEventTypeBadgeColor(event.eventType)}`}
+                                  >
+                                    {getEventTypeLabel(event.eventType)}
+                                  </span>
                                 </div>
-                                {event.description && (
-                                  <p className="text-sm text-slate-600 mt-1">{event.description}</p>
-                                )}
-                                {event.notes && <p className="text-xs text-slate-500 mt-1">{event.notes}</p>}
+
+                                <Card className="border-slate-100 hover:border-slate-200 transition-colors shadow-sm">
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-grow min-w-0">
+                                        <h5 className="text-sm font-semibold text-slate-800 mb-1">{event.title}</h5>
+                                        <div className="text-xs text-slate-500 font-medium mb-2">
+                                          {new Date(event.eventDate).toLocaleString("en-US", {
+                                            weekday: "short",
+                                            month: "short",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </div>
+                                        {event.description && (
+                                          <p className="text-sm text-slate-600 mb-1">{event.description}</p>
+                                        )}
+                                        {event.notes && <p className="text-xs text-slate-500">{event.notes}</p>}
+                                      </div>
+                                      <div className="flex items-center space-x-1 ml-3">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setEditingEvent(event)}
+                                          className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600"
+                                        >
+                                          <Edit className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => deleteEvent(event.id!)}
+                                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))
+                          ))}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -1047,5 +1207,3 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     </div>
   )
 }
-
-export default InterviewModal

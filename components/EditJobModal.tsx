@@ -6,7 +6,7 @@ import { googlePlacesService } from "@/lib/googlePlacesService"
 import { DataService } from "@/lib/dataService"
 import LocationAutocomplete from "./LocationAutocomplete"
 import type { Job } from "@/lib/types"
-import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
+import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star, CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,6 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface EditJobModalProps {
   job: Job
@@ -27,7 +31,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
     company: job.company,
     position: job.position,
     jobUrl: job.jobUrl || "",
-    applicationDate: new Date(job.applicationDate).toISOString().split("T")[0],
+    applicationDate: new Date(job.applicationDate),
     status: job.status,
     location: job.location || "",
     notes: job.notes || "",
@@ -54,7 +58,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
 
       const updateData = {
         ...formData,
-        applicationDate: new Date(formData.applicationDate),
+        applicationDate: formData.applicationDate,
         jobUrl: formData.jobUrl || undefined, // Convert empty string to undefined
         latitude: locationData?.lat || job.latitude,
         longitude: locationData?.lng || job.longitude,
@@ -182,13 +186,28 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   <Calendar className="w-4 h-4 text-slate-600" />
                   Application Date
                 </Label>
-                <Input
-                  id="applicationDate"
-                  type="date"
-                  value={formData.applicationDate}
-                  onChange={(e) => setFormData({ ...formData, applicationDate: e.target.value })}
-                  className="h-11"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "h-11 w-full justify-start text-left font-normal",
+                        !formData.applicationDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.applicationDate ? format(formData.applicationDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={formData.applicationDate}
+                      onSelect={(date) => date && setFormData({ ...formData, applicationDate: date })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

@@ -5,13 +5,17 @@ import { useState } from "react"
 import { DataService } from "@/lib/dataService"
 import { googlePlacesService } from "@/lib/googlePlacesService"
 import LocationAutocomplete from "./LocationAutocomplete"
-import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star } from "lucide-react"
+import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star, CalendarIcon } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface AddJobModalProps {
   onClose: () => void
@@ -23,7 +27,7 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
     company: "",
     position: "",
     jobUrl: "",
-    applicationDate: new Date().toISOString().split("T")[0],
+    applicationDate: new Date(),
     status: "applied" as const,
     location: "",
     notes: "",
@@ -50,7 +54,7 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
 
       const jobData = {
         ...formData,
-        applicationDate: new Date(formData.applicationDate),
+        applicationDate: formData.applicationDate,
         latitude: locationData?.lat,
         longitude: locationData?.lng,
         formatted_address: locationData?.formattedAddress,
@@ -153,12 +157,28 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
                 <Calendar className="w-4 h-4 mr-2 text-amber-600" />
                 Application Date
               </Label>
-              <Input
-                type="date"
-                value={formData.applicationDate}
-                onChange={(e) => setFormData({ ...formData, applicationDate: e.target.value })}
-                className="h-11 border-slate-200 focus:border-amber-500 focus:ring-amber-500/20"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "h-11 w-full justify-start text-left font-normal border-slate-200 focus:border-amber-500 focus:ring-amber-500/20",
+                      !formData.applicationDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 text-amber-600" />
+                    {formData.applicationDate ? format(formData.applicationDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={formData.applicationDate}
+                    onSelect={(date) => date && setFormData({ ...formData, applicationDate: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-3">
