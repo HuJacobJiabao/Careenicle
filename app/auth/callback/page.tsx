@@ -25,12 +25,8 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
-          if (type === "invite") {
-            // User clicked invitation link - redirect to set password
-            router.push("/reset-password?type=invite")
-          } else if (type === "recovery") {
-            // User clicked password reset link - redirect to reset password
-            router.push("/reset-password?type=recovery")
+          if (type === "invite" || type === "recovery") {
+            router.push(`/reset-password?type=${type}`)
           } else {
             // Regular login callback - redirect to main app
             router.push("/")

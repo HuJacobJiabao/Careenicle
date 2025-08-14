@@ -43,6 +43,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+
+      if (event === "SIGNED_IN" && session) {
+        const configuredProvider = DataService.getConfiguredProvider()
+        if (configuredProvider === "supabase") {
+          DataService.setDatabaseProvider("supabase")
+          // Trigger custom event for other components to listen
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+          }
+        }
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -53,18 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
     })
-
-    // If login is successful and Supabase is configured, switch to Supabase
-    if (!error) {
-      const configuredProvider = DataService.getConfiguredProvider()
-      if (configuredProvider === "supabase") {
-        DataService.setDatabaseProvider("supabase")
-        // Trigger custom event for other components to listen
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-        }
-      }
-    }
 
     return { error }
   }
