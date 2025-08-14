@@ -40,9 +40,9 @@ Before you begin, ensure you have the following installed:
 
 First, install the project dependencies using pnpm:
 
-```
+\`\`\`
 pnpm install
-```
+\`\`\`
 
 ### 2. Database Setup
 
@@ -68,27 +68,27 @@ You can choose between two database options:
 
 ##### Create PostgreSQL Database
 
-```
+\`\`\`
 CREATE DATABASE jobtracker;
-```
+\`\`\`
 
 ##### Initialize Database Schema
 
 Run the database initialization script to create the required tables and schema:
 
-```
+\`\`\`
 # Connect to your PostgreSQL database and run the schema script
 psql -U your_username -d jobtracker -f scripts/init-schema.sql
-```
+\`\`\`
 
 ##### Initialize Sample Data (Optional)
 
 If you want to populate the database with sample data for testing:
 
-```
+\`\`\`
 # Run the sample data script
 psql -U your_username -d jobtracker -f scripts/init-sample-data.sql
-```
+\`\`\`
 
 Alternatively, you can copy the contents of these scripts and run them in your preferred PostgreSQL client (pgAdmin, DBeaver, etc.).
 

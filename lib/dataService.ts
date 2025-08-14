@@ -1,7 +1,6 @@
 import type { Job, JobEvent } from "./types"
 import { mockJobs, mockJobEvents } from "./mockData"
 import { SupabaseService } from "./supabaseService"
-import { supabase } from "./supabase/client"
 
 export type DatabaseProvider = "mock" | "postgresql" | "supabase"
 
@@ -21,7 +20,7 @@ export class DataService {
   // Get available providers based on environment configuration
   static getAvailableProviders(): DatabaseProvider[] {
     const configuredProvider = this.getConfiguredProvider()
-    
+
     switch (configuredProvider) {
       case "supabase":
         return ["mock", "supabase"] // Only show mock and supabase options
@@ -38,7 +37,7 @@ export class DataService {
       console.warn(`Provider ${provider} is not available in current configuration`)
       return
     }
-    
+
     this.databaseProvider = provider
     // Delay saving to localStorage to avoid hydration errors
     if (typeof window !== "undefined") {
@@ -63,10 +62,10 @@ export class DataService {
           return stored
         }
       } catch (error) {
-        console.warn('Failed to read from localStorage:', error)
+        console.warn("Failed to read from localStorage:", error)
       }
     }
-    
+
     // Fallback to the configured provider
     const configuredProvider = this.getConfiguredProvider()
     this.databaseProvider = configuredProvider
@@ -79,7 +78,7 @@ export class DataService {
       this.setDatabaseProvider("mock")
     } else {
       // Choose the first non-mock provider available
-      const nonMockProvider = availableProviders.find(p => p !== "mock")
+      const nonMockProvider = availableProviders.find((p) => p !== "mock")
       if (nonMockProvider) {
         this.setDatabaseProvider(nonMockProvider)
       }
@@ -88,6 +87,24 @@ export class DataService {
 
   static getUseMockData(): boolean {
     return this.getDatabaseProvider() === "mock"
+  }
+
+  private static async handleSupabaseOperation<T>(operation: () => Promise<T>, fallbackToMock = true): Promise<T> {
+    try {
+      return await operation()
+    } catch (error: any) {
+      if (error?.message?.includes("User not authenticated") || error?.message?.includes("Invalid JWT")) {
+        console.warn("Supabase authentication error, switching to mock data:", error.message)
+        if (fallbackToMock) {
+          this.setDatabaseProvider("mock")
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+          }
+        }
+        throw error
+      }
+      throw error
+    }
   }
 
   static async fetchJobs(params?: {
@@ -135,8 +152,7 @@ export class DataService {
         },
       }
     } else if (provider === "supabase") {
-      // Use Supabase with pagination
-      return await SupabaseService.fetchJobs(params)
+      return await this.handleSupabaseOperation(() => SupabaseService.fetchJobs(params))
     } else {
       const searchParams = new URLSearchParams()
       if (params?.page) searchParams.set("page", params.page.toString())
@@ -181,20 +197,22 @@ export class DataService {
       mockJobs.unshift(newJob)
       return newJob
     } else if (provider === "supabase") {
-      return await SupabaseService.createJob({
-        company: jobData.company!,
-        position: jobData.position!,
-        jobUrl: jobData.jobUrl,
-        applicationDate: jobData.applicationDate!,
-        status: jobData.status || "applied",
-        location: jobData.location,
-        latitude: jobData.latitude,
-        longitude: jobData.longitude,
-        formatted_address: jobData.formatted_address,
-        place_id: jobData.place_id,
-        notes: jobData.notes,
-        isFavorite: jobData.isFavorite || false,
-      })
+      return await this.handleSupabaseOperation(() =>
+        SupabaseService.createJob({
+          company: jobData.company!,
+          position: jobData.position!,
+          jobUrl: jobData.jobUrl,
+          applicationDate: jobData.applicationDate!,
+          status: jobData.status || "applied",
+          location: jobData.location,
+          latitude: jobData.latitude,
+          longitude: jobData.longitude,
+          formatted_address: jobData.formatted_address,
+          place_id: jobData.place_id,
+          notes: jobData.notes,
+          isFavorite: jobData.isFavorite || false,
+        }),
+      )
     } else {
       const response = await fetch("/api/jobs", {
         method: "POST",
@@ -214,7 +232,7 @@ export class DataService {
         mockJobs[jobIndex] = { ...mockJobs[jobIndex], ...updates, updatedAt: new Date() }
       }
     } else if (provider === "supabase") {
-      await SupabaseService.updateJob(jobId, updates)
+      await this.handleSupabaseOperation(() => SupabaseService.updateJob(jobId, updates))
     } else {
       await fetch(`/api/jobs/${jobId}`, {
         method: "PUT",
@@ -233,7 +251,7 @@ export class DataService {
         mockJobs.splice(jobIndex, 1)
       }
     } else if (provider === "supabase") {
-      await SupabaseService.deleteJob(jobId)
+      await this.handleSupabaseOperation(() => SupabaseService.deleteJob(jobId))
     } else {
       await fetch(`/api/jobs/${jobId}?provider=${provider}`, { method: "DELETE" })
     }
@@ -251,7 +269,7 @@ export class DataService {
 
       return events.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
     } else if (provider === "supabase") {
-      return await SupabaseService.fetchJobEvents(jobId)
+      return await this.handleSupabaseOperation(() => SupabaseService.fetchJobEvents(jobId))
     } else {
       const params = new URLSearchParams()
       if (jobId) params.set("jobId", jobId.toString())
@@ -285,19 +303,21 @@ export class DataService {
       mockJobEvents.unshift(newEvent)
       return newEvent
     } else if (provider === "supabase") {
-      return await SupabaseService.createJobEvent({
-        jobId: eventData.jobId!,
-        eventType: eventData.eventType!,
-        eventDate: eventData.eventDate!,
-        title: eventData.title!,
-        description: eventData.description,
-        interviewRound: eventData.interviewRound,
-        interviewType: eventData.interviewType,
-        interviewLink: eventData.interviewLink,
-        interviewResult: eventData.interviewResult,
-        notes: eventData.notes,
-        metadata: eventData.metadata,
-      })
+      return await this.handleSupabaseOperation(() =>
+        SupabaseService.createJobEvent({
+          jobId: eventData.jobId!,
+          eventType: eventData.eventType!,
+          eventDate: eventData.eventDate!,
+          title: eventData.title!,
+          description: eventData.description,
+          interviewRound: eventData.interviewRound,
+          interviewType: eventData.interviewType,
+          interviewLink: eventData.interviewLink,
+          interviewResult: eventData.interviewResult,
+          notes: eventData.notes,
+          metadata: eventData.metadata,
+        }),
+      )
     } else {
       const response = await fetch("/api/job-events", {
         method: "POST",
@@ -317,7 +337,7 @@ export class DataService {
         mockJobEvents[eventIndex] = { ...mockJobEvents[eventIndex], ...updates, updatedAt: new Date() }
       }
     } else if (provider === "supabase") {
-      await SupabaseService.updateJobEvent(eventId, updates)
+      await this.handleSupabaseOperation(() => SupabaseService.updateJobEvent(eventId, updates))
     } else {
       await fetch(`/api/job-events/${eventId}`, {
         method: "PUT",
@@ -336,7 +356,7 @@ export class DataService {
         mockJobEvents.splice(eventIndex, 1)
       }
     } else if (provider === "supabase") {
-      await SupabaseService.deleteJobEvent(eventId)
+      await this.handleSupabaseOperation(() => SupabaseService.deleteJobEvent(eventId))
     } else {
       await fetch(`/api/job-events/${eventId}?provider=${provider}`, { method: "DELETE" })
     }
@@ -352,7 +372,7 @@ export class DataService {
         job.updatedAt = new Date()
       }
     } else if (provider === "supabase") {
-      await SupabaseService.toggleFavorite(jobId)
+      await this.handleSupabaseOperation(() => SupabaseService.toggleFavorite(jobId))
     } else {
       await fetch(`/api/jobs/${jobId}/favorite`, {
         method: "PUT",
