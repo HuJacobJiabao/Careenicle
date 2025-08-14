@@ -16,8 +16,11 @@ export default function LoginForm() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetMessage, setResetMessage] = useState<string | null>(null)
 
-  const { signIn, user } = useAuth()
+  const { signIn, resetPassword, user } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -47,6 +50,33 @@ export default function LoginForm() {
     }
   }
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) {
+      setError("Please enter your email address first")
+      return
+    }
+
+    setResetLoading(true)
+    setError(null)
+    setResetMessage(null)
+
+    try {
+      const { error } = await resetPassword(email)
+
+      if (error) {
+        setError(error.message)
+      } else {
+        setResetMessage("Password reset email sent! Check your inbox.")
+        setShowForgotPassword(false)
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
@@ -64,7 +94,13 @@ export default function LoginForm() {
             <CardDescription className="text-slate-600">Sign in to access your job tracking dashboard</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
+            {resetMessage && (
+              <div className="flex items-center space-x-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                <span className="text-sm font-medium">{resetMessage}</span>
+              </div>
+            )}
+
+            <form onSubmit={showForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-5">
               {error && (
                 <div className="flex items-center space-x-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -90,30 +126,41 @@ export default function LoginForm() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700 font-medium">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-11 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
+              {!showForgotPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-slate-700 font-medium">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-11 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Button
                 type="submit"
                 className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none"
-                disabled={loading}
+                disabled={loading || resetLoading}
               >
-                {loading ? (
+                {showForgotPassword ? (
+                  resetLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Sending Reset Email...</span>
+                    </div>
+                  ) : (
+                    <span>Send Reset Email</span>
+                  )
+                ) : loading ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     <span>Signing In...</span>
@@ -128,7 +175,33 @@ export default function LoginForm() {
             </form>
 
             <div className="text-center pt-4 border-t border-slate-100">
-              <p className="text-sm text-slate-500">Need access? Contact your administrator to set up your account.</p>
+              {showForgotPassword ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false)
+                    setError(null)
+                    setResetMessage(null)
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Back to Sign In
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(true)
+                    setError(null)
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Forgot your password?
+                </button>
+              )}
+              <p className="text-sm text-slate-500 mt-2">
+                Need access? Contact your administrator to set up your account.
+              </p>
             </div>
           </CardContent>
         </Card>
