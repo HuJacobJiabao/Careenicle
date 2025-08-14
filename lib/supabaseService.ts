@@ -1,34 +1,119 @@
-import { supabase } from "./supabase/client"
+import { supabase, isSupabaseConfigured } from "./supabase/client"
 import type { Job, JobEvent } from "./types"
 
 export class SupabaseService {
+  // Check if Supabase is configured before any operation
+  private static checkConfiguration(): void {
+    if (!isSupabaseConfigured) {
+      throw new Error(
+        "Supabase is not properly configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables."
+      )
+    }
+  }
+
+  // Helper function to convert camelCase to snake_case for database
+  private static toSnakeCase(obj: any): any {
+    if (!obj || typeof obj !== 'object') return obj
+    
+    const converted: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+      converted[snakeKey] = value
+    }
+    return converted
+  }
+
+  // Helper function to convert snake_case to camelCase from database
+  private static toCamelCase(obj: any): any {
+    if (!obj || typeof obj !== 'object') return obj
+    
+    const converted: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+      converted[camelKey] = value
+    }
+    return converted
+  }
+
   // Job operations
-  static async fetchJobs(): Promise<Job[]> {
-    const { data, error } = await supabase.from("jobs").select("*").order("created_at", { ascending: false })
+  static async fetchJobs(params?: {
+    page?: number
+    limit?: number
+    search?: string
+    status?: string
+    favorites?: boolean
+  }): Promise<{ jobs: Job[]; pagination?: any }> {
+    this.checkConfiguration()
+    
+    const page = params?.page || 1
+    const limit = params?.limit || 10
+    const offset = (page - 1) * limit
+
+    let query = supabase.from("jobs").select("*", { count: 'exact' })
+    
+    // Apply filters
+    if (params?.search) {
+      query = query.or(`company.ilike.%${params.search}%,position.ilike.%${params.search}%`)
+    }
+    
+    if (params?.status && params.status !== "all") {
+      query = query.eq("status", params.status)
+    }
+    
+    if (params?.favorites) {
+      query = query.eq("is_favorite", true)
+    }
+
+    // Apply pagination and ordering
+    query = query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    const { data, error, count } = await query
 
     if (error) {
       console.error("Error fetching jobs from Supabase:", error)
       throw new Error("Failed to fetch jobs")
     }
 
-    return data || []
+    const total = count || 0
+
+    return {
+      jobs: (data || []).map(job => this.toCamelCase(job)),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    }
+  }
+
+  static async fetchAllJobs(): Promise<Job[]> {
+    // For backward compatibility, fetch all jobs without pagination
+    const result = await this.fetchJobs({ page: 1, limit: 1000 })
+    return result.jobs
   }
 
   static async createJob(job: Omit<Job, "id" | "created_at" | "updated_at">): Promise<Job> {
-    const { data, error } = await supabase.from("jobs").insert([job]).select().single()
+    this.checkConfiguration()
+    const jobData = this.toSnakeCase(job)
+    const { data, error } = await supabase.from("jobs").insert([jobData]).select().single()
 
     if (error) {
       console.error("Error creating job in Supabase:", error)
       throw new Error("Failed to create job")
     }
 
-    return data
+    return this.toCamelCase(data)
   }
 
   static async updateJob(id: number, job: Partial<Job>): Promise<Job> {
+    this.checkConfiguration()
+    const jobData = this.toSnakeCase(job)
     const { data, error } = await supabase
       .from("jobs")
-      .update({ ...job, updated_at: new Date().toISOString() })
+      .update({ ...jobData, updated_at: new Date().toISOString() })
       .eq("id", id)
       .select()
       .single()
@@ -38,10 +123,11 @@ export class SupabaseService {
       throw new Error("Failed to update job")
     }
 
-    return data
+    return this.toCamelCase(data)
   }
 
   static async deleteJob(id: number): Promise<void> {
+    this.checkConfiguration()
     const { error } = await supabase.from("jobs").delete().eq("id", id)
 
     if (error) {
@@ -51,6 +137,7 @@ export class SupabaseService {
   }
 
   static async toggleFavorite(id: number): Promise<Job> {
+    this.checkConfiguration()
     // First get the current favorite status
     const { data: currentJob, error: fetchError } = await supabase
       .from("jobs")
@@ -79,11 +166,29 @@ export class SupabaseService {
       throw new Error("Failed to toggle favorite")
     }
 
-    return data
+    return this.toCamelCase(data)
   }
 
   // Job Events operations
   static async fetchJobEvents(jobId?: number): Promise<JobEvent[]> {
+    // For backward compatibility, fetch all events without pagination
+    const result = await this.fetchJobEventsPaginated(jobId, { page: 1, limit: 1000 })
+    return result.events
+  }
+
+  static async fetchJobEventsPaginated(
+    jobId?: number, 
+    params?: {
+      page?: number
+      limit?: number
+    }
+  ): Promise<{ events: JobEvent[]; pagination?: any }> {
+    this.checkConfiguration()
+    
+    const page = params?.page || 1
+    const limit = params?.limit || 50 // Higher default for events
+    const offset = (page - 1) * limit
+
     let query = supabase
       .from("job_events")
       .select(`
@@ -93,14 +198,17 @@ export class SupabaseService {
           position,
           location
         )
-      `)
+      `, { count: 'exact' })
       .order("event_date", { ascending: false })
 
     if (jobId) {
       query = query.eq("job_id", jobId)
     }
 
-    const { data, error } = await query
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1)
+
+    const { data, error, count } = await query
 
     if (error) {
       console.error("Error fetching job events from Supabase:", error)
@@ -108,18 +216,35 @@ export class SupabaseService {
     }
 
     // Transform the data to match our JobEvent interface
-    return (data || []).map((event) => ({
-      ...event,
-      company: event.jobs?.company || "",
-      position: event.jobs?.position || "",
-      location: event.jobs?.location || "",
-    }))
+    const events = (data || []).map((event) => {
+      const camelEvent = this.toCamelCase(event)
+      return {
+        ...camelEvent,
+        company: event.jobs?.company || "",
+        position: event.jobs?.position || "",
+        location: event.jobs?.location || "",
+      }
+    })
+
+    const total = count || 0
+
+    return {
+      events,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    }
   }
 
   static async createJobEvent(event: Omit<JobEvent, "id" | "created_at" | "updated_at">): Promise<JobEvent> {
+    this.checkConfiguration()
+    const eventData = this.toSnakeCase(event)
     const { data, error } = await supabase
       .from("job_events")
-      .insert([event])
+      .insert([eventData])
       .select(`
         *,
         jobs (
@@ -135,8 +260,9 @@ export class SupabaseService {
       throw new Error("Failed to create job event")
     }
 
+    const camelEvent = this.toCamelCase(data)
     return {
-      ...data,
+      ...camelEvent,
       company: data.jobs?.company || "",
       position: data.jobs?.position || "",
       location: data.jobs?.location || "",
@@ -144,9 +270,11 @@ export class SupabaseService {
   }
 
   static async updateJobEvent(id: number, event: Partial<JobEvent>): Promise<JobEvent> {
+    this.checkConfiguration()
+    const eventData = this.toSnakeCase(event)
     const { data, error } = await supabase
       .from("job_events")
-      .update({ ...event, updated_at: new Date().toISOString() })
+      .update({ ...eventData, updated_at: new Date().toISOString() })
       .eq("id", id)
       .select(`
         *,
@@ -163,8 +291,9 @@ export class SupabaseService {
       throw new Error("Failed to update job event")
     }
 
+    const camelEvent = this.toCamelCase(data)
     return {
-      ...data,
+      ...camelEvent,
       company: data.jobs?.company || "",
       position: data.jobs?.position || "",
       location: data.jobs?.location || "",
@@ -172,6 +301,7 @@ export class SupabaseService {
   }
 
   static async deleteJobEvent(id: number): Promise<void> {
+    this.checkConfiguration()
     const { error } = await supabase.from("job_events").delete().eq("id", id)
 
     if (error) {

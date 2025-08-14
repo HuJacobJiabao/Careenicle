@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import Header from "@/components/Header"
+import { AuthProvider } from "@/lib/auth-context"
+import AuthGuard from "@/components/AuthGuard"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,8 +40,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} scroll-smooth`}>
       <body className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-sans antialiased">
-        <Header />
-        <main className="relative">{children}</main>
+        <AuthProvider>
+          <AuthGuard>
+            <Header />
+            <main className="relative">{children}</main>
+          </AuthGuard>
+        </AuthProvider>
       </body>
     </html>
   )

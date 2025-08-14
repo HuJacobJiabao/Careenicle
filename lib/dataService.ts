@@ -1,12 +1,43 @@
 import type { Job, JobEvent } from "./types"
 import { mockJobs, mockJobEvents } from "./mockData"
+import { SupabaseService } from "./supabaseService"
 
 export type DatabaseProvider = "mock" | "postgresql" | "supabase"
 
 export class DataService {
   private static databaseProvider: DatabaseProvider = "mock"
 
+  // Get the configured database provider from environment
+  static getConfiguredProvider(): DatabaseProvider {
+    const envProvider = process.env.NEXT_PUBLIC_DATABASE_PROVIDER as DatabaseProvider
+    if (envProvider && ["mock", "postgresql", "supabase"].includes(envProvider)) {
+      console.log(`Using configured database provider: ${envProvider}`)
+      return envProvider
+    }
+    return "mock" // default fallback
+  }
+
+  // Get available providers based on environment configuration
+  static getAvailableProviders(): DatabaseProvider[] {
+    const configuredProvider = this.getConfiguredProvider()
+    
+    switch (configuredProvider) {
+      case "supabase":
+        return ["mock", "supabase"] // Only show mock and supabase options
+      case "postgresql":
+        return ["mock", "postgresql"] // Only show mock and postgresql options
+      default:
+        return ["mock", "postgresql", "supabase"] // Show all options for development
+    }
+  }
+
   static setDatabaseProvider(provider: DatabaseProvider) {
+    const availableProviders = this.getAvailableProviders()
+    if (!availableProviders.includes(provider)) {
+      console.warn(`Provider ${provider} is not available in current configuration`)
+      return
+    }
+    
     this.databaseProvider = provider
     if (typeof window !== "undefined") {
       localStorage.setItem("databaseProvider", provider)
@@ -14,17 +45,32 @@ export class DataService {
   }
 
   static getDatabaseProvider(): DatabaseProvider {
+    // First check if we have a stored preference
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("databaseProvider") as DatabaseProvider
-      if (stored && ["mock", "postgresql", "supabase"].includes(stored)) {
+      if (stored && this.getAvailableProviders().includes(stored)) {
         this.databaseProvider = stored
+        return stored
       }
     }
-    return this.databaseProvider
+    
+    // Fall back to configured provider
+    const configuredProvider = this.getConfiguredProvider()
+    this.databaseProvider = configuredProvider
+    return configuredProvider
   }
 
   static setUseMockData(useMock: boolean) {
-    this.setDatabaseProvider(useMock ? "mock" : "postgresql")
+    const availableProviders = this.getAvailableProviders()
+    if (useMock) {
+      this.setDatabaseProvider("mock")
+    } else {
+      // Choose the first non-mock provider available
+      const nonMockProvider = availableProviders.find(p => p !== "mock")
+      if (nonMockProvider) {
+        this.setDatabaseProvider(nonMockProvider)
+      }
+    }
   }
 
   static getUseMockData(): boolean {
@@ -75,6 +121,9 @@ export class DataService {
           totalPages: Math.ceil(filteredJobs.length / limit),
         },
       }
+    } else if (provider === "supabase") {
+      // Use Supabase with pagination
+      return await SupabaseService.fetchJobs(params)
     } else {
       const searchParams = new URLSearchParams()
       if (params?.page) searchParams.set("page", params.page.toString())
@@ -114,6 +163,17 @@ export class DataService {
       }
       mockJobs.unshift(newJob)
       return newJob
+    } else if (provider === "supabase") {
+      return await SupabaseService.createJob({
+        company: jobData.company!,
+        position: jobData.position!,
+        jobUrl: jobData.jobUrl,
+        applicationDate: jobData.applicationDate!,
+        status: jobData.status || "applied",
+        location: jobData.location,
+        notes: jobData.notes,
+        isFavorite: jobData.isFavorite || false,
+      })
     } else {
       const response = await fetch("/api/jobs", {
         method: "POST",
@@ -132,6 +192,8 @@ export class DataService {
       if (jobIndex !== -1) {
         mockJobs[jobIndex] = { ...mockJobs[jobIndex], ...updates, updatedAt: new Date() }
       }
+    } else if (provider === "supabase") {
+      await SupabaseService.updateJob(jobId, updates)
     } else {
       await fetch(`/api/jobs/${jobId}`, {
         method: "PUT",
@@ -149,6 +211,8 @@ export class DataService {
       if (jobIndex !== -1) {
         mockJobs.splice(jobIndex, 1)
       }
+    } else if (provider === "supabase") {
+      await SupabaseService.deleteJob(jobId)
     } else {
       await fetch(`/api/jobs/${jobId}?provider=${provider}`, { method: "DELETE" })
     }
@@ -165,6 +229,8 @@ export class DataService {
       }
 
       return events.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+    } else if (provider === "supabase") {
+      return await SupabaseService.fetchJobEvents(jobId)
     } else {
       const params = new URLSearchParams()
       if (jobId) params.set("jobId", jobId.toString())
@@ -197,6 +263,20 @@ export class DataService {
       }
       mockJobEvents.unshift(newEvent)
       return newEvent
+    } else if (provider === "supabase") {
+      return await SupabaseService.createJobEvent({
+        jobId: eventData.jobId!,
+        eventType: eventData.eventType!,
+        eventDate: eventData.eventDate!,
+        title: eventData.title!,
+        description: eventData.description,
+        interviewRound: eventData.interviewRound,
+        interviewType: eventData.interviewType,
+        interviewLink: eventData.interviewLink,
+        interviewResult: eventData.interviewResult,
+        notes: eventData.notes,
+        metadata: eventData.metadata,
+      })
     } else {
       const response = await fetch("/api/job-events", {
         method: "POST",
@@ -215,6 +295,8 @@ export class DataService {
       if (eventIndex !== -1) {
         mockJobEvents[eventIndex] = { ...mockJobEvents[eventIndex], ...updates, updatedAt: new Date() }
       }
+    } else if (provider === "supabase") {
+      await SupabaseService.updateJobEvent(eventId, updates)
     } else {
       await fetch(`/api/job-events/${eventId}`, {
         method: "PUT",
@@ -232,6 +314,8 @@ export class DataService {
       if (eventIndex !== -1) {
         mockJobEvents.splice(eventIndex, 1)
       }
+    } else if (provider === "supabase") {
+      await SupabaseService.deleteJobEvent(eventId)
     } else {
       await fetch(`/api/job-events/${eventId}?provider=${provider}`, { method: "DELETE" })
     }
@@ -246,6 +330,8 @@ export class DataService {
         job.isFavorite = !isFavorite
         job.updatedAt = new Date()
       }
+    } else if (provider === "supabase") {
+      await SupabaseService.toggleFavorite(jobId)
     } else {
       await fetch(`/api/jobs/${jobId}/favorite`, {
         method: "PUT",

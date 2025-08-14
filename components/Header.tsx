@@ -4,13 +4,15 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { DataService } from "@/lib/dataService"
-import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, LogOut, User, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const Header: React.FC = () => {
   const [databaseProvider, setDatabaseProvider] = useState<"mock" | "postgresql" | "supabase">("mock")
+  const { user, signOut } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -18,7 +20,21 @@ const Header: React.FC = () => {
     setDatabaseProvider(DataService.getDatabaseProvider())
   }, [])
 
+  // Auto-switch to mock if user logs out while using supabase
+  useEffect(() => {
+    if (databaseProvider === 'supabase' && !user) {
+      setDatabaseProvider('mock')
+      DataService.setDatabaseProvider('mock')
+      window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+    }
+  }, [user, databaseProvider])
+
   const handleProviderChange = (provider: "mock" | "postgresql" | "supabase") => {
+    // Prevent selecting supabase when not authenticated
+    if (provider === 'supabase' && !user) {
+      return
+    }
+    
     setDatabaseProvider(provider)
     DataService.setDatabaseProvider(provider)
 
@@ -26,6 +42,19 @@ const Header: React.FC = () => {
     window.dispatchEvent(new CustomEvent("dataSourceChanged"))
 
     router.refresh() // This will re-fetch data for the current route
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    // Switch to mock data when signing out from Supabase
+    if (databaseProvider === 'supabase') {
+      handleProviderChange('mock')
+    }
+  }
+
+  const handleSignIn = () => {
+    // Navigate to login page or trigger login modal
+    router.push('/login')
   }
 
   const getProviderInfo = (provider: "mock" | "postgresql" | "supabase") => {
@@ -47,6 +76,18 @@ const Header: React.FC = () => {
 
   const currentProvider = getProviderInfo(databaseProvider)
   const CurrentIcon = currentProvider.icon
+  const configuredProviders = DataService.getAvailableProviders()
+  
+  // Determine available providers based on authentication status
+  const getAvailableProviders = () => {
+    if (databaseProvider === 'supabase' && !user) {
+      // If using supabase but not authenticated, force to mock and only show mock
+      return ['mock']
+    }
+    return configuredProviders
+  }
+  
+  const availableProviders = getAvailableProviders()
 
   return (
     <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
@@ -82,57 +123,75 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="flex items-center space-x-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 border-gray-200"
-                >
-                  <Settings className="w-4 h-4 text-gray-500" />
-                  <div className="flex items-center space-x-2">
-                    <CurrentIcon className={`w-4 h-4 ${currentProvider.color}`} />
-                    <span className="text-sm font-medium text-gray-700">{currentProvider.label}</span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-4" align="end">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Database Provider</h4>
-                    <p className="text-sm text-gray-600 mb-3">Choose your data source</p>
-                  </div>
-                  <Select value={databaseProvider} onValueChange={handleProviderChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mock">
-                        <div className="flex items-center space-x-2">
-                          <TestTube className="w-4 h-4 text-orange-500" />
-                          <span>Mock Data</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="postgresql">
-                        <div className="flex items-center space-x-2">
-                          <Database className="w-4 h-4 text-green-500" />
-                          <span>PostgreSQL</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="supabase">
-                        <div className="flex items-center space-x-2">
-                          <Database className="w-4 h-4 text-blue-500" />
-                          <span>Supabase</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-gray-500">
-                    Current: <span className="font-medium">{currentProvider.label}</span>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            {/* Authentication UI (only show when Supabase is configured) */}
+            {configuredProviders.includes('supabase') && (
+              <>
+                {user ? (
+                  // Authenticated user menu
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" className="flex items-center space-x-2">
+                        <User className="w-4 h-4" />
+                        <span className="text-sm">{user.email}</span>
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2" align="end">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={handleSignOut}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  // Sign in button for unauthenticated users
+                  <Button
+                    variant="outline"
+                    onClick={handleSignIn}
+                    className="flex items-center space-x-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In</span>
+                  </Button>
+                )}
+              </>
+            )}
+
+            <Select value={databaseProvider} onValueChange={handleProviderChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableProviders.includes("mock") && (
+                  <SelectItem value="mock">
+                    <div className="flex items-center space-x-2">
+                      <TestTube className="w-4 h-4 text-orange-500" />
+                      <span>Mock Data</span>
+                    </div>
+                  </SelectItem>
+                )}
+                {availableProviders.includes("postgresql") && (
+                  <SelectItem value="postgresql">
+                    <div className="flex items-center space-x-2">
+                      <Database className="w-4 h-4 text-green-500" />
+                      <span>PostgreSQL</span>
+                    </div>
+                  </SelectItem>
+                )}
+                {availableProviders.includes("supabase") && user && (
+                  <SelectItem value="supabase">
+                    <div className="flex items-center space-x-2">
+                      <Database className="w-4 h-4 text-blue-500" />
+                      <span>Supabase</span>
+                    </div>
+                  </SelectItem>
+                )}
+                  </SelectContent>
+            </Select>
           </div>
 
           {/* Mobile Navigation */}
