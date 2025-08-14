@@ -9,6 +9,7 @@ import AddJobModal from "./AddJobModal"
 import EditJobModal from "./EditJobModal"
 import UpcomingInterviewsTable from "./UpcomingInterviewsTable"
 import ConfirmDialog from "./ConfirmDialog"
+import { useAuth } from "@/lib/auth-context"
 import {
   Building2,
   Calendar,
@@ -30,6 +31,8 @@ import {
 } from "lucide-react"
 
 const JobTable: React.FC = () => {
+  const { isInitialized, isProviderSwitching } = useAuth()
+
   const [jobs, setJobs] = useState<Job[]>([])
   const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
@@ -50,7 +53,7 @@ const JobTable: React.FC = () => {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {}
+    onConfirm: () => {},
   })
   const [pagination, setPagination] = useState({
     page: 1,
@@ -59,9 +62,31 @@ const JobTable: React.FC = () => {
     totalPages: 0,
   })
 
+  const [currentProvider, setCurrentProvider] = useState<string>("mock")
+
+  useEffect(() => {
+    const updateProvider = () => {
+      const provider = DataService.getDatabaseProvider()
+      setCurrentProvider(provider)
+    }
+
+    updateProvider()
+
+    const handleDataSourceChange = () => {
+      updateProvider()
+    }
+
+    window.addEventListener("dataSourceChanged", handleDataSourceChange)
+    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
+  }, [])
+
   // Check database connectivity and decide between PostgreSQL or mock data
   useEffect(() => {
     const checkDataSource = async () => {
+      if (!isInitialized || isProviderSwitching) {
+        return
+      }
+
       // If user has manually set to use mock data, don't check database
       if (DataService.getUseMockData()) {
         setDatabaseStatus("connected") // Don't show error when using mock data intentionally
@@ -104,22 +129,31 @@ const JobTable: React.FC = () => {
     }
 
     checkDataSource()
-  }, [])
+  }, [isInitialized, isProviderSwitching]) // 添加认证状态依赖
 
   useEffect(() => {
+    if (!isInitialized || isProviderSwitching) {
+      return
+    }
+
     fetchJobs()
     fetchJobEvents()
-  }, [pagination.page, statusFilter, searchTerm, showFavorites, DataService.getUseMockData()])
+  }, [pagination.page, statusFilter, searchTerm, showFavorites, currentProvider, isInitialized, isProviderSwitching]) // 使用稳定的状态依赖
 
   // Update database status when user manually switches data source
   useEffect(() => {
     const handleDataSourceChange = () => {
+      if (isProviderSwitching) {
+        return
+      }
+
       if (DataService.getUseMockData()) {
         // User switched to mock data manually, don't show database errors
         setDatabaseStatus("connected")
-        // Refresh data immediately
-        fetchJobs()
-        fetchJobEvents()
+        setTimeout(() => {
+          fetchJobs()
+          fetchJobEvents()
+        }, 100)
       } else {
         // User switched back to database, re-check connection
         setDatabaseStatus("checking")
@@ -130,9 +164,10 @@ const JobTable: React.FC = () => {
               const data = await response.json()
               if (data.jobs !== undefined) {
                 setDatabaseStatus("connected")
-                // Refresh data after confirming database connection
-                fetchJobs()
-                fetchJobEvents()
+                setTimeout(() => {
+                  fetchJobs()
+                  fetchJobEvents()
+                }, 100)
               } else {
                 setDatabaseStatus("no-tables")
               }
@@ -150,7 +185,7 @@ const JobTable: React.FC = () => {
     // Listen for data source changes
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
     return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
-  }, [])
+  }, [isProviderSwitching]) // 添加切换状态依赖
 
   const fetchJobs = async () => {
     try {
@@ -213,7 +248,8 @@ const JobTable: React.FC = () => {
     setConfirmDialog({
       isOpen: true,
       title: "Delete Job Application",
-      message: "Are you sure you want to delete this job application? This will also delete all related events and cannot be undone.",
+      message:
+        "Are you sure you want to delete this job application? This will also delete all related events and cannot be undone.",
       onConfirm: async () => {
         try {
           await DataService.deleteJob(jobId)
@@ -222,7 +258,7 @@ const JobTable: React.FC = () => {
         } catch (error) {
           console.error("Failed to delete job:", error)
         }
-      }
+      },
     })
   }
 
@@ -325,13 +361,14 @@ const JobTable: React.FC = () => {
 
   const upcomingInterviewJobs = getUpcomingInterviewJobs()
 
-  if (loading || databaseStatus === "checking") {
+  if (!isInitialized || isProviderSwitching || loading || databaseStatus === "checking") {
     return (
       <div className="flex justify-center items-center h-96">
         <div className="relative">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
         </div>
+        <div className="ml-4 text-gray-600">{isProviderSwitching ? "Switching data source..." : "Loading..."}</div>
       </div>
     )
   }
