@@ -40,22 +40,34 @@ export class DataService {
     }
     
     this.databaseProvider = provider
+    // Delay saving to localStorage to avoid hydration errors
     if (typeof window !== "undefined") {
-      localStorage.setItem("databaseProvider", provider)
+      setTimeout(() => {
+        localStorage.setItem("databaseProvider", provider)
+      }, 0)
     }
   }
 
   static getDatabaseProvider(): DatabaseProvider {
-    // First check if we have a stored preference
+    // If already set, return directly
+    if (this.databaseProvider !== "mock") {
+      return this.databaseProvider
+    }
+
+    // Only try to read from localStorage on the client side
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("databaseProvider") as DatabaseProvider
-      if (stored && this.getAvailableProviders().includes(stored)) {
-        this.databaseProvider = stored
-        return stored
+      try {
+        const stored = localStorage.getItem("databaseProvider") as DatabaseProvider
+        if (stored && this.getAvailableProviders().includes(stored)) {
+          this.databaseProvider = stored
+          return stored
+        }
+      } catch (error) {
+        console.warn('Failed to read from localStorage:', error)
       }
     }
     
-    // Fall back to configured provider
+    // Fallback to the configured provider
     const configuredProvider = this.getConfiguredProvider()
     this.databaseProvider = configuredProvider
     return configuredProvider
@@ -157,6 +169,10 @@ export class DataService {
         applicationDate: jobData.applicationDate!,
         status: jobData.status || "applied",
         location: jobData.location,
+        latitude: jobData.latitude,
+        longitude: jobData.longitude,
+        formatted_address: jobData.formatted_address,
+        place_id: jobData.place_id,
         notes: jobData.notes,
         isFavorite: jobData.isFavorite || false,
         createdAt: new Date(),
@@ -172,6 +188,10 @@ export class DataService {
         applicationDate: jobData.applicationDate!,
         status: jobData.status || "applied",
         location: jobData.location,
+        latitude: jobData.latitude,
+        longitude: jobData.longitude,
+        formatted_address: jobData.formatted_address,
+        place_id: jobData.place_id,
         notes: jobData.notes,
         isFavorite: jobData.isFavorite || false,
       })

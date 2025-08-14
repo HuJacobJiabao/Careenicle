@@ -28,7 +28,9 @@ export class SupabaseService {
     
     const converted: any = {}
     for (const [key, value] of Object.entries(obj)) {
-      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+      // If the key already contains underscores, keep it as is
+      // Otherwise, convert camelCase to snake_case
+      const snakeKey = key.includes('_') ? key : key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
       converted[snakeKey] = value
     }
     return converted

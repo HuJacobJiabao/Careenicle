@@ -15,11 +15,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const pathname = usePathname()
   const router = useRouter()
 
-  // Don't protect the login page itself
-  const isLoginPage = pathname === '/login'
+  // Paths that are not protected
+  const isPublicPage = pathname === '/login' || pathname === '/reset-password' || pathname.startsWith('/auth/')
 
-  // Show loading state
-  if (loading && !isLoginPage) {
+  // If it is a public page, render directly
+  if (isPublicPage) {
+    return <>{children}</>
+  }
+
+  // Show loading state during authentication status loading
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -30,12 +35,12 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     )
   }
 
-  // If using Supabase and not authenticated, redirect to login page
-  if (currentProvider === 'supabase' && !user && !isLoginPage) {
+  // Redirect to login page when using Supabase but not logged in
+  if (currentProvider === 'supabase' && !user) {
     router.push('/login')
     return null
   }
 
-  // Otherwise, render the children (main app)
+  // Render normally in other cases
   return <>{children}</>
 }

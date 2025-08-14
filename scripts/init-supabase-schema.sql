@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS public.jobs (
     location VARCHAR(255),
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
+    formatted_address TEXT,
+    place_id VARCHAR(255),
     notes TEXT,
     is_favorite BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -57,6 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_is_favorite ON public.jobs(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON public.jobs(created_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_user_status ON public.jobs(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_jobs_user_date ON public.jobs(user_id, application_date);
+CREATE INDEX IF NOT EXISTS idx_jobs_place_id ON public.jobs(place_id);
 
 CREATE INDEX IF NOT EXISTS idx_job_events_user_id ON public.job_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_job_events_job_id ON public.job_events(job_id);

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { DataService } from "@/lib/dataService"
 import type { User, Session } from "@supabase/supabase-js"
@@ -18,54 +18,130 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+// Persistent storage key
+const AUTH_STORAGE_KEY = 'job_tracker_auth_state'
 
-  useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
+// Restore authentication state from local storage
+const restoreAuthState = () => {
+  if (typeof window === "undefined") return null
+  try {
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : null
+  } catch {
+    return null
+  }
+}
+
+// Save authentication state to local storage
+const saveAuthState = (user: User | null, session: Session | null) => {
+  if (typeof window === "undefined") return
+  try {
+    if (user && session) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user, session }))
+    } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY)
     }
+  } catch (error) {
+    console.warn('Failed to save auth state:', error)
+  }
+}
 
-    getInitialSession()
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // The initial state does not depend on local storage to avoid hydration errors
+  const [authState, setAuthState] = useState({
+    user: null as User | null,
+    session: null as Session | null,
+    loading: true
+  })
+  
+  const [isInitialized, setIsInitialized] = useState(false)
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-
-      if (event === "SIGNED_IN" && session) {
-        const configuredProvider = DataService.getConfiguredProvider()
-        if (configuredProvider === "supabase") {
-          DataService.setDatabaseProvider("supabase")
-          // Trigger custom event for other components to listen
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-          }
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
+  // Unified method to update authentication state
+  const updateAuthState = useCallback((user: User | null, session: Session | null) => {
+    setAuthState({ user, session, loading: false })
+    saveAuthState(user, session)
   }, [])
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  useEffect(() => {
+    // Only initialize authentication state on the client side
+    const initializeAuth = async () => {
+      try {
+        // First try to restore state from local storage
+        const restored = restoreAuthState()
+        if (restored?.user && restored?.session) {
+          setAuthState({
+            user: restored.user,
+            session: restored.session,
+            loading: true // Still need to verify session validity
+          })
+        }
 
-    return { error }
+        // Get current session from Supabase
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.warn('Failed to get session:', error)
+          updateAuthState(null, null)
+        } else {
+          updateAuthState(session?.user ?? null, session)
+          
+          // If the user is logged in, automatically switch to Supabase
+          if (session?.user) {
+            DataService.setDatabaseProvider("supabase")
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error)
+        updateAuthState(null, null)
+      } finally {
+        setIsInitialized(true)
+      }
+    }
+
+    initializeAuth()
+  }, [updateAuthState])
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (!error && data.session) {
+        // On successful login, update state
+        updateAuthState(data.user, data.session)
+        
+        // After successful login, automatically switch to Supabase
+        DataService.setDatabaseProvider("supabase")
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+        }
+      }
+
+      return { error }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { error }
+    }
+  }
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      // Clear state after logout
+      updateAuthState(null, null)
+      
+      // Switch to mock data
+      DataService.setDatabaseProvider("mock")
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+      }
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
   }
 
   const updatePassword = async (password: string) => {
@@ -82,14 +158,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error }
   }
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-  }
-
   const value = {
-    user,
-    session,
-    loading,
+    user: authState.user,
+    session: authState.session,
+    loading: authState.loading,
     signIn,
     signOut,
     updatePassword,

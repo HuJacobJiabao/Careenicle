@@ -2,10 +2,9 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { DataService } from "@/lib/dataService"
 import { useAuth } from "@/lib/auth-context"
-import { isSupabaseConfigured } from "@/lib/supabase/client"
 import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, Unlock, LogOut, User, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -13,77 +12,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const Header: React.FC = () => {
   const [databaseProvider, setDatabaseProvider] = useState<"mock" | "postgresql" | "supabase">("mock")
-  const { user, signOut } = useAuth()
+  const [isClientInitialized, setIsClientInitialized] = useState(false)
+  const { user, signOut, loading } = useAuth()
   const pathname = usePathname()
-  const router = useRouter()
 
   useEffect(() => {
-    // If Supabase is configured and user is logged in, automatically set it as the provider
-    if (isSupabaseConfigured && user) {
-      setDatabaseProvider('supabase')
-      DataService.setDatabaseProvider('supabase')
-    } else {
+    // Set the database provider during initialization
+    setDatabaseProvider(DataService.getDatabaseProvider())
+    setIsClientInitialized(true)
+    
+    // Listen for data source changes
+    const handleDataSourceChange = () => {
       setDatabaseProvider(DataService.getDatabaseProvider())
     }
     
-    // Listen for data source changes from other components (like auth)
-    const handleDataSourceChange = () => {
-      if (isSupabaseConfigured && user) {
-        setDatabaseProvider('supabase')
-      } else {
-        setDatabaseProvider(DataService.getDatabaseProvider())
-      }
-    }
-    
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
-    
-    return () => {
-      window.removeEventListener("dataSourceChanged", handleDataSourceChange)
-    }
-  }, [user])
-
-  // Auto-switch to mock if user logs out while using supabase (only if supabase is not configured)
-  useEffect(() => {
-    if (!isSupabaseConfigured && databaseProvider === 'supabase' && !user) {
-      setDatabaseProvider('mock')
-      DataService.setDatabaseProvider('mock')
-      window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-    }
-  }, [user, databaseProvider])
+    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
+  }, [])
 
   const handleProviderChange = (provider: "mock" | "postgresql" | "supabase") => {
-    // Prevent changing provider if user is logged in to Supabase
-    if (isSupabaseConfigured && user) {
-      return
-    }
-    
-    // Prevent selecting supabase when not authenticated
-    if (provider === 'supabase' && !user) {
-      return
-    }
+    // Ignore if switching to supabase but the user is not logged in
+    if (provider === 'supabase' && !user) return
+    // Ignore if there is no change
+    if (provider === databaseProvider) return
     
     setDatabaseProvider(provider)
     DataService.setDatabaseProvider(provider)
-
-    // Trigger custom event for other components to listen
     window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-
-    router.refresh() // This will re-fetch data for the current route
   }
 
   const handleSignOut = async () => {
+    // The signOut method has already handled state switching, no additional operations are needed here
     await signOut()
-    // Switch to mock data when signing out from Supabase
-    if (isSupabaseConfigured && databaseProvider === 'supabase') {
-      setDatabaseProvider('mock')
-      DataService.setDatabaseProvider('mock')
-      window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-    }
   }
 
   const handleSignIn = () => {
-    // Navigate to login page or trigger login modal
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   const getProviderInfo = (provider: "mock" | "postgresql" | "supabase") => {
@@ -107,21 +71,41 @@ const Header: React.FC = () => {
   const CurrentIcon = currentProvider.icon
   const configuredProviders = DataService.getAvailableProviders()
   
-  // Determine available providers based on authentication status
+  // Determine available database providers
   const getAvailableProviders = () => {
-    // If user is logged in to Supabase, don't show provider selection
-    if (isSupabaseConfigured && user) {
-      return []
-    }
-    
+    // If currently using supabase but the user is not logged in, only show mock
     if (databaseProvider === 'supabase' && !user) {
-      // If using supabase but not authenticated, force to mock and only show mock
       return ['mock']
     }
     return configuredProviders
   }
   
   const availableProviders = getAvailableProviders()
+
+  // Show a simplified version before the client is initialized to avoid hydration errors
+  if (!isClientInitialized) {
+    return (
+      <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <h1 className="text-2xl font-bold text-blue-600">Careenicle</h1>
+              </div>
+            </div>
+            <nav className="hidden md:flex space-x-8">
+              <div className="flex items-center space-x-2 text-gray-600">
+                <span>Loading...</span>
+              </div>
+            </nav>
+            <div className="flex items-center space-x-4">
+              <div className="w-32 h-10 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+    )
+  }
 
   return (
     <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
@@ -157,54 +141,50 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="flex items-center space-x-4">
-            {/* Authentication UI (only show when Supabase is configured) */}
-            {isSupabaseConfigured && (
-              <>
-                {user ? (
-                  // Authenticated user menu
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" className="flex items-center space-x-2">
-                        <User className="w-4 h-4" />
-                        <span className="text-sm">{user.email}</span>
-                        <ChevronDown className="w-4 h-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48 p-2" align="end">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50"
-                        onClick={() => router.push('/reset-password?type=recovery')}
-                      >
-                        <Unlock className="w-4 h-4 mr-2" />
-                        Reset Password
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={handleSignOut}
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Sign Out
-                      </Button>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  // Sign in button for unauthenticated users
-                  <Button
-                    variant="outline"
-                    onClick={handleSignIn}
-                    className="flex items-center space-x-2"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    <span>Sign In</span>
+            {/* Authenticated user interface */}
+            {user ? (
+              // Menu for logged-in users
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2">
+                    <User className="w-4 h-4" />
+                    <span className="text-sm">{user.email}</span>
+                    <ChevronDown className="w-4 h-4" />
                   </Button>
-                )}
-              </>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="end">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50"
+                    onClick={() => window.location.href = '/reset-password?type=recovery'}
+                  >
+                    <Unlock className="w-4 h-4 mr-2" />
+                    Reset Password
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              // Login button for unauthenticated users
+              <Button
+                variant="outline"
+                onClick={handleSignIn}
+                className="flex items-center space-x-2"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In</span>
+              </Button>
             )}
 
-            {/* Database Provider Selector (only show when user is not logged in to Supabase) */}
-            {!(isSupabaseConfigured && user) && availableProviders.length > 0 && (
+            {/* Database provider selector (only shown when the user is not logged in to Supabase) */}
+            {!user && availableProviders.length > 0 && (
               <Select value={databaseProvider} onValueChange={handleProviderChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -226,7 +206,7 @@ const Header: React.FC = () => {
                       </div>
                     </SelectItem>
                   )}
-                  {availableProviders.includes("supabase") && user && (
+                  {availableProviders.includes("supabase") && (
                     <SelectItem value="supabase">
                       <div className="flex items-center space-x-2">
                         <Database className="w-4 h-4 text-blue-500" />
@@ -236,6 +216,14 @@ const Header: React.FC = () => {
                   )}
                 </SelectContent>
               </Select>
+            )}
+            
+            {/* Display current data source status (when the user is logged in) */}
+            {user && (
+              <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                <Database className="w-4 h-4" />
+                <span className="text-sm font-medium">Supabase</span>
+              </div>
             )}
           </div>
 
