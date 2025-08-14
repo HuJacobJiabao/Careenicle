@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { DataService } from "@/lib/dataService"
 import { useAuth } from "@/lib/auth-context"
+import { isSupabaseConfigured } from "@/lib/supabase/client"
 import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, Unlock, LogOut, User, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -17,11 +18,21 @@ const Header: React.FC = () => {
   const router = useRouter()
 
   useEffect(() => {
-    setDatabaseProvider(DataService.getDatabaseProvider())
+    // If Supabase is configured and user is logged in, automatically set it as the provider
+    if (isSupabaseConfigured && user) {
+      setDatabaseProvider('supabase')
+      DataService.setDatabaseProvider('supabase')
+    } else {
+      setDatabaseProvider(DataService.getDatabaseProvider())
+    }
     
     // Listen for data source changes from other components (like auth)
     const handleDataSourceChange = () => {
-      setDatabaseProvider(DataService.getDatabaseProvider())
+      if (isSupabaseConfigured && user) {
+        setDatabaseProvider('supabase')
+      } else {
+        setDatabaseProvider(DataService.getDatabaseProvider())
+      }
     }
     
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
@@ -29,11 +40,11 @@ const Header: React.FC = () => {
     return () => {
       window.removeEventListener("dataSourceChanged", handleDataSourceChange)
     }
-  }, [])
+  }, [user])
 
-  // Auto-switch to mock if user logs out while using supabase
+  // Auto-switch to mock if user logs out while using supabase (only if supabase is not configured)
   useEffect(() => {
-    if (databaseProvider === 'supabase' && !user) {
+    if (!isSupabaseConfigured && databaseProvider === 'supabase' && !user) {
       setDatabaseProvider('mock')
       DataService.setDatabaseProvider('mock')
       window.dispatchEvent(new CustomEvent("dataSourceChanged"))
@@ -41,6 +52,11 @@ const Header: React.FC = () => {
   }, [user, databaseProvider])
 
   const handleProviderChange = (provider: "mock" | "postgresql" | "supabase") => {
+    // Prevent changing provider if user is logged in to Supabase
+    if (isSupabaseConfigured && user) {
+      return
+    }
+    
     // Prevent selecting supabase when not authenticated
     if (provider === 'supabase' && !user) {
       return
@@ -58,8 +74,10 @@ const Header: React.FC = () => {
   const handleSignOut = async () => {
     await signOut()
     // Switch to mock data when signing out from Supabase
-    if (databaseProvider === 'supabase') {
-      handleProviderChange('mock')
+    if (isSupabaseConfigured && databaseProvider === 'supabase') {
+      setDatabaseProvider('mock')
+      DataService.setDatabaseProvider('mock')
+      window.dispatchEvent(new CustomEvent("dataSourceChanged"))
     }
   }
 
@@ -91,6 +109,11 @@ const Header: React.FC = () => {
   
   // Determine available providers based on authentication status
   const getAvailableProviders = () => {
+    // If user is logged in to Supabase, don't show provider selection
+    if (isSupabaseConfigured && user) {
+      return []
+    }
+    
     if (databaseProvider === 'supabase' && !user) {
       // If using supabase but not authenticated, force to mock and only show mock
       return ['mock']
@@ -135,7 +158,7 @@ const Header: React.FC = () => {
 
           <div className="flex items-center space-x-4">
             {/* Authentication UI (only show when Supabase is configured) */}
-            {configuredProviders.includes('supabase') && (
+            {isSupabaseConfigured && (
               <>
                 {user ? (
                   // Authenticated user menu
@@ -180,37 +203,40 @@ const Header: React.FC = () => {
               </>
             )}
 
-            <Select value={databaseProvider} onValueChange={handleProviderChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableProviders.includes("mock") && (
-                  <SelectItem value="mock">
-                    <div className="flex items-center space-x-2">
-                      <TestTube className="w-4 h-4 text-orange-500" />
-                      <span>Mock Data</span>
-                    </div>
-                  </SelectItem>
-                )}
-                {availableProviders.includes("postgresql") && (
-                  <SelectItem value="postgresql">
-                    <div className="flex items-center space-x-2">
-                      <Database className="w-4 h-4 text-green-500" />
-                      <span>PostgreSQL</span>
-                    </div>
-                  </SelectItem>
-                )}
-                {availableProviders.includes("supabase") && user && (
-                  <SelectItem value="supabase">
-                    <div className="flex items-center space-x-2">
-                      <Database className="w-4 h-4 text-blue-500" />
-                      <span>Supabase</span>
-                    </div>
-                  </SelectItem>
-                )}
-                  </SelectContent>
-            </Select>
+            {/* Database Provider Selector (only show when user is not logged in to Supabase) */}
+            {!(isSupabaseConfigured && user) && availableProviders.length > 0 && (
+              <Select value={databaseProvider} onValueChange={handleProviderChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProviders.includes("mock") && (
+                    <SelectItem value="mock">
+                      <div className="flex items-center space-x-2">
+                        <TestTube className="w-4 h-4 text-orange-500" />
+                        <span>Mock Data</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                  {availableProviders.includes("postgresql") && (
+                    <SelectItem value="postgresql">
+                      <div className="flex items-center space-x-2">
+                        <Database className="w-4 h-4 text-green-500" />
+                        <span>PostgreSQL</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                  {availableProviders.includes("supabase") && user && (
+                    <SelectItem value="supabase">
+                      <div className="flex items-center space-x-2">
+                        <Database className="w-4 h-4 text-blue-500" />
+                        <span>Supabase</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Mobile Navigation */}
