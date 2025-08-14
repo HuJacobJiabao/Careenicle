@@ -1,6 +1,7 @@
 import type { Job, JobEvent } from "./types"
 import { mockJobs, mockJobEvents } from "./mockData"
 import { SupabaseService } from "./supabaseService"
+import { supabase } from "./supabase/client"
 
 export type DatabaseProvider = "mock" | "postgresql" | "supabase"
 

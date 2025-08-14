@@ -18,6 +18,17 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     setDatabaseProvider(DataService.getDatabaseProvider())
+    
+    // Listen for data source changes from other components (like auth)
+    const handleDataSourceChange = () => {
+      setDatabaseProvider(DataService.getDatabaseProvider())
+    }
+    
+    window.addEventListener("dataSourceChanged", handleDataSourceChange)
+    
+    return () => {
+      window.removeEventListener("dataSourceChanged", handleDataSourceChange)
+    }
   }, [])
 
   // Auto-switch to mock if user logs out while using supabase

@@ -5,6 +5,8 @@ A modern, intuitive job application tracking system built with Next.js 15, TypeS
 ## Features
 
 - **Job Management**: Add, edit, and track job applications with smart location detection
+- **Multi-User Support**: Secure user authentication and data isolation with Supabase
+- **Cloud Database**: Supabase integration with real-time data synchronization
 - **Interactive Map View**: Visualize job locations on Google Maps with custom markers and info windows
 - **Location Autocomplete**: Smart address completion powered by Google Places API
 - **Timeline View**: Visual timeline of your application progress and milestones
@@ -16,9 +18,11 @@ A modern, intuitive job application tracking system built with Next.js 15, TypeS
 ## Tech Stack
 
 - **Frontend**: Next.js 15.2.4, React, TypeScript
+- **Backend & Database**: Supabase (PostgreSQL with real-time features)
+- **Authentication**: Supabase Auth with Row Level Security (RLS)
 - **Maps & Location**: Google Maps API
 - **Styling**: Tailwind CSS, Radix UI components
-- **Database**: PostgreSQL with PostGIS support
+- **Local Development**: PostgreSQL with PostGIS support
 - **Package Manager**: pnpm
 
 ## Prerequisites
@@ -42,22 +46,42 @@ pnpm install
 
 ### 2. Database Setup
 
-#### Create PostgreSQL Database
+You can choose between two database options:
+
+#### Option A: Supabase (Recommended for Production)
+
+1. **Create a Supabase Project**:
+   - Go to [supabase.com](https://supabase.com) and create a new account
+   - Create a new project
+   - Wait for the project to be fully initialized
+
+2. **Configure Supabase Database**:
+   - Go to the SQL Editor in your Supabase dashboard
+   - Copy and paste the contents of `scripts/init-supabase-schema.sql`
+   - Run the script to create tables, indexes, and RLS policies
+
+3. **Get Supabase Credentials**:
+   - Go to Settings > API in your Supabase dashboard
+   - Copy the Project URL and anon public key
+
+#### Option B: Local PostgreSQL Database
+
+##### Create PostgreSQL Database
 
 ```
 CREATE DATABASE jobtracker;
 ```
 
-#### Initialize Database Schema
+##### Initialize Database Schema
 
 Run the database initialization script to create the required tables and schema:
 
 ```
 # Connect to your PostgreSQL database and run the schema script
-psql -U your_username -d jobtracker -f scripts/init-scheme.sql
+psql -U your_username -d jobtracker -f scripts/init-schema.sql
 ```
 
-#### Initialize Sample Data (Optional)
+##### Initialize Sample Data (Optional)
 
 If you want to populate the database with sample data for testing:
 
@@ -82,6 +106,17 @@ cp env.example .env.local
 
 Edit the `.env.local` file and configure the following variables:
 
+**For Supabase (Recommended):**
+```
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Google Maps Configuration
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+```
+
+**For Local PostgreSQL:**
 ```
 # Database Configuration
 DB_USER=your_postgres_username
@@ -96,19 +131,24 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
 **Important Configuration Notes:**
 
-1. **Database Settings**: Replace with your actual PostgreSQL credentials
-  - `your_postgres_username`: Your PostgreSQL username
-  - `your_postgres_password`: Your PostgreSQL password
-  - `localhost`: Your database host (change if using a remote database)
-  - `5432`: Your PostgreSQL port (change if using a different port)
+1. **Supabase Settings** (if using Supabase):
+   - `your_supabase_project_url`: Found in Settings > API in your Supabase dashboard
+   - `your_supabase_anon_key`: Found in Settings > API in your Supabase dashboard
+   - Supabase provides built-in authentication and multi-user support with Row Level Security
 
-2. **Google Maps API Setup**:
-  - Get a Google Cloud Platform account
-  - Enable the following APIs in Google Cloud Console:
-    - Maps JavaScript API
-    - Places API (for location autocomplete)
-  - Create an API key and replace `your_google_maps_api_key`
-  - Configure API key restrictions for security
+2. **Local Database Settings** (if using local PostgreSQL):
+   - `your_postgres_username`: Your PostgreSQL username
+   - `your_postgres_password`: Your PostgreSQL password
+   - `localhost`: Your database host (change if using a remote database)
+   - `5432`: Your PostgreSQL port (change if using a different port)
+
+3. **Google Maps API Setup**:
+   - Get a Google Cloud Platform account
+   - Enable the following APIs in Google Cloud Console:
+     - Maps JavaScript API
+     - Places API (for location autocomplete)
+   - Create an API key and replace `your_google_maps_api_key`
+   - Configure API key restrictions for security
 
 ### 4. Start the Development Server
 
@@ -126,6 +166,13 @@ The application will be available at `http://localhost:3000`.
 ![Job Map](demo/3.jpg)
 
 ## Key Features in Detail
+
+### Multi-User Support with Supabase
+- **Secure Authentication**: User registration and login powered by Supabase Auth
+- **Data Isolation**: Each user can only access their own job applications and events
+- **Row Level Security**: Database-level security ensures data privacy between users
+- **Real-time Updates**: Changes are synchronized in real-time across sessions
+- **Automatic User Management**: User accounts are automatically linked to job data
 
 ### Interactive Map View
 - **Visual Job Tracking**: See all your job applications plotted on an interactive Google Map
