@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { DataService } from "@/lib/dataService"
 import { useAuth } from "@/lib/auth-context"
-import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, LogOut, User, LogIn } from "lucide-react"
+import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, Unlock, LogOut, User, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -148,6 +148,14 @@ const Header: React.FC = () => {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-48 p-2" align="end">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50"
+                        onClick={() => router.push('/reset-password?type=recovery')}
+                      >
+                        <Unlock className="w-4 h-4 mr-2" />
+                        Reset Password
+                      </Button>
                       <Button
                         variant="ghost"
                         className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
