@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { DataService } from "@/lib/dataService"
 import { useAuth } from "@/lib/auth-context"
 import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, Unlock, LogOut, User, LogIn } from "lucide-react"
@@ -15,6 +15,7 @@ const Header: React.FC = () => {
   const [isClientInitialized, setIsClientInitialized] = useState(false)
   const { user, signOut, loading } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
     // Set the database provider during initialization
@@ -39,6 +40,10 @@ const Header: React.FC = () => {
     setDatabaseProvider(provider)
     DataService.setDatabaseProvider(provider)
     window.dispatchEvent(new CustomEvent("dataSourceChanged"))
+  }
+
+  const handleResetPassword = () => {
+    router.push('/reset-password?type=recovery')
   }
 
   const handleSignOut = async () => {
@@ -156,7 +161,7 @@ const Header: React.FC = () => {
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50"
-                    onClick={() => window.location.href = '/reset-password?type=recovery'}
+                    onClick={handleResetPassword}
                   >
                     <Unlock className="w-4 h-4 mr-2" />
                     Reset Password
