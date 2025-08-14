@@ -13,11 +13,11 @@ This document explains how to set up Supabase integration for the Job Tracker ap
 
 In your `.env.local` file, add your Supabase credentials:
 
-```env
+\`\`\`env
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+\`\`\`
 
 To find these values:
 1. Go to your Supabase project dashboard
@@ -49,9 +49,9 @@ To switch to Supabase:
 4. The setting will be saved in localStorage
 
 Alternatively, you can programmatically switch by calling:
-```javascript
+\`\`\`javascript
 DataService.setDatabaseProvider("supabase")
-```
+\`\`\`
 
 ## Database Schema
 
