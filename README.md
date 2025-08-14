@@ -85,10 +85,10 @@ psql -U your_username -d jobtracker -f scripts/init-schema.sql
 
 If you want to populate the database with sample data for testing:
 
-\`\`\`
+```
 # Run the sample data script
 psql -U your_username -d jobtracker -f scripts/init-sample-data.sql
-\`\`\`
+```
 
 Alternatively, you can copy the contents of these scripts and run them in your preferred PostgreSQL client (pgAdmin, DBeaver, etc.).
 
@@ -98,9 +98,9 @@ Alternatively, you can copy the contents of these scripts and run them in your p
 
 Copy the example environment file and create your local configuration:
 
-\`\`\`
+```
 cp env.example .env.local
-\`\`\`
+```
 
 #### Configure Environment Variables
 
