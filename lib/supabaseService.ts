@@ -11,6 +11,17 @@ export class SupabaseService {
     }
   }
 
+  // Get current user ID from Supabase auth
+  private static async getCurrentUserId(): Promise<string> {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
+      throw new Error("User not authenticated")
+    }
+    
+    return user.id
+  }
+
   // Helper function to convert camelCase to snake_case for database
   private static toSnakeCase(obj: any): any {
     if (!obj || typeof obj !== 'object') return obj
@@ -45,11 +56,15 @@ export class SupabaseService {
   }): Promise<{ jobs: Job[]; pagination?: any }> {
     this.checkConfiguration()
     
+    const userId = await this.getCurrentUserId()
     const page = params?.page || 1
     const limit = params?.limit || 10
     const offset = (page - 1) * limit
 
-    let query = supabase.from("jobs").select("*", { count: 'exact' })
+    let query = supabase
+      .from("jobs")
+      .select("*", { count: 'exact' })
+      .eq("user_id", userId) // Filter by current user
     
     // Apply filters
     if (params?.search) {
@@ -97,7 +112,10 @@ export class SupabaseService {
 
   static async createJob(job: Omit<Job, "id" | "created_at" | "updated_at">): Promise<Job> {
     this.checkConfiguration()
-    const jobData = this.toSnakeCase(job)
+    
+    const userId = await this.getCurrentUserId()
+    const jobData = this.toSnakeCase({ ...job, userId })
+    
     const { data, error } = await supabase.from("jobs").insert([jobData]).select().single()
 
     if (error) {
@@ -105,16 +123,38 @@ export class SupabaseService {
       throw new Error("Failed to create job")
     }
 
-    return this.toCamelCase(data)
+    const createdJob = this.toCamelCase(data)
+
+    // Automatically create an "applied" job event
+    try {
+      const appliedEvent = {
+        jobId: createdJob.id,
+        eventType: "applied" as const,
+        eventDate: job.applicationDate,
+        title: "Application Submitted",
+        description: `Applied for ${job.position} at ${job.company}`,
+      }
+
+      await this.createJobEvent(appliedEvent)
+    } catch (eventError) {
+      console.error("Error creating applied event:", eventError)
+      // Don't throw error here - job was created successfully, event creation is secondary
+    }
+
+    return createdJob
   }
 
   static async updateJob(id: number, job: Partial<Job>): Promise<Job> {
     this.checkConfiguration()
+    
+    const userId = await this.getCurrentUserId()
     const jobData = this.toSnakeCase(job)
+    
     const { data, error } = await supabase
       .from("jobs")
       .update({ ...jobData, updated_at: new Date().toISOString() })
       .eq("id", id)
+      .eq("user_id", userId) // Ensure user can only update their own jobs
       .select()
       .single()
 
@@ -128,7 +168,13 @@ export class SupabaseService {
 
   static async deleteJob(id: number): Promise<void> {
     this.checkConfiguration()
-    const { error } = await supabase.from("jobs").delete().eq("id", id)
+    
+    const userId = await this.getCurrentUserId()
+    const { error } = await supabase
+      .from("jobs")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId) // Ensure user can only delete their own jobs
 
     if (error) {
       console.error("Error deleting job from Supabase:", error)
@@ -138,11 +184,15 @@ export class SupabaseService {
 
   static async toggleFavorite(id: number): Promise<Job> {
     this.checkConfiguration()
+    
+    const userId = await this.getCurrentUserId()
+    
     // First get the current favorite status
     const { data: currentJob, error: fetchError } = await supabase
       .from("jobs")
       .select("is_favorite")
       .eq("id", id)
+      .eq("user_id", userId) // Ensure user can only access their own jobs
       .single()
 
     if (fetchError) {
@@ -158,6 +208,7 @@ export class SupabaseService {
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
+      .eq("user_id", userId) // Ensure user can only update their own jobs
       .select()
       .single()
 
@@ -185,6 +236,7 @@ export class SupabaseService {
   ): Promise<{ events: JobEvent[]; pagination?: any }> {
     this.checkConfiguration()
     
+    const userId = await this.getCurrentUserId()
     const page = params?.page || 1
     const limit = params?.limit || 50 // Higher default for events
     const offset = (page - 1) * limit
@@ -199,6 +251,7 @@ export class SupabaseService {
           location
         )
       `, { count: 'exact' })
+      .eq("user_id", userId) // Filter by current user
       .order("event_date", { ascending: false })
 
     if (jobId) {
@@ -241,7 +294,10 @@ export class SupabaseService {
 
   static async createJobEvent(event: Omit<JobEvent, "id" | "created_at" | "updated_at">): Promise<JobEvent> {
     this.checkConfiguration()
-    const eventData = this.toSnakeCase(event)
+    
+    const userId = await this.getCurrentUserId()
+    const eventData = this.toSnakeCase({ ...event, userId })
+    
     const { data, error } = await supabase
       .from("job_events")
       .insert([eventData])
@@ -271,11 +327,15 @@ export class SupabaseService {
 
   static async updateJobEvent(id: number, event: Partial<JobEvent>): Promise<JobEvent> {
     this.checkConfiguration()
+    
+    const userId = await this.getCurrentUserId()
     const eventData = this.toSnakeCase(event)
+    
     const { data, error } = await supabase
       .from("job_events")
       .update({ ...eventData, updated_at: new Date().toISOString() })
       .eq("id", id)
+      .eq("user_id", userId) // Ensure user can only update their own events
       .select(`
         *,
         jobs (
@@ -302,7 +362,13 @@ export class SupabaseService {
 
   static async deleteJobEvent(id: number): Promise<void> {
     this.checkConfiguration()
-    const { error } = await supabase.from("job_events").delete().eq("id", id)
+    
+    const userId = await this.getCurrentUserId()
+    const { error } = await supabase
+      .from("job_events")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId) // Ensure user can only delete their own events
 
     if (error) {
       console.error("Error deleting job event from Supabase:", error)
