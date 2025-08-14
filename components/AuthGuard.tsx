@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React from "react"
 import { useAuth } from "@/lib/auth-context"
 import { DataService } from "@/lib/dataService"
 import { usePathname, useRouter } from "next/navigation"
@@ -14,16 +14,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const currentProvider = DataService.getDatabaseProvider()
   const pathname = usePathname()
   const router = useRouter()
-
-  // Ensure Supabase is used when user is logged in
-  useEffect(() => {
-    if (user && currentProvider !== 'supabase') {
-      DataService.setDatabaseProvider("supabase")
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-      }
-    }
-  }, [user, currentProvider])
 
   // Paths that are not protected
   const isPublicPage = pathname === '/login' || pathname === '/reset-password' || pathname.startsWith('/auth/')

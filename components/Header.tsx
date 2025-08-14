@@ -31,18 +31,7 @@ const Header: React.FC = () => {
     return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
   }, [])
 
-  // Ensure Supabase is used when user is logged in
-  useEffect(() => {
-    if (user && databaseProvider !== 'supabase') {
-      DataService.setDatabaseProvider("supabase")
-      setDatabaseProvider("supabase")
-      window.dispatchEvent(new CustomEvent("dataSourceChanged"))
-    }
-  }, [user, databaseProvider])
-
   const handleProviderChange = (provider: "mock" | "postgresql" | "supabase") => {
-    // Prevent switching away from Supabase when user is logged in
-    if (user && provider !== 'supabase') return
     // Ignore if switching to supabase but the user is not logged in
     if (provider === 'supabase' && !user) return
     // Ignore if there is no change
