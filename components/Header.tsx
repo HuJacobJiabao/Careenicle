@@ -30,18 +30,12 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     // Set the database provider during initialization
-    const initializeProvider = async () => {
-      const provider = await DataService.getDatabaseProvider()
-      setDatabaseProvider(provider)
-      setIsClientInitialized(true)
-    }
-    
-    initializeProvider()
+    setDatabaseProvider(DataService.getDatabaseProvider())
+    setIsClientInitialized(true)
 
     // Listen for data source changes
-    const handleDataSourceChange = async () => {
-      const provider = await DataService.getDatabaseProvider()
-      setDatabaseProvider(provider)
+    const handleDataSourceChange = () => {
+      setDatabaseProvider(DataService.getDatabaseProvider())
     }
 
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
@@ -80,6 +74,8 @@ const Header: React.FC = () => {
         return { icon: Database, label: "PostgreSQL", color: "text-green-500" }
       case "supabase":
         return { icon: Database, label: "Supabase", color: "text-blue-500" }
+      default:
+        return { icon: TestTube, label: "Mock Data", color: "text-orange-500" }
     }
   }
 
@@ -90,7 +86,7 @@ const Header: React.FC = () => {
   }
 
   const currentProvider = getProviderInfo(databaseProvider)
-  const CurrentIcon = currentProvider.icon
+  const CurrentIcon = currentProvider?.icon || TestTube
   const configuredProviders = DataService.getAvailableProviders()
 
   // Determine available database providers
@@ -136,7 +132,12 @@ const Header: React.FC = () => {
           {/* Logo */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-blue-600">Careenicle</h1>
+              <button
+                onClick={() => router.push("/")}
+                className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors duration-200 cursor-pointer"
+              >
+                Careenicle
+              </button>
             </div>
           </div>
 
@@ -247,15 +248,50 @@ const Header: React.FC = () => {
 
           {/* Mobile Navigation */}
           <div className="md:hidden">
-            <select
-              value={pathname}
-              onChange={(e) => (window.location.href = e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-medium"
-            >
-              <option value="/">Applications</option>
-              <option value="/timeline">Timeline</option>
-              <option value="/map">Map View</option>
-            </select>
+            <div className="flex items-center space-x-2">
+              <select
+                value={pathname}
+                onChange={(e) => (window.location.href = e.target.value)}
+                className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-medium bg-white"
+              >
+                <option value="/">Applications</option>
+                <option value="/timeline">Timeline</option>
+                <option value="/map">Map View</option>
+              </select>
+
+              {/* Mobile user menu */}
+              {user ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="p-2">
+                      <User className="w-4 h-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-2" align="end">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50"
+                      onClick={handleResetPassword}
+                    >
+                      <Unlock className="w-4 h-4 mr-2" />
+                      Reset Password
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Button variant="outline" size="sm" onClick={handleSignIn} className="p-2 bg-transparent">
+                  <LogIn className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
