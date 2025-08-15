@@ -1089,7 +1089,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           <SelectContent>
                             <SelectItem value="applied">Applied</SelectItem>
                             <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
-                            <SelectItem value="interview">Interview Completed</SelectItem>
+                            <SelectItem value="interview">Interview</SelectItem>
                             <SelectItem value="interview_result">Interview Result</SelectItem>
                             <SelectItem value="rejected">Rejected</SelectItem>
                             <SelectItem value="offer_received">Offer Received</SelectItem>
@@ -1203,7 +1203,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           <SelectContent>
                             <SelectItem value="applied">Applied</SelectItem>
                             <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
-                            <SelectItem value="interview">Interview Completed</SelectItem>
+                            <SelectItem value="interview">Interview</SelectItem>
                             <SelectItem value="interview_result">Interview Result</SelectItem>
                             <SelectItem value="rejected">Rejected</SelectItem>
                             <SelectItem value="offer_received">Offer Received</SelectItem>
