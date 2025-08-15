@@ -136,94 +136,110 @@ export default function MapPage() {
 
   if (loading) {
     return (
-      <div className="animate-fade-in flex items-center justify-center min-h-screen">
+      <div className="animate-fade-in flex items-center justify-center min-h-screen px-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading job map...</p>
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
+          <p className="text-sm sm:text-base text-gray-600">Loading job map...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-800 mb-4">Job Applications Map</h1>
-        <p className="text-lg text-gray-600">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3 sm:mb-4">Job Applications Map</h1>
+        <p className="text-base sm:text-lg text-gray-600 px-2 sm:px-0">
           Visualize your job applications across different locations with real geographic data.
         </p>
       </div>
 
-      {/* Statistics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="bg-blue-500 rounded-lg p-3 text-white text-xl">
-              <MapPin className="w-6 h-6" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10 animate-scale-in">
+          {[
+            {
+              label: "Total Locations",
+              value: stats.totalLocations,
+              color: "from-blue-500 to-blue-600",
+              icon: <MapPin className="w-4 h-4 md:w-6 md:h-6" />,
+              bgColor: "bg-blue-50",
+              textColor: "text-blue-700",
+            },
+            {
+              label: "Applications w/ Location",
+              value: stats.totalApplications,
+              color: "from-green-500 to-emerald-500",
+              icon: <Building2 className="w-4 h-4 md:w-6 md:h-6" />,
+              bgColor: "bg-green-50",
+              textColor: "text-green-700",
+            },
+            {
+              label: "Top Location",
+              value: stats.topLocation,
+              color: "from-orange-500 to-amber-500",
+              icon: <Target className="w-4 h-4 md:w-6 md:h-6" />,
+              bgColor: "bg-orange-50",
+              textColor: "text-orange-700",
+              isTopLocation: true,
+            },
+            {
+              label: "States Covered",
+              value: stats.statesCovered,
+              color: "from-purple-500 to-violet-500",
+              icon: <Globe className="w-4 h-4 md:w-6 md:h-6" />,
+              bgColor: "bg-purple-50",
+              textColor: "text-purple-700",
+            },
+          ].map((stat, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-lg md:rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group hover:-translate-y-1 
+                         p-3 md:p-6 
+                         h-20 md:h-auto 
+                         border border-gray-100"
+            >
+              <div className="flex items-center justify-between h-full">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-600 uppercase tracking-wide mb-0.5 md:mb-2 text-[10px] md:text-sm leading-tight">
+                    {stat.label}
+                  </p>
+                  <p
+                    className={`font-bold text-gray-900 ${
+                      stat.isTopLocation ? "text-xs md:text-xl leading-tight" : "text-sm md:text-3xl"
+                    }`}
+                  >
+                    {stat.value}
+                  </p>
+                </div>
+                <div
+                  className={`p-1.5 md:p-4 rounded-md md:rounded-2xl bg-gradient-to-br ${stat.color} text-white shadow-sm md:shadow-lg group-hover:shadow-xl transition-all duration-200 flex-shrink-0 ml-2`}
+                >
+                  {stat.icon}
+                </div>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Locations</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalLocations}</p>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="bg-green-500 rounded-lg p-3 text-white text-xl">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Applications w/ Location</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalApplications}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="bg-orange-500 rounded-lg p-3 text-white text-xl">
-              <Target className="w-6 h-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Top Location</p>
-              <p className="text-lg font-bold text-gray-900">{stats.topLocation}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="bg-purple-500 rounded-lg p-3 text-white text-xl">
-              <Globe className="w-6 h-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">States Covered</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.statesCovered}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         {/* Map Container - Full Width */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <GoogleJobMap jobs={jobs} selectedStatuses={selectedStatuses} onStatusFilterChange={setSelectedStatuses} />
         </div>
 
         {/* Location Details - Horizontal Layout */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Location List - Horizontal Scrolling */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4">Locations</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-3 sm:mb-4">Locations</h2>
+            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
               {locationData
                 .sort((a, b) => b.count - a.count)
                 .map((location, index) => (
                   <div
                     key={index}
-                    className={`flex-shrink-0 w-48 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    className={`flex-shrink-0 w-44 sm:w-48 p-3 rounded-lg border cursor-pointer transition-colors ${
                       selectedLocation === location
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
@@ -234,7 +250,7 @@ export default function MapPage() {
                       <div className="flex items-center justify-between mb-2">
                         <MapPin className="w-4 h-4 text-gray-400" />
                         <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
                             location.count === 1
                               ? "bg-blue-500"
                               : location.count <= 3
@@ -262,34 +278,34 @@ export default function MapPage() {
 
           {/* Selected Location Details */}
           {selectedLocation && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-slate-800 mb-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-3 sm:mb-4">
                 {selectedLocation.city}, {selectedLocation.state}
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {selectedLocation.jobs.map((job, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div key={index} className="border border-gray-200 rounded-lg p-3 sm:p-4">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center">
+                      <div className="flex items-center min-w-0 flex-1">
                         <img
                           src={`https://logo.clearbit.com/${job.company.toLowerCase().replace(/\s+/g, "")}.com`}
                           alt={`${job.company} logo`}
-                          className="w-8 h-8 rounded-lg mr-3"
+                          className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg mr-2 sm:mr-3 flex-shrink-0"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             target.src = "/placeholder.svg?height=32&width=32&text=" + job.company.charAt(0)
                           }}
                         />
-                        <div>
-                          <div className="font-medium text-gray-900">{job.position}</div>
-                          <div className="text-sm text-gray-600">{job.company}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-gray-900 text-sm truncate">{job.position}</div>
+                          <div className="text-xs sm:text-sm text-gray-600 truncate">{job.company}</div>
                           <div className="text-xs text-gray-500">
                             Applied: {new Date(job.applicationDate).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        className={`px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ml-2 ${
                           job.status === "applied"
                             ? "bg-blue-100 text-blue-800"
                             : job.status === "interview"

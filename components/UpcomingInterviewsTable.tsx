@@ -65,7 +65,8 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
         Upcoming Interviews ({jobs.length})
       </h2>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-r from-amber-50 to-orange-50">
@@ -196,6 +197,110 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="lg:hidden space-y-3">
+        {jobs.map((job, index) => {
+          const interview = job.upcomingInterview
+          const typeConfig = getTypeConfig(interview.interviewType)
+          const interviewDate = new Date(interview.eventDate)
+
+          return (
+            <div
+              key={`${job.id}-${interview.id}`}
+              className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 ${
+                isToday(interviewDate) ? "border-amber-300 bg-amber-50" : ""
+              }`}
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              {/* Card Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={getCompanyLogo(job.company) || "/placeholder.svg"}
+                    alt={`${job.company} logo`}
+                    className="w-10 h-10 rounded-lg shadow-sm"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = "/placeholder.svg"
+                    }}
+                  />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-sm">{job.company}</h3>
+                    {job.jobUrl ? (
+                      <a
+                        href={job.jobUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm transition-colors flex items-center"
+                      >
+                        {job.position}
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </a>
+                    ) : (
+                      <p className="text-gray-600 text-sm">{job.position}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Content */}
+              <div className="space-y-3">
+                {/* Interview Type */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Interview</span>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${typeConfig.color}`}>
+                    {typeConfig.icon} Round {interview.interviewRound || 1} - {typeConfig.label}
+                  </span>
+                </div>
+
+                {/* Date & Time */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Date & Time</span>
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${isToday(interviewDate) ? "text-amber-600" : "text-gray-900"}`}>
+                      {formatDateLabel(interviewDate)}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {interviewDate.toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  {interview.interviewLink ? (
+                    <a
+                      href={interview.interviewLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Join Interview
+                    </a>
+                  ) : (
+                    <div className="flex-1 px-3 py-1.5 text-xs text-gray-400 text-center border border-gray-200 rounded-lg">
+                      No link available
+                    </div>
+                  )}
+                  <button
+                    onClick={() => onManageInterview(job)}
+                    className="flex-1 inline-flex items-center justify-center px-3 py-1.5 text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md transition-colors duration-150"
+                  >
+                    <Settings className="w-3 h-3 mr-1" />
+                    Manage
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
