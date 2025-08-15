@@ -671,15 +671,16 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           </div>
 
           <div className="mb-4 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2 sm:mb-4">
+            <div className="flex items-center justify-between gap-2 mb-2 sm:mb-4 flex-wrap">
               <h3 className="text-base sm:text-xl font-semibold text-slate-800">Interview Rounds</h3>
               {!showNewInterviewForm && !loading && (
                 <Button
                   onClick={() => setShowNewInterviewForm(true)}
-                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  size="sm"
+                  className="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-lg transition-all duration-200"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  <span className="text-sm sm:text-base">Schedule Interview</span>
+                  <span className="text-sm">Schedule Interview</span>
                 </Button>
               )}
             </div>
@@ -1100,30 +1101,32 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
           <Card className="border-slate-200">
             <CardHeader className="pb-2 sm:pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
                   <h3 className="text-base sm:text-xl font-semibold text-slate-800">Event Timeline</h3>
                   <p className="text-xs sm:text-sm text-slate-600">Track all events related to this job application</p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-row gap-2 items-center justify-end flex-shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={toggleSortOrder}
-                    className="w-full sm:w-auto border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 bg-transparent"
+                    className="border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 bg-transparent px-3 py-1"
                     disabled={loading}
+                    aria-label={sortOrder === "desc" ? "Sort: Newest first" : "Sort: Oldest first"}
                   >
-                    <ArrowUpDown className="w-4 h-4 mr-2" />
-                    {sortOrder === "desc" ? "Newest First" : "Oldest First"}
+                    <ArrowUpDown className="w-4 h-4 mr-0" />
+                    <span className="hidden sm:inline ml-2">{sortOrder === "desc" ? "Newest First" : "Oldest First"}</span>
                   </Button>
                   {!showEventForm && !loading && (
                     <Button
                       onClick={() => setShowEventForm(true)}
                       size="sm"
-                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1"
+                      aria-label="Add event"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      <span className="text-sm">Add Event</span>
+                      <Plus className="w-4 h-4 mr-0" />
+                      <span className="hidden sm:inline ml-2 text-sm">Add Event</span>
                     </Button>
                   )}
                 </div>
@@ -1434,7 +1437,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                       >
                                         {getEventTypeLabel(event.eventType)}
                                       </span>
-                                      <span className="text-xs text-slate-500 font-medium">
+                                      <span className="text-xs right-0 text-slate-500 font-medium">
                                         {(() => {
                                           try {
                                             return new Date(event.eventDate).toLocaleString("en-US", {
