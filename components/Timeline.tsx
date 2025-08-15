@@ -316,11 +316,13 @@ const Timeline: React.FC = () => {
                                 />
                               </div>
                               <div className="text-left w-full">
-                                <div className="text-sm font-semibold text-gray-900 mb-1">{event.company}</div>
+                                <div className="text-sm font-semibold text-gray-900 mb-1 break-words">
+                                  {event.company}
+                                </div>
                                 {event.location && (
                                   <div className="flex items-center text-xs text-gray-600">
                                     <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-                                    <span>{event.location}</span>
+                                    <span className="break-words">{event.location}</span>
                                   </div>
                                 )}
                               </div>
@@ -412,7 +414,23 @@ const Timeline: React.FC = () => {
                             className={`${config.bgColor} ${config.borderColor} rounded-xl p-6 shadow-lg border-2 mr-auto max-w-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}
                           >
                             <div className="flex justify-between items-start gap-4">
-                              <div className="flex flex-col items-start min-w-0 flex-1">
+                              <div className="flex flex-col gap-2 items-start text-left flex-shrink-0">
+                                <div
+                                  className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold text-white ${config.color} shadow-sm`}
+                                >
+                                  <IconComponent className="w-3 h-3 mr-1" />
+                                  {getEventDisplayName(event.eventType, event)}
+                                </div>
+                                <div className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                  {formatDate(event.date)}
+                                </div>
+                                <div className="flex items-center text-sm font-semibold text-gray-900 mt-1">
+                                  <Briefcase className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                                  <span className="text-left break-words max-w-32">{event.position}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end min-w-0 flex-1">
                                 <div className="relative mb-3">
                                   <img
                                     src={getCompanyLogo(event.company) || "/placeholder.svg"}
@@ -424,30 +442,16 @@ const Timeline: React.FC = () => {
                                     }}
                                   />
                                 </div>
-                                <div className="text-left w-full">
-                                  <div className="text-sm font-semibold text-gray-900 mb-1">{event.company}</div>
+                                <div className="text-right w-full">
+                                  <div className="text-sm font-semibold text-gray-900 mb-1 break-words">
+                                    {event.company}
+                                  </div>
                                   {event.location && (
-                                    <div className="flex items-center text-xs text-gray-600">
-                                      <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-                                      <span>{event.location}</span>
+                                    <div className="flex items-center justify-end text-xs text-gray-600">
+                                      <span className="break-words">{event.location}</span>
+                                      <MapPin className="w-3 h-3 ml-1 flex-shrink-0" />
                                     </div>
                                   )}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col gap-2 items-end text-right flex-shrink-0">
-                                <div
-                                  className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold text-white ${config.color} shadow-sm`}
-                                >
-                                  <IconComponent className="w-3 h-3 mr-1" />
-                                  {getEventDisplayName(event.eventType, event)}
-                                </div>
-                                <div className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                  {formatDate(event.date)}
-                                </div>
-                                <div className="flex items-center text-sm font-semibold text-gray-900 mt-1">
-                                  <span className="text-right truncate max-w-32">{event.position}</span>
-                                  <Briefcase className="w-4 h-4 ml-2 text-gray-400 flex-shrink-0" />
                                 </div>
                               </div>
                             </div>
