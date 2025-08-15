@@ -354,32 +354,8 @@ export class SupabaseService {
       throw new Error("Failed to update job event")
     }
 
-    const { data: jobData, error: jobError } = await supabase
-      .from("jobs")
-      .select("company, position, location")
-      .eq("id", updatedEvent.job_id)
-      .eq("user_id", userId)
-      .single()
-
-    if (jobError) {
-      console.error("Error fetching job details:", jobError)
-      // Return event without job details if job fetch fails
-      const camelEvent = this.toCamelCase(updatedEvent)
-      return {
-        ...camelEvent,
-        company: "",
-        position: "",
-        location: "",
-      }
-    }
-
     const camelEvent = this.toCamelCase(updatedEvent)
-    return {
-      ...camelEvent,
-      company: jobData.company || "",
-      position: jobData.position || "",
-      location: jobData.location || "",
-    }
+    return camelEvent
   }
 
   static async deleteJobEvent(id: number): Promise<void> {
