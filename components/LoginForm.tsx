@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Mail, Lock, LogIn } from "lucide-react"
+import Link from "next/link"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")
@@ -200,7 +201,7 @@ export default function LoginForm() {
                 </button>
               )}
               <p className="text-sm text-slate-500 mt-2">
-                Need access? Contact your administrator to set up your account.
+                Need access? Contact <Link className= "text-blue-600 hover:text-blue-700 font-medium" href="mailto:hujiabao1224@gmail.com">hujiabao1224@gmail.com</Link> to set up your account.
               </p>
             </div>
           </CardContent>
