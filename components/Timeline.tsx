@@ -230,7 +230,12 @@ const Timeline: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-3xl font-bold text-slate-800 mb-8">Job Application Timeline</h1>
+          <div className="text-center mb-16">
+            <h1 className="text-4xl font-bold text-slate-800 mb-4">Job Application Timeline</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Track your career journey and application progress through interactive timeline
+            </p>
+          </div>
           <div className="animate-pulse">
             <div className="space-y-8">
               {[...Array(5)].map((_, i) => (
@@ -255,7 +260,12 @@ const Timeline: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-3xl font-bold text-slate-800 mb-8">Job Application Timeline</h1>
+          <div className="text-center mb-16">
+            <h1 className="text-4xl font-bold text-slate-800 mb-4">Job Application Timeline</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Track your career journey and application progress through interactive timeline
+            </p>
+          </div>
           <div className="text-center py-12">
             <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-800 mb-2">No Timeline Events</h3>
