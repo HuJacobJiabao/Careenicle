@@ -344,7 +344,9 @@ export class SupabaseService {
       .update({ ...eventData, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId)
-      .select("*")
+      .select(
+        "id, job_id, event_type, event_date, title, description, interview_result, created_at, updated_at, user_id",
+      )
       .single()
 
     if (updateError) {
