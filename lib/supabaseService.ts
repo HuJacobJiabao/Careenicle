@@ -335,14 +335,16 @@ export class SupabaseService {
     this.checkConfiguration()
 
     const userId = await this.getCurrentUserId()
-    const eventData = this.toSnakeCase(event)
+
+    const { company, position, location, ...eventDataOnly } = event
+    const eventData = this.toSnakeCase(eventDataOnly)
 
     const { data: updatedEvent, error: updateError } = await supabase
       .from("job_events")
       .update({ ...eventData, updated_at: new Date().toISOString() })
       .eq("id", id)
-      .eq("user_id", userId) // Ensure user can only update their own events
-      .select()
+      .eq("user_id", userId)
+      .select("*")
       .single()
 
     if (updateError) {
@@ -359,15 +361,22 @@ export class SupabaseService {
 
     if (jobError) {
       console.error("Error fetching job details:", jobError)
-      // Don't throw error here, return event without job details
+      // Return event without job details if job fetch fails
+      const camelEvent = this.toCamelCase(updatedEvent)
+      return {
+        ...camelEvent,
+        company: "",
+        position: "",
+        location: "",
+      }
     }
 
     const camelEvent = this.toCamelCase(updatedEvent)
     return {
       ...camelEvent,
-      company: jobData?.company || "",
-      position: jobData?.position || "",
-      location: jobData?.location || "",
+      company: jobData.company || "",
+      position: jobData.position || "",
+      location: jobData.location || "",
     }
   }
 
