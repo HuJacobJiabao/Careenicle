@@ -26,12 +26,34 @@ interface EditJobModalProps {
   onUpdate: () => void
 }
 
+const parseLocalDate = (dateInput: string | Date): Date => {
+  if (dateInput instanceof Date) {
+    return dateInput
+  }
+
+  // If it's a string in YYYY-MM-DD format, parse it as local date
+  if (typeof dateInput === "string") {
+    const dateStr = dateInput.split("T")[0] // Remove time part if present
+    const [year, month, day] = dateStr.split("-").map(Number)
+    return new Date(year, month - 1, day) // month is 0-indexed
+  }
+
+  return new Date(dateInput)
+}
+
+const formatDateForAPI = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
     company: job.company,
     position: job.position,
     jobUrl: job.jobUrl || "",
-    applicationDate: new Date(job.applicationDate),
+    applicationDate: parseLocalDate(job.applicationDate),
     status: job.status,
     location: job.location || "",
     notes: job.notes || "",
@@ -65,7 +87,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
 
       const updateData = {
         ...formData,
-        applicationDate: formData.applicationDate,
+        applicationDate: formatDateForAPI(formData.applicationDate),
         jobUrl: formData.jobUrl || undefined, // Convert empty string to undefined
         latitude: locationData?.lat || job.latitude,
         longitude: locationData?.lng || job.longitude,
@@ -330,4 +352,3 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
 }
 
 export default EditJobModal
-
