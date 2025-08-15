@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { DataService } from "@/lib/dataService"
 import GoogleJobMap from "@/components/GoogleJobMap"
 import { MapPin, Building2, Target, Globe } from "lucide-react"
@@ -21,7 +21,7 @@ export default function MapPage() {
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true)
     try {
       const data = await DataService.fetchJobs({ limit: 1000 }) // Get all jobs for map
@@ -31,11 +31,11 @@ export default function MapPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchJobs()
-  }, [])
+  }, [fetchJobs])
 
   // Listen for data source changes from Header
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function MapPage() {
       window.removeEventListener("storage", handleStorageChange)
       window.removeEventListener("dataSourceChanged", handleStorageChange)
     }
-  }, [])
+  }, [fetchJobs])
 
   // Process location data for statistics and city display
   const locationData = useMemo(() => {
@@ -116,16 +116,6 @@ export default function MapPage() {
         : null
     const statesCovered = new Set(locationData.map((loc) => loc.state).filter((state) => state !== "Unknown")).size
 
-    // Debug logging
-    console.log("Statistics Debug:", {
-      totalJobs: jobs.length,
-      jobsWithLocation,
-      locationData: locationData.slice(0, 3),
-      totalLocations,
-      statesCovered,
-      uniqueStates: Array.from(new Set(locationData.map((loc) => loc.state))),
-    })
-
     return {
       totalLocations,
       totalApplications: jobsWithLocation, // Show jobs with location data
@@ -157,70 +147,70 @@ export default function MapPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10 animate-scale-in">
-          {[
-            {
-              label: "Total Locations",
-              value: stats.totalLocations,
-              color: "from-blue-500 to-blue-600",
-              icon: <MapPin className="w-4 h-4 md:w-6 md:h-6" />,
-              bgColor: "bg-blue-50",
-              textColor: "text-blue-700",
-            },
-            {
-              label: "Applications w/ Location",
-              value: stats.totalApplications,
-              color: "from-green-500 to-emerald-500",
-              icon: <Building2 className="w-4 h-4 md:w-6 md:h-6" />,
-              bgColor: "bg-green-50",
-              textColor: "text-green-700",
-            },
-            {
-              label: "Top Location",
-              value: stats.topLocation,
-              color: "from-orange-500 to-amber-500",
-              icon: <Target className="w-4 h-4 md:w-6 md:h-6" />,
-              bgColor: "bg-orange-50",
-              textColor: "text-orange-700",
-              isTopLocation: true,
-            },
-            {
-              label: "States Covered",
-              value: stats.statesCovered,
-              color: "from-purple-500 to-violet-500",
-              icon: <Globe className="w-4 h-4 md:w-6 md:h-6" />,
-              bgColor: "bg-purple-50",
-              textColor: "text-purple-700",
-            },
-          ].map((stat, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg md:rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group hover:-translate-y-1 
+        {[
+          {
+            label: "Total Locations",
+            value: stats.totalLocations,
+            color: "from-blue-500 to-blue-600",
+            icon: <MapPin className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-blue-50",
+            textColor: "text-blue-700",
+          },
+          {
+            label: "Applications w/ Location",
+            value: stats.totalApplications,
+            color: "from-green-500 to-emerald-500",
+            icon: <Building2 className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-green-50",
+            textColor: "text-green-700",
+          },
+          {
+            label: "Top Location",
+            value: stats.topLocation,
+            color: "from-orange-500 to-amber-500",
+            icon: <Target className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-orange-50",
+            textColor: "text-orange-700",
+            isTopLocation: true,
+          },
+          {
+            label: "States Covered",
+            value: stats.statesCovered,
+            color: "from-purple-500 to-violet-500",
+            icon: <Globe className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-purple-50",
+            textColor: "text-purple-700",
+          },
+        ].map((stat, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-lg md:rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group hover:-translate-y-1 
                          p-3 md:p-6 
                          h-20 md:h-auto 
                          border border-gray-100"
-            >
-              <div className="flex items-center justify-between h-full">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-600 uppercase tracking-wide mb-0.5 md:mb-2 text-[10px] md:text-sm leading-tight">
-                    {stat.label}
-                  </p>
-                  <p
-                    className={`font-bold text-gray-900 ${
-                      stat.isTopLocation ? "text-xs md:text-xl leading-tight" : "text-sm md:text-3xl"
-                    }`}
-                  >
-                    {stat.value}
-                  </p>
-                </div>
-                <div
-                  className={`p-1.5 md:p-4 rounded-md md:rounded-2xl bg-gradient-to-br ${stat.color} text-white shadow-sm md:shadow-lg group-hover:shadow-xl transition-all duration-200 flex-shrink-0 ml-2`}
+          >
+            <div className="flex items-center justify-between h-full">
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-600 uppercase tracking-wide mb-0.5 md:mb-2 text-[10px] md:text-sm leading-tight">
+                  {stat.label}
+                </p>
+                <p
+                  className={`font-bold text-gray-900 ${
+                    stat.isTopLocation ? "text-xs md:text-xl leading-tight" : "text-sm md:text-3xl"
+                  }`}
                 >
-                  {stat.icon}
-                </div>
+                  {stat.value}
+                </p>
+              </div>
+              <div
+                className={`p-1.5 md:p-4 rounded-md md:rounded-2xl bg-gradient-to-br ${stat.color} text-white shadow-sm md:shadow-lg group-hover:shadow-xl transition-all duration-200 flex-shrink-0 ml-2`}
+              >
+                {stat.icon}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
       <div className="space-y-6 sm:space-y-8">
         {/* Map Container - Full Width */}
