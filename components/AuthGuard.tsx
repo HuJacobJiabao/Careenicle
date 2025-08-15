@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { DataService } from "@/lib/dataService"
 import { usePathname, useRouter } from "next/navigation"
@@ -11,9 +11,18 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading } = useAuth()
-  const currentProvider = DataService.getDatabaseProvider()
+  const [currentProvider, setCurrentProvider] = useState<"mock" | "postgresql" | "supabase">("mock")
   const pathname = usePathname()
   const router = useRouter()
+
+  useEffect(() => {
+    const initializeProvider = async () => {
+      const provider = await DataService.getDatabaseProvider()
+      setCurrentProvider(provider)
+    }
+    
+    initializeProvider()
+  }, [])
 
   // Paths that are not protected
   const isPublicPage = pathname === '/login' || pathname === '/reset-password' || pathname.startsWith('/auth/')

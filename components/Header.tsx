@@ -30,12 +30,18 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     // Set the database provider during initialization
-    setDatabaseProvider(DataService.getDatabaseProvider())
-    setIsClientInitialized(true)
+    const initializeProvider = async () => {
+      const provider = await DataService.getDatabaseProvider()
+      setDatabaseProvider(provider)
+      setIsClientInitialized(true)
+    }
+    
+    initializeProvider()
 
     // Listen for data source changes
-    const handleDataSourceChange = () => {
-      setDatabaseProvider(DataService.getDatabaseProvider())
+    const handleDataSourceChange = async () => {
+      const provider = await DataService.getDatabaseProvider()
+      setDatabaseProvider(provider)
     }
 
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
@@ -74,8 +80,6 @@ const Header: React.FC = () => {
         return { icon: Database, label: "PostgreSQL", color: "text-green-500" }
       case "supabase":
         return { icon: Database, label: "Supabase", color: "text-blue-500" }
-      default:
-        return { icon: TestTube, label: "Mock Data", color: "text-orange-500" }
     }
   }
 
@@ -86,7 +90,7 @@ const Header: React.FC = () => {
   }
 
   const currentProvider = getProviderInfo(databaseProvider)
-  const CurrentIcon = currentProvider?.icon || TestTube
+  const CurrentIcon = currentProvider.icon
   const configuredProviders = DataService.getAvailableProviders()
 
   // Determine available database providers
