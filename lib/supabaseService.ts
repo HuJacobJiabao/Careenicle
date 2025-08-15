@@ -389,7 +389,7 @@ export class SupabaseService {
       .single()
 
     if (updateError) {
-      // console.error("Error updating job event in Supabase:", updateError)
+      console.error("Error updating job event in Supabase:", updateError)
       throw new Error("Failed to update job event")
     }
 
