@@ -524,6 +524,79 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     })
   }
 
+  const updateInterviewResult = async (interviewId: number, newResult: JobEvent["interviewResult"]) => {
+    try {
+      await DataService.updateJobEvent(interviewId, {
+        interviewResult: newResult,
+      })
+      onUpdate() // Call parent update first
+      fetchJobEvents() // Then refresh local data
+    } catch (error) {
+      console.error("Failed to update interview result:", error)
+    }
+  }
+
+  const renderInterviewResultBadge = (interview: JobEvent, size: "desktop" | "mobile" = "desktop") => {
+    const resultConfig = getResultConfig(interview.interviewResult)
+    const badgeClasses =
+      size === "desktop"
+        ? `${resultConfig.color} border font-medium text-xs w-fit`
+        : `${resultConfig.color} border font-medium text-xs w-fit`
+
+    // If result is pending, show dropdown selector
+    if (interview.interviewResult === "pending" || !interview.interviewResult) {
+      return (
+        <Select
+          value={interview.interviewResult || "pending"}
+          onValueChange={(value) => updateInterviewResult(interview.id!, value as JobEvent["interviewResult"])}
+        >
+          <SelectTrigger
+            className={`${badgeClasses} h-auto px-2 py-1 border-dashed hover:border-solid transition-all cursor-pointer`}
+          >
+            <div className="flex items-center">
+              {resultConfig.icon}
+              <span className="ml-1">{resultConfig.label}</span>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">
+              <div className="flex items-center">
+                <Clock className="w-4 h-4 mr-2" />
+                Pending
+              </div>
+            </SelectItem>
+            <SelectItem value="passed">
+              <div className="flex items-center">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Passed
+              </div>
+            </SelectItem>
+            <SelectItem value="failed">
+              <div className="flex items-center">
+                <XCircle className="w-4 h-4 mr-2" />
+                Failed
+              </div>
+            </SelectItem>
+            <SelectItem value="cancelled">
+              <div className="flex items-center">
+                <Pause className="w-4 h-4 mr-2" />
+                Cancelled
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      )
+    }
+
+    // For non-pending results, show regular badge
+    return (
+      <Badge className={badgeClasses}>
+        {resultConfig.icon}
+        <span className="ml-1">{resultConfig.label}</span>
+      </Badge>
+    )
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-1 sm:p-4 z-50 animate-fade-in">
       <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto shadow-2xl animate-scale-in">
@@ -611,12 +684,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                       {getTypeConfig(interview.interviewType).icon}
                                       <span className="ml-1">{getTypeConfig(interview.interviewType).label}</span>
                                     </Badge>
-                                    <Badge
-                                      className={`${getResultConfig(interview.interviewResult).color} border font-medium text-xs w-fit`}
-                                    >
-                                      {getResultConfig(interview.interviewResult).icon}
-                                      <span className="ml-1">{getResultConfig(interview.interviewResult).label}</span>
-                                    </Badge>
+                                    {renderInterviewResultBadge(interview, "desktop")}
                                   </div>
 
                                   <div className="flex items-center gap-1 text-xs text-slate-600 mb-2">
@@ -715,12 +783,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                     {getTypeConfig(interview.interviewType).icon}
                                     <span className="ml-1">{getTypeConfig(interview.interviewType).label}</span>
                                   </Badge>
-                                  <Badge
-                                    className={`${getResultConfig(interview.interviewResult).color} border font-medium text-xs w-fit`}
-                                  >
-                                    {getResultConfig(interview.interviewResult).icon}
-                                    <span className="ml-1">{getResultConfig(interview.interviewResult).label}</span>
-                                  </Badge>
+                                  {renderInterviewResultBadge(interview, "mobile")}
                                 </div>
 
                                 <div className="flex items-center gap-1 text-xs text-slate-600">
