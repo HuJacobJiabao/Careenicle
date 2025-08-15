@@ -36,7 +36,7 @@ const Header: React.FC = () => {
       setDatabaseProvider(provider)
       setIsClientInitialized(true)
     }
-    
+
     initializeProvider()
 
     // Listen for data source changes
@@ -233,14 +233,6 @@ const Header: React.FC = () => {
                 </SelectContent>
               </Select>
             )}
-            
-            {/* Display current data source status (when the user is logged in) */}
-            {user && (
-              <div className="flex items-center space-x-2 px-2 lg:px-3 py-1 lg:py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
-                <Database className="w-4 h-4" />
-                <span className="text-xs lg:text-sm font-medium hidden lg:inline">Supabase</span>
-              </div>
-            )}
           </div>
 
           {/* Mobile Navigation */}
@@ -278,7 +270,7 @@ const Header: React.FC = () => {
                 <LogIn className="w-4 h-4" />
               </Button>
             )}
-            
+
             {/* Mobile page navigation */}
             <select
               value={pathname}
