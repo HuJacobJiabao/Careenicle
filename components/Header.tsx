@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link"
 import { DataService } from "@/lib/dataService"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -30,12 +31,18 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     // Set the database provider during initialization
-    setDatabaseProvider(DataService.getDatabaseProvider())
-    setIsClientInitialized(true)
+    const initializeProvider = async () => {
+      const provider = await DataService.getDatabaseProvider()
+      setDatabaseProvider(provider)
+      setIsClientInitialized(true)
+    }
+    
+    initializeProvider()
 
     // Listen for data source changes
-    const handleDataSourceChange = () => {
-      setDatabaseProvider(DataService.getDatabaseProvider())
+    const handleDataSourceChange = async () => {
+      const provider = await DataService.getDatabaseProvider()
+      setDatabaseProvider(provider)
     }
 
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
@@ -74,8 +81,6 @@ const Header: React.FC = () => {
         return { icon: Database, label: "PostgreSQL", color: "text-green-500" }
       case "supabase":
         return { icon: Database, label: "Supabase", color: "text-blue-500" }
-      default:
-        return { icon: TestTube, label: "Mock Data", color: "text-orange-500" }
     }
   }
 
@@ -86,7 +91,7 @@ const Header: React.FC = () => {
   }
 
   const currentProvider = getProviderInfo(databaseProvider)
-  const CurrentIcon = currentProvider?.icon || TestTube
+  const CurrentIcon = currentProvider.icon
   const configuredProviders = DataService.getAvailableProviders()
 
   // Determine available database providers
@@ -127,43 +132,41 @@ const Header: React.FC = () => {
 
   return (
     <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <button
-                onClick={() => router.push("/")}
-                className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors duration-200 cursor-pointer"
-              >
+              <Link href="/" className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 hover:text-blue-700">
                 Careenicle
-              </button>
+              </Link>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            <a href="/" className={getActiveClass("/")}>
+          {/* Navigation - Hidden on mobile */}
+          <nav className="hidden lg:flex space-x-6 xl:space-x-8">
+            <Link href="/" className={getActiveClass("/")}>
               <div className="flex items-center space-x-2">
                 <Briefcase className="w-4 h-4" />
                 <span>Applications</span>
               </div>
-            </a>
-            <a href="/timeline" className={getActiveClass("/timeline")}>
+            </Link>
+            <Link href="/timeline" className={getActiveClass("/timeline")}>
               <div className="flex items-center space-x-2">
                 <Timeline className="w-4 h-4" />
                 <span>Timeline</span>
               </div>
-            </a>
-            <a href="/map" className={getActiveClass("/map")}>
+            </Link>
+            <Link href="/map" className={getActiveClass("/map")}>
               <div className="flex items-center space-x-2">
                 <Map className="w-4 h-4" />
                 <span>Map View</span>
               </div>
-            </a>
+            </Link>
           </nav>
 
-          <div className="flex items-center space-x-4">
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
             {/* Authenticated user interface */}
             {user ? (
               // Menu for logged-in users
@@ -171,7 +174,7 @@ const Header: React.FC = () => {
                 <PopoverTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2">
                     <User className="w-4 h-4" />
-                    <span className="text-sm">{user.email}</span>
+                    <span className="text-sm hidden lg:inline">{user.email}</span>
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 </PopoverTrigger>
@@ -198,14 +201,14 @@ const Header: React.FC = () => {
               // Login button for unauthenticated users
               <Button variant="outline" onClick={handleSignIn} className="flex items-center space-x-2 bg-transparent">
                 <LogIn className="w-4 h-4" />
-                <span>Sign In</span>
+                <span className="hidden lg:inline">Sign In</span>
               </Button>
             )}
 
             {/* Database provider selector (only shown when the user is not logged in to Supabase) */}
             {!user && availableProviders.length > 0 && (
               <Select value={databaseProvider} onValueChange={handleProviderChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-32 lg:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,7 +216,8 @@ const Header: React.FC = () => {
                     <SelectItem value="mock">
                       <div className="flex items-center space-x-2">
                         <TestTube className="w-4 h-4 text-orange-500" />
-                        <span>Mock Data</span>
+                        <span className="hidden lg:inline">Mock Data</span>
+                        <span className="lg:hidden">Mock</span>
                       </div>
                     </SelectItem>
                   )}
@@ -221,77 +225,70 @@ const Header: React.FC = () => {
                     <SelectItem value="postgresql">
                       <div className="flex items-center space-x-2">
                         <Database className="w-4 h-4 text-green-500" />
-                        <span>PostgreSQL</span>
+                        <span className="hidden lg:inline">PostgreSQL</span>
+                        <span className="lg:hidden">PostgreSQL</span>
                       </div>
                     </SelectItem>
                   )}
-                  {/* {availableProviders.includes("supabase") && (
-                    <SelectItem value="supabase">
-                      <div className="flex items-center space-x-2">
-                        <Database className="w-4 h-4 text-blue-500" />
-                        <span>Supabase</span>
-                      </div>
-                    </SelectItem>
-                  )} */}
                 </SelectContent>
               </Select>
             )}
-
+            
             {/* Display current data source status (when the user is logged in) */}
             {user && (
-              <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+              <div className="flex items-center space-x-2 px-2 lg:px-3 py-1 lg:py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
                 <Database className="w-4 h-4" />
-                <span className="text-sm font-medium">Supabase</span>
+                <span className="text-xs lg:text-sm font-medium hidden lg:inline">Supabase</span>
               </div>
             )}
           </div>
 
           {/* Mobile Navigation */}
-          <div className="md:hidden">
-            <div className="flex items-center space-x-2">
-              <select
-                value={pathname}
-                onChange={(e) => (window.location.href = e.target.value)}
-                className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-medium bg-white"
-              >
-                <option value="/">Applications</option>
-                <option value="/timeline">Timeline</option>
-                <option value="/map">Map View</option>
-              </select>
-
-              {/* Mobile user menu */}
-              {user ? (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="p-2">
-                      <User className="w-4 h-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-2" align="end">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50"
-                      onClick={handleResetPassword}
-                    >
-                      <Unlock className="w-4 h-4 mr-2" />
-                      Reset Password
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={handleSignOut}
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
-                    </Button>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Button variant="outline" size="sm" onClick={handleSignIn} className="p-2 bg-transparent">
-                  <LogIn className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
+          <div className="md:hidden flex items-center space-x-2">
+            {/* Mobile menu for authenticated users */}
+            {user ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-1">
+                    <User className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="end">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-gray-700 hover:text-gray-800 hover:bg-gray-50 text-sm"
+                    onClick={handleResetPassword}
+                  >
+                    <Unlock className="w-4 h-4 mr-2" />
+                    Reset Password
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 text-sm"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button variant="outline" onClick={handleSignIn} size="sm" className="bg-transparent">
+                <LogIn className="w-4 h-4" />
+              </Button>
+            )}
+            
+            {/* Mobile page navigation */}
+            <select
+              value={pathname}
+              onChange={(e) => (window.location.href = e.target.value)}
+              className="block px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="/">Apps</option>
+              <option value="/timeline">Timeline</option>
+              <option value="/map">Map</option>
+            </select>
           </div>
         </div>
       </div>

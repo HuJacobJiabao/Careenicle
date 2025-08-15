@@ -106,40 +106,45 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <Card className="max-w-2xl w-full shadow-2xl border-0 bg-white/95 backdrop-blur">
-        <CardHeader className="pb-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+      <Card className="max-w-2xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border-0 bg-white/95 backdrop-blur">
+        <CardHeader className="pb-3 sm:pb-6">
           <div className="flex justify-between items-start">
-            <div className="space-y-2">
-              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Briefcase className="w-5 h-5 text-blue-600" />
+            <div className="space-y-1">
+              <CardTitle className="text-lg sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <div className="p-1 sm:p-2 bg-blue-100 rounded-lg">
+                  <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 Edit Job Application
               </CardTitle>
-              <p className="text-slate-600">Update your job application details</p>
-              <Badge className={`w-fit ${getStatusColor(formData.status)}`}>
+              <p className="text-xs sm:text-sm text-slate-600">Update your job application details</p>
+              <Badge className={`w-fit text-xs ${getStatusColor(formData.status)}`}>
                 {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
               </Badge>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full hover:bg-gray-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-gray-100"
+            >
               <X className="w-4 h-4" />
             </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-3 sm:space-y-6">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="company" className="flex items-center gap-2 text-sm font-medium">
-                  <Building2 className="w-4 h-4 text-slate-600" />
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
+              <div className="space-y-1">
+                <Label htmlFor="company" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+                  <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                   Company Name *
                 </Label>
                 <Input
@@ -149,14 +154,14 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   placeholder="e.g., Google, Microsoft, Apple"
-                  className="h-11"
+                  className="h-9 sm:h-11 text-sm"
                   disabled={isSubmitting}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="position" className="flex items-center gap-2 text-sm font-medium">
-                  <Briefcase className="w-4 h-4 text-slate-600" />
+              <div className="space-y-1">
+                <Label htmlFor="position" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+                  <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                   Position Title *
                 </Label>
                 <Input
@@ -166,33 +171,32 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   value={formData.position}
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   placeholder="e.g., Senior Software Engineer"
-                  className="h-11"
+                  className="h-9 sm:h-11 text-sm"
                   disabled={isSubmitting}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-sm font-medium">
-                <MapPin className="w-4 h-4 text-slate-600" />
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                 Location
               </Label>
               <LocationAutocomplete
                 value={formData.location}
-                onChange={(value, placeId) => {
+                onChange={(value: string, placeId?: string) => {
                   setFormData({ ...formData, location: value })
                   setSelectedPlaceId(placeId || "")
                 }}
                 placeholder="e.g., San Francisco, CA or New York, NY"
-                className="h-11 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isSubmitting}
+                className="h-9 sm:h-11 text-sm px-3 py-2 border border-input bg-background rounded-md ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="jobUrl" className="flex items-center gap-2 text-sm font-medium">
-                  <Link className="w-4 h-4 text-slate-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
+              <div className="space-y-1">
+                <Label htmlFor="jobUrl" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+                  <Link className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                   Job Posting URL
                 </Label>
                 <Input
@@ -201,14 +205,17 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   value={formData.jobUrl}
                   onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
                   placeholder="https://... (optional)"
-                  className="h-11"
+                  className="h-9 sm:h-11 text-sm"
                   disabled={isSubmitting}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="applicationDate" className="flex items-center gap-2 text-sm font-medium">
-                  <Calendar className="w-4 h-4 text-slate-600" />
+              <div className="space-y-1">
+                <Label
+                  htmlFor="applicationDate"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                   Application Date
                 </Label>
                 <Popover>
@@ -216,12 +223,12 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                     <Button
                       variant="outline"
                       className={cn(
-                        "h-11 w-full justify-start text-left font-normal",
+                        "h-9 sm:h-11 w-full justify-start text-left font-normal text-sm",
                         !formData.applicationDate && "text-muted-foreground",
                       )}
                       disabled={isSubmitting}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       {formData.applicationDate ? format(formData.applicationDate, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
@@ -237,14 +244,17 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Status</Label>
+            <div className="space-y-1">
+              <Label htmlFor="status" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+                <Star className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
+                Status
+              </Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value as Job["status"] })}
                 disabled={isSubmitting}
               >
-                <SelectTrigger className="h-11">
+                <SelectTrigger className="h-9 sm:h-11 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -257,9 +267,9 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="flex items-center gap-2 text-sm font-medium">
-                <FileText className="w-4 h-4 text-slate-600" />
+            <div className="space-y-1">
+              <Label htmlFor="notes" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                 Notes
               </Label>
               <Textarea
@@ -267,38 +277,49 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Job requirements, company culture, salary range, etc..."
-                rows={4}
-                className="resize-none"
+                rows={3}
+                className="resize-none text-sm"
                 disabled={isSubmitting}
               />
             </div>
 
-            <div className="flex items-center space-x-2 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <Checkbox
-                id="isFavorite"
-                checked={formData.isFavorite}
-                onCheckedChange={(checked) => setFormData({ ...formData, isFavorite: checked as boolean })}
-                className="data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
-                disabled={isSubmitting}
-              />
-              <Label htmlFor="isFavorite" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                Mark as favorite
-              </Label>
-            </div>
+            <Card className="bg-yellow-50 border-yellow-200">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isFavorite"
+                    checked={formData.isFavorite}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isFavorite: !!checked })}
+                    className="data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
+                    disabled={isSubmitting}
+                  />
+                  <Label
+                    htmlFor="isFavorite"
+                    className="text-xs sm:text-sm font-semibold text-yellow-700 flex items-center cursor-pointer"
+                  >
+                    <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 fill-current" />
+                    Mark as favorite position
+                  </Label>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            <div className="flex flex-row justify-end space-x-2 sm:space-x-3 pt-3 sm:pt-6 border-t border-slate-200">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="px-6 bg-transparent"
+                className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-6 py-2 text-sm bg-transparent"
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" className="px-6 bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update Job Application"}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-6 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSubmitting ? "Updating..." : "Update Job"}
               </Button>
             </div>
           </form>
@@ -309,3 +330,4 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
 }
 
 export default EditJobModal
+

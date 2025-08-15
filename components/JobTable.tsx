@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { useState, useEffect } from "react"
 import type { Job, JobEvent, UpcomingInterviewJob } from "@/lib/types"
 import { DataService } from "@/lib/dataService"
@@ -65,15 +65,15 @@ const JobTable: React.FC = () => {
   const [currentProvider, setCurrentProvider] = useState<string>("mock")
 
   useEffect(() => {
-    const updateProvider = () => {
-      const provider = DataService.getDatabaseProvider()
+    const updateProvider = async () => {
+      const provider = await DataService.getDatabaseProvider()
       setCurrentProvider(provider)
     }
 
     updateProvider()
 
-    const handleDataSourceChange = () => {
-      updateProvider()
+    const handleDataSourceChange = async () => {
+      await updateProvider()
     }
 
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
@@ -88,7 +88,8 @@ const JobTable: React.FC = () => {
       }
 
       // If user has manually set to use mock data, don't check database
-      if (DataService.getUseMockData()) {
+      const useMockData = await DataService.getUseMockData()
+      if (useMockData) {
         setDatabaseStatus("connected") // Don't show error when using mock data intentionally
         return
       }
@@ -142,12 +143,13 @@ const JobTable: React.FC = () => {
 
   // Update database status when user manually switches data source
   useEffect(() => {
-    const handleDataSourceChange = () => {
+    const handleDataSourceChange = async () => {
       if (isProviderSwitching) {
         return
       }
 
-      if (DataService.getUseMockData()) {
+      const useMockData = await DataService.getUseMockData()
+      if (useMockData) {
         // User switched to mock data manually, don't show database errors
         setDatabaseStatus("connected")
         setTimeout(() => {
@@ -454,93 +456,80 @@ const JobTable: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-slide-in-up">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8 animate-slide-in-up">
       {/* Header */}
-      <div className="mb-10">
-        <div className="space-y-6">
+      <div className="mb-6 sm:mb-8 lg:mb-10">
+        <div className="space-y-4 sm:space-y-6">
           {/* Title Section */}
           <div>
-            <h1 className="text-4xl font-bold text-slate-800 mb-3">Job Applications Dashboard</h1>
-            <p className="text-lg text-gray-600 font-medium">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-800 mb-2 sm:mb-3">
+              Job Applications Dashboard
+            </h1>
+            <p className="text-sm sm:text-base lg:text-lg text-gray-600 font-medium">
               Track your job applications and interview progress with precision
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* Controls Section */}
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-            {/* Search */}
-            <form onSubmit={handleSearch} className="flex flex-1 min-w-0">
-              <div className="relative flex-1 min-w-[250px]">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search company or position..."
-                  className="form-input pl-14 pr-4 py-3 w-full rounded-l-xl border-r-0"
-                />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10 animate-scale-in">
+        {[
+          {
+            label: "Total Applications",
+            value: pagination.total,
+            color: "from-blue-500 to-blue-600",
+            icon: <TrendingUp className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-blue-50",
+            textColor: "text-blue-700",
+          },
+          {
+            label: "Active Interviews",
+            value: jobs ? jobs.filter((j) => j.status === "interview").length : 0,
+            color: "from-amber-500 to-orange-500",
+            icon: <Target className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-amber-50",
+            textColor: "text-amber-700",
+          },
+          {
+            label: "Offers Received",
+            value: jobs ? jobs.filter((j) => j.status === "offer").length : 0,
+            color: "from-green-500 to-emerald-500",
+            icon: <Award className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-green-50",
+            textColor: "text-green-700",
+          },
+          {
+            label: "Favorites",
+            value: jobs ? jobs.filter((j) => j.isFavorite).length : 0,
+            color: "from-yellow-500 to-amber-500",
+            icon: <Star className="w-4 h-4 md:w-6 md:h-6" />,
+            bgColor: "bg-yellow-50",
+            textColor: "text-yellow-700",
+          },
+        ].map((stat, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-lg md:rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group hover:-translate-y-1 
+                        p-3 md:p-6 
+                        h-20 md:h-auto 
+                        border border-gray-100"
+          >
+            <div className="flex items-center justify-between h-full">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] md:text-sm font-semibold text-gray-600 uppercase tracking-wide mb-0.5 md:mb-2 truncate">
+                  {stat.label}
+                </p>
+                <p className="text-base md:text-3xl font-bold text-gray-900">{stat.value}</p>
               </div>
-              <button
-                type="submit"
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl whitespace-nowrap"
+              <div
+                className={`p-1.5 md:p-4 rounded-md md:rounded-2xl bg-gradient-to-br ${stat.color} text-white shadow-sm md:shadow-lg group-hover:shadow-xl transition-all duration-200 flex-shrink-0 ml-2`}
               >
-                Search
-              </button>
-            </form>
-
-            {/* Filters */}
-            <div className="flex gap-3 flex-wrap sm:flex-nowrap">
-              <div className="relative min-w-[150px]">
-                <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10 pointer-events-none" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value)
-                    setPagination({ ...pagination, page: 1 })
-                  }}
-                  className="form-input pl-14 pr-10 py-3 rounded-xl appearance-none bg-white cursor-pointer w-full"
-                >
-                  <option value="all">All Status</option>
-                  <option value="applied">Applied</option>
-                  <option value="interview">Interview</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="offer">Offer</option>
-                  <option value="accepted">Accepted</option>
-                </select>
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                {stat.icon}
               </div>
-
-              <button
-                onClick={() => {
-                  setShowFavorites(!showFavorites)
-                  setPagination({ ...pagination, page: 1 })
-                }}
-                className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap border-2 ${
-                  showFavorites
-                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 shadow-lg border-yellow-300"
-                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 shadow-sm hover:shadow-md"
-                }`}
-              >
-                <Star
-                  className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : "text-gray-500"}`}
-                />
-                Favorites
-              </button>
-
-              <button
-                onClick={() => setShowAddJobModal(true)}
-                className="btn-primary inline-flex items-center whitespace-nowrap"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Job
-              </button>
             </div>
           </div>
-        </div>
+        ))}
       </div>
 
       {/* Upcoming Interviews Table */}
@@ -557,63 +546,152 @@ const JobTable: React.FC = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10 animate-scale-in">
-        {[
-          {
-            label: "Total Applications",
-            value: pagination.total,
-            color: "from-blue-500 to-blue-600",
-            icon: <TrendingUp className="w-6 h-6" />,
-            bgColor: "bg-blue-50",
-            textColor: "text-blue-700",
-          },
-          {
-            label: "Active Interviews",
-            value: jobs ? jobs.filter((j) => j.status === "interview").length : 0,
-            color: "from-amber-500 to-orange-500",
-            icon: <Target className="w-6 h-6" />,
-            bgColor: "bg-amber-50",
-            textColor: "text-amber-700",
-          },
-          {
-            label: "Offers Received",
-            value: jobs ? jobs.filter((j) => j.status === "offer").length : 0,
-            color: "from-green-500 to-emerald-500",
-            icon: <Award className="w-6 h-6" />,
-            bgColor: "bg-green-50",
-            textColor: "text-green-700",
-          },
-          {
-            label: "Favorites",
-            value: jobs ? jobs.filter((j) => j.isFavorite).length : 0,
-            color: "from-yellow-500 to-amber-500",
-            icon: <Star className="w-6 h-6" />,
-            bgColor: "bg-yellow-50",
-            textColor: "text-yellow-700",
-          },
-        ].map((stat, index) => (
-          <div key={index} className="card group hover:-translate-y-1">
-            <div className="card-content">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-                </div>
-                <div
-                  className={`p-4 rounded-2xl bg-gradient-to-br ${stat.color} text-white shadow-lg group-hover:shadow-xl transition-all duration-200`}
+      {/* Controls Section */}
+      <div className="mb-6 sm:mb-8 lg:mb-10">
+        <div className="space-y-4 md:space-y-0">
+          {/* Mobile Layout: Search on separate row, then other controls */}
+          <div className="md:hidden space-y-3">
+            {/* Search Row */}
+            <form onSubmit={handleSearch} className="flex w-full">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search company or position..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-l-xl border-r-0 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl whitespace-nowrap text-sm"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </form>
+
+            {/* Other Controls Row */}
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10 pointer-events-none" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                  }}
+                  className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-xl appearance-none bg-white cursor-pointer text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {stat.icon}
+                  <option value="all">All Status</option>
+                  <option value="applied">Applied</option>
+                  <option value="interview">Interview</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="offer">Offer</option>
+                  <option value="accepted">Accepted</option>
+                </select>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </div>
+
+              <button
+                onClick={() => setShowFavorites(!showFavorites)}
+                className={`inline-flex items-center px-3 py-2 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap border-2 text-sm ${
+                  showFavorites
+                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 shadow-lg border-yellow-300"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 shadow-sm hover:shadow-md"
+                }`}
+              >
+                <Star className={`w-4 h-4 ${showFavorites ? "fill-yellow-500 text-yellow-500" : "text-gray-500"}`} />
+              </button>
+
+              <button
+                onClick={() => setShowAddJobModal(true)}
+                className="inline-flex items-center whitespace-nowrap px-3 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        ))}
+
+          <div className="hidden md:flex md:gap-4 md:items-center md:w-full">
+            {/* Search - takes up remaining space */}
+            <form onSubmit={handleSearch} className="flex flex-1">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search company or position..."
+                  className="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-l-xl border-r-0 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl whitespace-nowrap text-base"
+              >
+                Search
+              </button>
+            </form>
+
+            {/* Status Filter - fixed width */}
+            <div className="relative min-w-[150px] flex-shrink-0">
+              <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10 pointer-events-none" />
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                }}
+                className="w-full pl-14 pr-10 py-3 border border-gray-300 rounded-xl appearance-none bg-white cursor-pointer text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="applied">Applied</option>
+                <option value="interview">Interview</option>
+                <option value="rejected">Rejected</option>
+                <option value="offer">Offer</option>
+                <option value="accepted">Accepted</option>
+              </select>
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Favorites Button - fixed width */}
+            <button
+              onClick={() => setShowFavorites(!showFavorites)}
+              className={`inline-flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap border-2 text-base flex-shrink-0 ${
+                showFavorites
+                  ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 shadow-lg border-yellow-300"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 shadow-sm hover:shadow-md"
+              }`}
+            >
+              <Star
+                className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : "text-gray-500"}`}
+              />
+              Favorites
+            </button>
+
+            {/* Add Job Button - fixed width */}
+            <button
+              onClick={() => setShowAddJobModal(true)}
+              className="inline-flex items-center whitespace-nowrap px-5 py-3 text-base bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl flex-shrink-0"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add Job
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Jobs Table */}
       <div className="card animate-fade-in">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
@@ -812,25 +890,189 @@ const JobTable: React.FC = () => {
           </table>
         </div>
 
+        {/* Mobile Cards View */}
+        <div className="lg:hidden space-y-4">
+          {jobs && jobs.length > 0 ? (
+            jobs.map((job, index) => {
+              const jobInterviewEvents = getJobInterviewEvents(job.id!)
+              const statusConfig = getStatusConfig(job.status)
+              const interviewSummary = getInterviewSummary(jobInterviewEvents)
+              const upcomingInterview = getUpcomingInterview(job.id!)
+
+              return (
+                <div
+                  key={job.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={getCompanyLogo(job.company) || "/placeholder.svg"}
+                        alt={`${job.company} logo`}
+                        className="w-10 h-10 rounded-lg shadow-sm"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = "/placeholder.svg"
+                        }}
+                      />
+                      <div>
+                        <h3 className="font-semibold text-gray-900 text-sm">{job.company}</h3>
+                        {job.jobUrl ? (
+                          <a
+                            href={job.jobUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm transition-colors"
+                          >
+                            {job.position}
+                          </a>
+                        ) : (
+                          <p className="text-gray-600 text-sm">{job.position}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleFavorite(job.id!, job.isFavorite!)}
+                      className="p-1 hover:bg-yellow-50 rounded-full transition-colors duration-200"
+                    >
+                      <Star
+                        className={`w-5 h-5 transition-colors duration-200 ${
+                          job.isFavorite
+                            ? "fill-yellow-500 text-yellow-500"
+                            : "text-gray-300 hover:text-yellow-400"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Card Content */}
+                  <div className="space-y-3">
+                    {/* Status and Date */}
+                    <div className="flex items-center justify-between">
+                      <div className="relative">
+                        <select
+                          value={job.status}
+                          onChange={(e) => updateJobStatus(job.id!, e.target.value as Job["status"])}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer appearance-none pr-6 ${statusConfig.color}`}
+                        >
+                          <option value="applied">Applied</option>
+                          <option value="interview">Interview</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="offer">Offer</option>
+                          <option value="accepted">Accepted</option>
+                        </select>
+                        <div className="absolute right-1 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                          <svg className="w-3 h-3 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <span className="text-sm text-gray-500">
+                        {new Date(job.applicationDate).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {/* Interview Status */}
+                    <div className="text-sm">
+                      <span className={`font-medium ${interviewSummary.color}`}>
+                        {interviewSummary.text}
+                      </span>
+                    </div>
+
+                    {/* Location */}
+                    {job.location && (
+                      <div className="flex items-center text-sm text-gray-500">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {job.location}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedJob(job)
+                            setShowInterviewModal(true)
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md transition-colors duration-150"
+                        >
+                          <Settings className="w-3 h-3 mr-1" />
+                          Manage
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedJob(job)
+                            setShowEditJobModal(true)
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Edit
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => deleteJob(job.id!)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="text-center py-8">
+              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
+                <Building2 className="w-12 h-12 text-blue-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No job applications found</h3>
+              <p className="text-gray-600 mb-6">
+                {statusFilter !== "all" || searchTerm || showFavorites
+                  ? "Try adjusting your filters or search terms."
+                  : "Start tracking your job applications by adding your first job."}
+              </p>
+              {statusFilter === "all" && !searchTerm && !showFavorites && (
+                <button
+                  onClick={() => setShowAddJobModal(true)}
+                  className="btn-primary inline-flex items-center"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add Your First Job
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Pagination */}
-        <div className="bg-gray-50/50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-          <div className="flex-1 flex justify-between sm:hidden">
+        <div className="bg-gray-50/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-t border-gray-200">
+          <div className="flex-1 flex justify-between lg:hidden">
             <button
               onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
               disabled={pagination.page === 1}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-sm px-3 py-2"
             >
-              Previous
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Previous</span>
             </button>
+            <span className="flex items-center text-sm text-gray-700">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
             <button
               onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
               disabled={pagination.page === pagination.totalPages}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-sm px-3 py-2"
             >
-              Next
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="w-4 h-4 ml-1" />
             </button>
           </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div className="hidden lg:flex-1 lg:flex lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-medium text-gray-700">
                 Showing <span className="font-bold">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}

@@ -487,32 +487,32 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl animate-scale-in">
-        <div className="p-8">
-          <div className="flex justify-between items-start mb-8">
-            <div className="space-y-2">
-              <h2 className="text-4xl font-bold text-slate-800 tracking-tight">Interview Management</h2>
-              <div className="flex items-center text-lg text-slate-600">
-                <Badge variant="secondary" className="mr-2 px-3 py-1 text-sm font-medium">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl animate-scale-in">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="flex justify-between items-start mb-6 sm:mb-8">
+            <div className="space-y-1 sm:space-y-2">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-800 tracking-tight">Interview Management</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 text-base sm:text-lg text-slate-600">
+                <Badge variant="secondary" className="mr-0 sm:mr-2 px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium w-fit">
                   {job.position}
                 </Badge>
-                <span className="text-slate-400">at</span>
-                <span className="ml-2 font-semibold text-slate-700">{job.company}</span>
+                <span className="hidden sm:inline text-slate-400">at</span>
+                <span className="ml-0 sm:ml-2 font-semibold text-slate-700">{job.company}</span>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 rounded-full hover:bg-slate-100">
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-slate-100">
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
           </div>
 
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-semibold text-slate-800">Interview Rounds</h3>
+          <div className="mb-8 sm:mb-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0 mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-semibold text-slate-800">Interview Rounds</h3>
               {!showNewInterviewForm && (
                 <Button
                   onClick={() => setShowNewInterviewForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Schedule New Interview
@@ -522,10 +522,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
             {interviews.length === 0 ? (
               <Card className="border-dashed border-2 border-slate-200">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <Calendar className="w-16 h-16 text-slate-400 mb-4" />
-                  <CardTitle className="text-xl text-slate-600 mb-2">No interviews scheduled yet</CardTitle>
-                  <CardDescription className="text-slate-500">Add your first interview below</CardDescription>
+                <CardContent className="flex flex-col items-center justify-center py-12 sm:py-16">
+                  <Calendar className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mb-3 sm:mb-4" />
+                  <CardTitle className="text-lg sm:text-xl text-slate-600 mb-2 text-center">No interviews scheduled yet</CardTitle>
+                  <CardDescription className="text-slate-500 text-center">Add your first interview below</CardDescription>
                 </CardContent>
               </Card>
             ) : (
@@ -704,13 +704,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
           {showNewInterviewForm && (
             <Card className="border-blue-200 bg-blue-50/30">
-              <CardHeader>
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-4 sm:pb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                   <div>
-                    <CardTitle className="text-xl text-slate-800">
+                    <CardTitle className="text-lg sm:text-xl text-slate-800">
                       {editingInterview ? "Edit Interview" : "Schedule New Interview"}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-sm sm:text-base">
                       {editingInterview ? "Update interview details" : "Add a new interview round to your application"}
                     </CardDescription>
                   </div>
@@ -718,16 +718,16 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowNewInterviewForm(false)}
-                    className="h-8 w-8"
+                    className="h-8 w-8 self-end sm:self-auto"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="round" className="text-sm font-medium text-slate-700">
+              <CardContent className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="round" className="text-xs sm:text-sm font-medium text-slate-700">
                       Round Number
                     </Label>
                     <Input
@@ -735,12 +735,12 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       type="number"
                       value={newInterview.round}
                       onChange={(e) => setNewInterview({ ...newInterview, round: Number.parseInt(e.target.value) })}
-                      className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-9 sm:h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="type" className="text-sm font-medium text-slate-700">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="type" className="text-xs sm:text-sm font-medium text-slate-700">
                       Interview Type
                     </Label>
                     <Select
@@ -749,7 +749,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         setNewInterview({ ...newInterview, type: value as JobEvent["interviewType"] })
                       }
                     >
-                      <SelectTrigger className="border-slate-300 focus:border-blue-500 focus:ring-blue-500">
+                      <SelectTrigger className="h-9 sm:h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -765,21 +765,21 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduledDate" className="text-sm font-medium text-slate-700">
+                  <div className="space-y-1 sm:space-y-2 sm:col-span-2">
+                    <Label htmlFor="scheduledDate" className="text-xs sm:text-sm font-medium text-slate-700">
                       Scheduled Date & Time
                     </Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             className={cn(
-                              "flex-1 justify-start text-left font-normal border-slate-300 focus:border-blue-500",
+                              "flex-1 sm:flex-none sm:w-auto justify-start text-left font-normal border-slate-300 focus:border-blue-500 h-9 sm:h-10",
                               !newInterview.scheduledDate && "text-muted-foreground",
                             )}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                             {newInterview.scheduledDate
                               ? format(new Date(newInterview.scheduledDate), "PPP")
                               : "Pick a date"}
@@ -816,13 +816,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           const dateTimeString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}T${e.target.value}`
                           setNewInterview({ ...newInterview, scheduledDate: dateTimeString })
                         }}
-                        className="w-32 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                        className="w-full sm:w-32 h-9 sm:h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="interviewLink" className="text-sm font-medium text-slate-700">
+                  <div className="space-y-1 sm:space-y-2 sm:col-span-2">
+                    <Label htmlFor="interviewLink" className="text-xs sm:text-sm font-medium text-slate-700">
                       Interview Link
                     </Label>
                     <Input
@@ -831,13 +831,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       value={newInterview.interviewLink}
                       onChange={(e) => setNewInterview({ ...newInterview, interviewLink: e.target.value })}
                       placeholder="Meeting link, phone number, or location"
-                      className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-9 sm:h-10 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-sm font-medium text-slate-700">
+                <div className="space-y-1 sm:space-y-2">
+                  <Label htmlFor="notes" className="text-xs sm:text-sm font-medium text-slate-700">
                     Notes
                   </Label>
                   <Textarea
@@ -846,15 +846,15 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     onChange={(e) => setNewInterview({ ...newInterview, notes: e.target.value })}
                     placeholder="Preparation notes, topics to discuss, etc..."
                     rows={3}
-                    className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="resize-none border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-2 sm:pt-4">
                   <Button
                     onClick={editingInterview ? saveEditingInterview : addInterview}
                     disabled={!newInterview.scheduledDate}
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <Calendar className="w-4 h-4 mr-2" />
                     {editingInterview ? "Update Interview" : "Schedule Interview"}
@@ -872,7 +872,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         notes: "",
                       })
                     }}
-                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                    className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-slate-50"
                   >
                     Cancel
                   </Button>
@@ -882,24 +882,24 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           )}
 
           {/* Added clear dividing line between sections */}
-          <div className="border-t-2 border-slate-200 my-8"></div>
+          <div className="border-t-2 border-slate-200 my-6 sm:my-8"></div>
 
           <Card className="border-slate-200">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="pb-4 sm:pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
                 <div>
-                  <CardTitle className="text-xl text-slate-800">Event Timeline</CardTitle>
-                  <CardDescription>Track all events related to this job application</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl text-slate-800">Event Timeline</CardTitle>
+                  <CardDescription className="text-sm sm:text-base">Track all events related to this job application</CardDescription>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                   {/* Sort Button */}
                   <Button
                     variant="outline"
                     onClick={toggleSortOrder}
-                    className="flex items-center space-x-2 border-slate-300 hover:border-slate-400 bg-transparent"
+                    className="flex items-center justify-center space-x-2 border-slate-300 hover:border-slate-400 bg-transparent"
                   >
                     <ArrowUpDown className="w-4 h-4" />
-                    <span className="text-sm">{sortOrder === "desc" ? "Newest First" : "Oldest First"}</span>
+                    <span className="text-xs sm:text-sm">{sortOrder === "desc" ? "Newest First" : "Oldest First"}</span>
                   </Button>
                   {/* Made Add Event button solid like Schedule New Interview */}
                   <Button
@@ -913,18 +913,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 sm:space-y-6">
               {/* Custom Event Form */}
               {showEventForm && (
                 <Card className="border-green-200 bg-green-50/30">
-                  <CardHeader>
+                  <CardHeader className="pb-4 sm:pb-6">
                     <CardTitle className="text-lg text-slate-800">Add Custom Event</CardTitle>
-                    <CardDescription>Record important milestones in your application process</CardDescription>
+                    <CardDescription className="text-sm sm:text-base">Record important milestones in your application process</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="eventType" className="text-sm font-medium text-slate-700">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label htmlFor="eventType" className="text-xs sm:text-sm font-medium text-slate-700">
                           Event Type
                         </Label>
                         <Select
@@ -933,7 +933,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             setNewEvent({ ...newEvent, eventType: value as JobEvent["eventType"] })
                           }
                         >
-                          <SelectTrigger className="border-slate-300 focus:border-green-500 focus:ring-green-500">
+                          <SelectTrigger className="h-9 sm:h-10 border-slate-300 focus:border-green-500 focus:ring-green-500">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
