@@ -34,19 +34,20 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
     isFavorite: false,
   })
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
     try {
-      // Get geographic coordinates for the job location
       let locationData = null
       if (formData.location) {
         if (formData.company && formData.location) {
-          // Try to find company-specific location first
           locationData = await googlePlacesService.geocodeCompanyLocation(formData.company, formData.location)
         }
 
-        // If no company-specific location found, use city coordinates
         if (!locationData) {
           locationData = await googlePlacesService.geocodeLocation(formData.location)
         }
@@ -65,6 +66,8 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
       onAdd()
     } catch (error) {
       console.error("Failed to add job:", error)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -74,8 +77,12 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
         <CardHeader className="pb-4 sm:pb-6">
           <div className="flex justify-between items-start">
             <div className="space-y-1 sm:space-y-2">
-              <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800">Add New Job Application</CardTitle>
-              <p className="text-sm sm:text-base text-slate-600 font-medium">Track a new job opportunity in your pipeline</p>
+              <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800">
+                Add New Job Application
+              </CardTitle>
+              <p className="text-sm sm:text-base text-slate-600 font-medium">
+                Track a new job opportunity in your pipeline
+              </p>
             </div>
             <Button
               variant="ghost"
@@ -221,14 +228,23 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
                 variant="outline"
                 onClick={onClose}
                 className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-6 py-2.5 text-sm sm:text-base border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-6 py-2.5 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-6 py-2.5 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Application
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Adding...
+                  </div>
+                ) : (
+                  "Add Application"
+                )}
               </Button>
             </div>
           </form>

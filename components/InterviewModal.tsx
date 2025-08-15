@@ -80,6 +80,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     notes: "",
   })
 
+  const [isAddingInterview, setIsAddingInterview] = useState(false)
+  const [isAddingEvent, setIsAddingEvent] = useState(false)
+
   const getEventTypeBadgeColor = (eventType: string) => {
     const colors = {
       applied: "bg-blue-100 text-blue-800",
@@ -189,8 +192,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   const addInterview = async () => {
-    if (!newInterview.scheduledDate) return
+    if (!newInterview.scheduledDate || isAddingInterview) return
 
+    setIsAddingInterview(true)
     try {
       const localDateTimeString = newInterview.scheduledDate
       const localDate = new Date(localDateTimeString + ":00") // Add seconds
@@ -230,6 +234,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       onUpdate() // Call parent update after local state changes
     } catch (error) {
       console.error("Failed to add interview:", error)
+    } finally {
+      setIsAddingInterview(false)
     }
   }
 
@@ -246,8 +252,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   const addCustomEvent = async () => {
-    if (!newEvent.eventDate || !newEvent.title) return
+    if (!newEvent.eventDate || !newEvent.title || isAddingEvent) return
 
+    setIsAddingEvent(true)
     try {
       const [year, month, day] = newEvent.eventDate.split("-").map(Number)
       const localDate = new Date(year, month - 1, day) // month is 0-indexed
@@ -273,6 +280,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       fetchJobEvents() // Refresh the local data
     } catch (error) {
       console.error("Failed to add custom event:", error)
+    } finally {
+      setIsAddingEvent(false)
     }
   }
 
@@ -1075,7 +1084,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                   />
                 </div>
 
-                <div className="flex justify-end space-x-2 sm:space-x-3 pt-4 sm:pt-6 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-200">
                   <Button
                     type="button"
                     variant="outline"
@@ -1090,18 +1099,27 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         notes: "",
                       })
                     }}
-                    className="px-4 sm:px-6 py-1 sm:py-2 border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm border-slate-300 text-slate-700 hover:bg-slate-50"
+                    disabled={isAddingInterview}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="button"
                     onClick={editingInterview ? saveEditingInterview : addInterview}
-                    disabled={!newInterview.scheduledDate}
-                    className="px-4 sm:px-6 py-1 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isAddingInterview || !newInterview.scheduledDate}
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {editingInterview ? "Update Interview" : "Schedule Interview"}
+                    {isAddingInterview ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                        {editingInterview ? "Updating..." : "Scheduling..."}
+                      </div>
+                    ) : editingInterview ? (
+                      "Update Interview"
+                    ) : (
+                      "Schedule Interview"
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -1275,21 +1293,42 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           />
                         </div>
                       </div>
-                      <div className="flex gap-3 pt-4">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-200">
                         <Button
-                          onClick={addCustomEvent}
-                          disabled={!newEvent.eventDate || !newEvent.title}
-                          className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Event
-                        </Button>
-                        <Button
+                          type="button"
                           variant="outline"
-                          onClick={() => setShowEventForm(false)}
-                          className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                          onClick={() => {
+                            setShowEventForm(false)
+                            setEditingEvent(null)
+                            setNewEvent({
+                              eventType: "interview_scheduled",
+                              eventDate: "",
+                              title: "",
+                              description: "",
+                              notes: "",
+                            })
+                          }}
+                          className="flex-1 sm:flex-none px-4 py-2 text-sm border-slate-300 text-slate-700 hover:bg-slate-50"
+                          disabled={isAddingEvent}
                         >
                           Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={editingEvent ? () => updateEvent(editingEvent.id!, newEvent) : addCustomEvent}
+                          disabled={isAddingEvent || !newEvent.eventDate || !newEvent.title}
+                          className="flex-1 sm:flex-none px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isAddingEvent ? (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                              {editingEvent ? "Updating..." : "Adding..."}
+                            </div>
+                          ) : editingEvent ? (
+                            "Update Event"
+                          ) : (
+                            "Add Event"
+                          )}
                         </Button>
                       </div>
                     </CardContent>
