@@ -543,57 +543,46 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         ? `${resultConfig.color} border font-medium text-xs w-fit`
         : `${resultConfig.color} border font-medium text-xs w-fit`
 
-    // If result is pending, show dropdown selector
-    if (interview.interviewResult === "pending" || !interview.interviewResult) {
-      return (
-        <Select
-          value={interview.interviewResult || "pending"}
-          onValueChange={(value) => updateInterviewResult(interview.id!, value as JobEvent["interviewResult"])}
-        >
-          <SelectTrigger
-            className={`${badgeClasses} h-auto px-2 py-1 border-dashed hover:border-solid transition-all cursor-pointer`}
-          >
-            <div className="flex items-center">
-              {resultConfig.icon}
-              <span className="ml-1">{resultConfig.label}</span>
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pending">
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-2" />
-                Pending
-              </div>
-            </SelectItem>
-            <SelectItem value="passed">
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Passed
-              </div>
-            </SelectItem>
-            <SelectItem value="failed">
-              <div className="flex items-center">
-                <XCircle className="w-4 h-4 mr-2" />
-                Failed
-              </div>
-            </SelectItem>
-            <SelectItem value="cancelled">
-              <div className="flex items-center">
-                <Pause className="w-4 h-4 mr-2" />
-                Cancelled
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      )
-    }
-
-    // For non-pending results, show regular badge
     return (
-      <Badge className={badgeClasses}>
-        {resultConfig.icon}
-        <span className="ml-1">{resultConfig.label}</span>
-      </Badge>
+      <Select
+        value={interview.interviewResult || "pending"}
+        onValueChange={(value) => updateInterviewResult(interview.id!, value as JobEvent["interviewResult"])}
+      >
+        <SelectTrigger
+          className={`${badgeClasses} h-auto px-2 py-1 border-dashed hover:border-solid transition-all cursor-pointer`}
+        >
+          <div className="flex items-center">
+            {resultConfig.icon}
+            <span className="ml-1">{resultConfig.label}</span>
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pending">
+            <div className="flex items-center">
+              <Clock className="w-4 h-4 mr-2" />
+              Pending
+            </div>
+          </SelectItem>
+          <SelectItem value="passed">
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Passed
+            </div>
+          </SelectItem>
+          <SelectItem value="failed">
+            <div className="flex items-center">
+              <XCircle className="w-4 h-4 mr-2" />
+              Failed
+            </div>
+          </SelectItem>
+          <SelectItem value="cancelled">
+            <div className="flex items-center">
+              <Pause className="w-4 h-4 mr-2" />
+              Cancelled
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
     )
   }
 
