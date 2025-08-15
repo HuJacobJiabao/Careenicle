@@ -98,6 +98,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     const labels = {
       applied: "Applied",
       interview_scheduled: "Interview Scheduled",
+      interview: "Interview Scheduled",
       interview: "Interview",
       interview_result: "Interview Result",
       rejected: "Rejected",
@@ -161,22 +162,15 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
   const createJobEvent = async (eventData: Partial<JobEvent>) => {
     try {
-      // Convert Date objects to local ISO strings to avoid timezone issues
       const dataToSend = { ...eventData }
       if (dataToSend.eventDate) {
         if (dataToSend.eventDate instanceof Date) {
-          // Create local ISO string without timezone conversion
-          const date = dataToSend.eventDate
-          const year = date.getFullYear()
-          const month = String(date.getMonth() + 1).padStart(2, "0")
-          const day = String(date.getDate()).padStart(2, "0")
-          const hours = String(date.getHours()).padStart(2, "0")
-          const minutes = String(date.getMinutes()).padStart(2, "0")
-          const seconds = String(date.getSeconds()).padStart(2, "0")
-          dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
-        } else if (typeof dataToSend.eventDate === 'string') {
-          // If it's already a string, use it as is (preserve local time)
-          dataToSend.eventDate = dataToSend.eventDate as any
+          // Convert local Date to UTC ISO string for database storage
+          dataToSend.eventDate = dataToSend.eventDate.toISOString() as any
+        } else if (typeof dataToSend.eventDate === "string") {
+          // If it's a local datetime string, convert to UTC
+          const localDate = new Date(dataToSend.eventDate)
+          dataToSend.eventDate = localDate.toISOString() as any
         }
       }
 
@@ -194,13 +188,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!newInterview.scheduledDate) return
 
     try {
-      // Parse the datetime-local input as a local time (no timezone conversion)
       const localDateTimeString = newInterview.scheduledDate
-      
+      const localDate = new Date(localDateTimeString + ":00") // Add seconds
+
       // Create scheduled interview event with current time
       await createJobEvent({
         eventType: "interview_scheduled",
-        eventDate: new Date(), // Current time
+        eventDate: new Date(), // Current time (will be converted to UTC)
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label} Scheduled`,
         description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""} scheduled for ${localDateTimeString}`,
         interviewRound: newInterview.round,
@@ -209,10 +203,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: newInterview.notes,
       })
 
-      // Create the actual interview event with the scheduled time (send as string to preserve local time)
+      // Create the actual interview event with the scheduled time (convert to UTC)
       await createJobEvent({
         eventType: "interview",
-        eventDate: (localDateTimeString + ":00") as any, // Add seconds and send as string
+        eventDate: localDate, // Will be converted to UTC in createJobEvent
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
         description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
         interviewRound: newInterview.round,
@@ -239,9 +233,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!newEvent.eventDate || !newEvent.title) return
 
     try {
-      // Create a local date without timezone conversion
       const [year, month, day] = newEvent.eventDate.split("-").map(Number)
       const localDate = new Date(year, month - 1, day) // month is 0-indexed
+      // localDate will be converted to UTC in createJobEvent
 
       await createJobEvent({
         eventType: newEvent.eventType,
@@ -268,17 +262,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
   const updateEvent = async (eventId: number, updates: Partial<JobEvent>) => {
     try {
-      // Convert Date objects to local ISO strings to avoid timezone issues
       const dataToSend = { ...updates }
       if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
-        const date = dataToSend.eventDate
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, "0")
-        const day = String(date.getDate()).padStart(2, "0")
-        const hours = String(date.getHours()).padStart(2, "0")
-        const minutes = String(date.getMinutes()).padStart(2, "0")
-        const seconds = String(date.getSeconds()).padStart(2, "0")
-        dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
+        // Convert local Date to UTC ISO string for database storage
+        dataToSend.eventDate = dataToSend.eventDate.toISOString() as any
       }
 
       await DataService.updateJobEvent(eventId, dataToSend)
@@ -454,35 +441,34 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     return result ? configs[result as keyof typeof configs] || configs.pending : configs.pending
   }
 
-  // Safely parse scheduledDate string into a Date object, handling various formats
   const parseScheduledDate = (dateString: string | undefined | null): Date | null => {
     if (!dateString || typeof dateString !== "string") return null
-    
+
     try {
-      // Handle PostgreSQL timestamp format (2025-08-15 08:49:54.628828+00)
+      // Handle PostgreSQL timestamp format (2025-08-15 08:49:54.628828+00) - this is UTC
       if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(dateString)) {
-        // Convert PostgreSQL timestamp to ISO format
-        const isoString = dateString.replace(' ', 'T').replace(/\+00$/, 'Z')
-        const date = new Date(isoString)
+        // Convert PostgreSQL timestamp to ISO format and parse as UTC
+        const isoString = dateString.replace(" ", "T").replace(/\+00$/, "Z")
+        const date = new Date(isoString) // This will be interpreted as UTC
         if (!isNaN(date.getTime())) {
-          return date
+          return date // Return UTC date, will be displayed in local time
         }
       }
-      
-      // Handle datetime-local format (YYYY-MM-DDTHH:MM)
+
+      // Handle ISO string format (UTC from database)
+      const date = new Date(dateString) // This will be interpreted as UTC if it has Z suffix
+      if (!isNaN(date.getTime())) {
+        return date // Return UTC date, will be displayed in local time
+      }
+
+      // Handle datetime-local format (YYYY-MM-DDTHH:MM) - treat as local time
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateString)) {
         const [datePart, timePart] = dateString.split("T")
         const [year, month, day] = datePart.split("-").map(Number)
         const [hour, minute] = timePart.split(":").map(Number)
-        return new Date(year, month - 1, day, hour, minute)
+        return new Date(year, month - 1, day, hour, minute) // Create as local time
       }
-      
-      // Handle ISO string format
-      const date = new Date(dateString)
-      if (!isNaN(date.getTime())) {
-        return date
-      }
-      
+
       return null
     } catch (error) {
       console.warn("Failed to parse date:", dateString, error)
@@ -493,13 +479,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   // Format datetime-local input value from Date object
   const formatDateTimeLocal = (date: Date | null): string => {
     if (!date) return ""
-    
+
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
     const hours = String(date.getHours()).padStart(2, "0")
     const minutes = String(date.getMinutes()).padStart(2, "0")
-    
+
     return `${year}-${month}-${day}T${hours}:${minutes}`
   }
 
@@ -660,28 +646,28 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                   size="sm"
                                   className="h-6 w-6 p-0 hover:bg-slate-100"
                                   onClick={() => {
-                                            // Populate the form with existing interview data
-                                            try {
-                                              const eventDate = new Date(interview.eventDate)
-                                              if (isNaN(eventDate.getTime())) {
-                                                console.warn("Invalid interview date:", interview.eventDate)
-                                                return
-                                              }
-                                              const formattedDate = formatDateTimeLocal(eventDate)
+                                    // Populate the form with existing interview data
+                                    try {
+                                      const eventDate = new Date(interview.eventDate)
+                                      if (isNaN(eventDate.getTime())) {
+                                        console.warn("Invalid interview date:", interview.eventDate)
+                                        return
+                                      }
+                                      const formattedDate = formatDateTimeLocal(eventDate)
 
-                                              setNewInterview({
-                                                round: interview.interviewRound || 1,
-                                                type: interview.interviewType || "technical",
-                                                scheduledDate: formattedDate,
-                                                interviewLink: interview.interviewLink || "",
-                                                notes: interview.notes || "",
-                                              })
-                                              setEditingInterview(interview)
-                                              setShowNewInterviewForm(true)
-                                            } catch (error) {
-                                              console.error("Failed to edit interview:", error)
-                                            }
-                                          }}
+                                      setNewInterview({
+                                        round: interview.interviewRound || 1,
+                                        type: interview.interviewType || "technical",
+                                        scheduledDate: formattedDate,
+                                        interviewLink: interview.interviewLink || "",
+                                        notes: interview.notes || "",
+                                      })
+                                      setEditingInterview(interview)
+                                      setShowNewInterviewForm(true)
+                                    } catch (error) {
+                                      console.error("Failed to edit interview:", error)
+                                    }
+                                  }}
                                 >
                                   <Edit2 className="h-3 w-3 text-slate-500" />
                                 </Button>
@@ -764,28 +750,28 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                 size="sm"
                                 className="h-6 w-6 p-0 hover:bg-slate-100"
                                 onClick={() => {
-                                            // Populate the form with existing interview data
-                                            try {
-                                              const eventDate = new Date(interview.eventDate)
-                                              if (isNaN(eventDate.getTime())) {
-                                                console.warn("Invalid interview date:", interview.eventDate)
-                                                return
-                                              }
-                                              const formattedDate = formatDateTimeLocal(eventDate)
+                                  // Populate the form with existing interview data
+                                  try {
+                                    const eventDate = new Date(interview.eventDate)
+                                    if (isNaN(eventDate.getTime())) {
+                                      console.warn("Invalid interview date:", interview.eventDate)
+                                      return
+                                    }
+                                    const formattedDate = formatDateTimeLocal(eventDate)
 
-                                              setNewInterview({
-                                                round: interview.interviewRound || 1,
-                                                type: interview.interviewType || "technical",
-                                                scheduledDate: formattedDate,
-                                                interviewLink: interview.interviewLink || "",
-                                                notes: interview.notes || "",
-                                              })
-                                              setEditingInterview(interview)
-                                              setShowNewInterviewForm(true)
-                                            } catch (error) {
-                                              console.error("Failed to edit interview:", error)
-                                            }
-                                          }}
+                                    setNewInterview({
+                                      round: interview.interviewRound || 1,
+                                      type: interview.interviewType || "technical",
+                                      scheduledDate: formattedDate,
+                                      interviewLink: interview.interviewLink || "",
+                                      notes: interview.notes || "",
+                                    })
+                                    setEditingInterview(interview)
+                                    setShowNewInterviewForm(true)
+                                  } catch (error) {
+                                    console.error("Failed to edit interview:", error)
+                                  }
+                                }}
                               >
                                 <Edit2 className="h-3 w-3 text-slate-500" />
                               </Button>
@@ -899,7 +885,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               if (date) {
                                 const currentTime = (() => {
                                   const parsedDate = parseScheduledDate(newInterview.scheduledDate)
-                                  return parsedDate ? `${String(parsedDate.getHours()).padStart(2, "0")}:${String(parsedDate.getMinutes()).padStart(2, "0")}` : "09:00"
+                                  return parsedDate
+                                    ? `${String(parsedDate.getHours()).padStart(2, "0")}:${String(parsedDate.getMinutes()).padStart(2, "0")}`
+                                    : "09:00"
                                 })()
                                 const dateTimeString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${currentTime}`
                                 setNewInterview({ ...newInterview, scheduledDate: dateTimeString })
@@ -913,7 +901,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         type="time"
                         value={(() => {
                           const parsedDate = parseScheduledDate(newInterview.scheduledDate)
-                          return parsedDate ? `${String(parsedDate.getHours()).padStart(2, "0")}:${String(parsedDate.getMinutes()).padStart(2, "0")}` : "09:00"
+                          return parsedDate
+                            ? `${String(parsedDate.getHours()).padStart(2, "0")}:${String(parsedDate.getMinutes()).padStart(2, "0")}`
+                            : "09:00"
                         })()}
                         onChange={(e) => {
                           const currentDate = parseScheduledDate(newInterview.scheduledDate) || new Date()
@@ -1187,7 +1177,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {(() => {
                                 try {
-                                  return editingEvent.eventDate ? format(new Date(editingEvent.eventDate), "PPP") : "Pick a date"
+                                  return editingEvent.eventDate
+                                    ? format(new Date(editingEvent.eventDate), "PPP")
+                                    : "Pick a date"
                                 } catch (error) {
                                   console.warn("Failed to format editing event date:", editingEvent.eventDate, error)
                                   return "Pick a date"

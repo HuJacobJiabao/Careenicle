@@ -2,7 +2,7 @@
 
 import type React from "react"
 import type { UpcomingInterviewJob } from "@/lib/types"
-import { Clock, Calendar, User, MapPin, ExternalLink, Settings } from "lucide-react"
+import { Clock, Calendar, MapPin, ExternalLink, Settings } from "lucide-react"
 
 interface UpcomingInterviewsTableProps {
   jobs: UpcomingInterviewJob[]
@@ -127,9 +127,7 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                                 <ExternalLink className="w-3 h-3 ml-1" />
                               </a>
                             ) : (
-                              <span className="text-sm font-medium text-gray-900">
-                                {job.position}
-                              </span>
+                              <span className="text-sm font-medium text-gray-900">{job.position}</span>
                             )}
                           </div>
                           <div className="text-sm text-gray-900 font-medium">{job.company}</div>
@@ -159,10 +157,13 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                             {formatDateLabel(interviewDate)}
                           </div>
                           <div className="text-gray-600">
-                            {interviewDate.toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {(() => {
+                              const utcDate = new Date(interview.eventDate)
+                              return utcDate.toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -250,7 +251,9 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                 {/* Interview Type */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">Interview</span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${typeConfig.color}`}>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${typeConfig.color}`}
+                  >
                     {typeConfig.icon} Round {interview.interviewRound || 1} - {typeConfig.label}
                   </span>
                 </div>
@@ -259,18 +262,22 @@ const UpcomingInterviewsTable: React.FC<UpcomingInterviewsTableProps> = ({ jobs,
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">Date & Time</span>
                   <div className="text-right">
-                    <div className={`text-sm font-medium ${isToday(interviewDate) ? "text-amber-600" : "text-gray-900"}`}>
+                    <div
+                      className={`text-sm font-medium ${isToday(interviewDate) ? "text-amber-600" : "text-gray-900"}`}
+                    >
                       {formatDateLabel(interviewDate)}
                     </div>
                     <div className="text-xs text-gray-600">
-                      {interviewDate.toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {(() => {
+                        const utcDate = new Date(interview.eventDate)
+                        return utcDate.toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      })()}
                     </div>
                   </div>
                 </div>
-
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
