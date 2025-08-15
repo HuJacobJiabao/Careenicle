@@ -233,6 +233,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     }
   }
 
+  const parseLocalDate = (dateString: string): Date | null => {
+    if (!dateString) return null
+
+    try {
+      const [year, month, day] = dateString.split("-").map(Number)
+      return new Date(year, month - 1, day) // Create as local date, month is 0-indexed
+    } catch (error) {
+      console.warn("Failed to parse local date:", dateString, error)
+      return null
+    }
+  }
+
   const addCustomEvent = async () => {
     if (!newEvent.eventDate || !newEvent.title) return
 
@@ -1213,12 +1225,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {newEvent.eventDate
-                                  ? (() => {
-                                      // Parse date string as local date to avoid timezone issues
-                                      const [year, month, day] = newEvent.eventDate.split("-").map(Number)
-                                      const localDate = new Date(year, month - 1, day) // month is 0-indexed
-                                      return format(localDate, "PPP")
-                                    })()
+                                  ? format(parseLocalDate(newEvent.eventDate) || new Date(), "PPP")
                                   : "Pick a date"}
                               </Button>
                             </PopoverTrigger>
@@ -1226,12 +1233,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               <CalendarComponent
                                 mode="single"
                                 selected={
-                                  newEvent.eventDate
-                                    ? (() => {
-                                        const [year, month, day] = newEvent.eventDate.split("-").map(Number)
-                                        return new Date(year, month - 1, day) // month is 0-indexed
-                                      })()
-                                    : undefined
+                                  newEvent.eventDate ? parseLocalDate(newEvent.eventDate) || undefined : undefined
                                 }
                                 onSelect={(date) => {
                                   if (date) {
