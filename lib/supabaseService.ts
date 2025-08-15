@@ -375,10 +375,10 @@ export class SupabaseService {
       }
     }
 
-    console.log("Clean event data being sent:", cleanEvent)
+    // console.log("Clean event data being sent:", cleanEvent)
     
     const eventData = this.toSnakeCase(cleanEvent)
-    console.log("Snake case event data:", eventData)
+    // console.log("Snake case event data:", eventData)
 
     const { data: updatedEvent, error: updateError } = await supabase
       .from("job_events")
@@ -389,7 +389,7 @@ export class SupabaseService {
       .single()
 
     if (updateError) {
-      console.error("Error updating job event in Supabase:", updateError)
+      // console.error("Error updating job event in Supabase:", updateError)
       throw new Error("Failed to update job event")
     }
 
