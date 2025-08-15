@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Pause,
   Edit,
+  Edit2,
   Trash2,
   FileText,
   Award,
@@ -28,6 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import ConfirmDialog from "./ConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 
@@ -161,16 +163,21 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     try {
       // Convert Date objects to local ISO strings to avoid timezone issues
       const dataToSend = { ...eventData }
-      if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
-        // Create local ISO string without timezone conversion
-        const date = dataToSend.eventDate
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, "0")
-        const day = String(date.getDate()).padStart(2, "0")
-        const hours = String(date.getHours()).padStart(2, "0")
-        const minutes = String(date.getMinutes()).padStart(2, "0")
-        const seconds = String(date.getSeconds()).padStart(2, "0")
-        dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
+      if (dataToSend.eventDate) {
+        if (dataToSend.eventDate instanceof Date) {
+          // Create local ISO string without timezone conversion
+          const date = dataToSend.eventDate
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, "0")
+          const day = String(date.getDate()).padStart(2, "0")
+          const hours = String(date.getHours()).padStart(2, "0")
+          const minutes = String(date.getMinutes()).padStart(2, "0")
+          const seconds = String(date.getSeconds()).padStart(2, "0")
+          dataToSend.eventDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any
+        } else if (typeof dataToSend.eventDate === 'string') {
+          // If it's already a string, use it as is (preserve local time)
+          dataToSend.eventDate = dataToSend.eventDate as any
+        }
       }
 
       await DataService.createJobEvent({
@@ -186,29 +193,26 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   const addInterview = async () => {
     if (!newInterview.scheduledDate) return
 
-    // Parse the datetime-local input to create a proper local date
-    const [dateStr, timeStr] = newInterview.scheduledDate.split("T")
-    const [year, month, day] = dateStr.split("-").map(Number)
-    const [hour, minute] = timeStr.split(":").map(Number)
-    const scheduledLocalDate = new Date(year, month - 1, day, hour, minute)
-
     try {
+      // Parse the datetime-local input as a local time (no timezone conversion)
+      const localDateTimeString = newInterview.scheduledDate
+      
       // Create scheduled interview event with current time
       await createJobEvent({
         eventType: "interview_scheduled",
         eventDate: new Date(), // Current time
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label} Scheduled`,
-        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""} scheduled for ${scheduledLocalDate.toLocaleString()}`,
+        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""} scheduled for ${localDateTimeString}`,
         interviewRound: newInterview.round,
         interviewType: newInterview.type,
         interviewLink: newInterview.interviewLink,
         notes: newInterview.notes,
       })
 
-      // Create the actual interview event with the scheduled time
+      // Create the actual interview event with the scheduled time (send as string to preserve local time)
       await createJobEvent({
         eventType: "interview",
-        eventDate: scheduledLocalDate,
+        eventDate: (localDateTimeString + ":00") as any, // Add seconds and send as string
         title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
         description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
         interviewRound: newInterview.round,
@@ -450,6 +454,55 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     return result ? configs[result as keyof typeof configs] || configs.pending : configs.pending
   }
 
+  // Safely parse scheduledDate string into a Date object, handling various formats
+  const parseScheduledDate = (dateString: string | undefined | null): Date | null => {
+    if (!dateString || typeof dateString !== "string") return null
+    
+    try {
+      // Handle PostgreSQL timestamp format (2025-08-15 08:49:54.628828+00)
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(dateString)) {
+        // Convert PostgreSQL timestamp to ISO format
+        const isoString = dateString.replace(' ', 'T').replace(/\+00$/, 'Z')
+        const date = new Date(isoString)
+        if (!isNaN(date.getTime())) {
+          return date
+        }
+      }
+      
+      // Handle datetime-local format (YYYY-MM-DDTHH:MM)
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateString)) {
+        const [datePart, timePart] = dateString.split("T")
+        const [year, month, day] = datePart.split("-").map(Number)
+        const [hour, minute] = timePart.split(":").map(Number)
+        return new Date(year, month - 1, day, hour, minute)
+      }
+      
+      // Handle ISO string format
+      const date = new Date(dateString)
+      if (!isNaN(date.getTime())) {
+        return date
+      }
+      
+      return null
+    } catch (error) {
+      console.warn("Failed to parse date:", dateString, error)
+      return null
+    }
+  }
+
+  // Format datetime-local input value from Date object
+  const formatDateTimeLocal = (date: Date | null): string => {
+    if (!date) return ""
+    
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
   const deleteInterview = async (interviewId: number) => {
     setConfirmDialog({
       isOpen: true,
@@ -486,42 +539,43 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <Card className="max-w-6xl w-full max-h-screen overflow-y-auto shadow-2xl animate-scale-in border-0">
-        <CardHeader className="pb-6">
-          <div className="flex justify-between items-start">
-            <div className="space-y-2">
-              <CardTitle className="text-3xl font-bold text-slate-800 tracking-tight">Interview Management</CardTitle>
-              <div className="flex items-center text-lg text-slate-600">
-                <Badge variant="secondary" className="mr-2 px-3 py-1 text-sm font-medium">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-1 sm:p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto shadow-2xl animate-scale-in">
+        <div className="p-2 sm:p-6">
+          <div className="flex justify-between items-start mb-3 sm:mb-6">
+            <div className="space-y-1 sm:space-y-2">
+              <h2 className="text-base sm:text-2xl font-bold text-slate-800 tracking-tight">Interview Management</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 text-sm sm:text-base text-slate-600">
+                <Badge
+                  variant="secondary"
+                  className="mr-0 sm:mr-2 px-1.5 sm:px-3 py-1 text-xs sm:text-sm font-medium w-fit"
+                >
                   {job.position}
                 </Badge>
-                <span className="text-slate-400">at</span>
-                <span className="ml-2 font-semibold text-slate-700">{job.company}</span>
+                <span className="hidden sm:inline text-slate-400">at</span>
+                <span className="ml-0 sm:ml-2 font-semibold text-slate-700">{job.company}</span>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors duration-200"
+              className="h-6 w-6 sm:h-10 sm:w-10 rounded-full hover:bg-slate-100 flex-shrink-0"
             >
-              <X className="w-4 h-4 text-slate-400" />
+              <X className="w-3 h-3 sm:w-5 sm:h-5" />
             </Button>
           </div>
-        </CardHeader>
 
-        <CardContent className="space-y-8">
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-semibold text-slate-800">Interview Rounds</h3>
+          <div className="mb-4 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2 sm:mb-4">
+              <h3 className="text-base sm:text-xl font-semibold text-slate-800">Interview Rounds</h3>
               {!showNewInterviewForm && (
                 <Button
                   onClick={() => setShowNewInterviewForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Schedule New Interview
+                  <span className="text-sm sm:text-base">Schedule Interview</span>
                 </Button>
               )}
             </div>
@@ -546,188 +600,222 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  {(() => {
-                    const sortedInterviews = interviews.sort(
-                      (a, b) => (a.interviewRound || 0) - (b.interviewRound || 0),
-                    )
-                    const rows = []
+              <>
+                <div className="hidden md:flex md:items-center md:gap-4">
+                  {interviews
+                    .sort((a, b) => (a.interviewRound || 1) - (b.interviewRound || 1)) // Desktop: ascending order
+                    .map((interview, index, sortedArray) => (
+                      <React.Fragment key={interview.id}>
+                        <Card className="border-slate-200 hover:border-slate-300 transition-colors flex-1">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start space-x-3 flex-1 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                  {interview.interviewRound || 1}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <CardTitle className="text-base text-slate-800 mb-1">
+                                    Round {interview.interviewRound || 1}
+                                  </CardTitle>
 
-                    // Calculate consistent card width based on maximum 3 cards per row
-                    const maxCardsPerRow = 3
-                    const arrowWidth = 40 // 24px icon + 16px margin
-                    const gapWidth = 16 // gap between elements
-                    const maxArrowsPerRow = maxCardsPerRow - 1 // arrows between cards
-                    const totalArrowAndGapWidth = maxArrowsPerRow * arrowWidth + maxArrowsPerRow * gapWidth
-                    const cardWidth = `calc((100% - ${totalArrowAndGapWidth}px) / ${maxCardsPerRow})`
-
-                    // Group interviews into rows of maximum 3
-                    for (let i = 0; i < sortedInterviews.length; i += 3) {
-                      const rowInterviews = sortedInterviews.slice(i, i + 3)
-                      const isLastRow = i + 3 >= sortedInterviews.length
-                      const hasMoreInterviews = !isLastRow
-
-                      rows.push(
-                        <div key={`row-${i}`} className="flex items-center justify-start gap-4 overflow-hidden">
-                          {rowInterviews.map((interview, index) => {
-                            const typeConfig = getTypeConfig(interview.interviewType || "technical")
-                            const resultConfig = getResultConfig(interview.interviewResult || "pending")
-                            const isEditing = editingInterview?.id === interview.id && !showNewInterviewForm
-
-                            return (
-                              <React.Fragment key={interview.id}>
-                                <Card
-                                  className="hover:shadow-lg transition-all duration-200 border-slate-200 flex-shrink-0"
-                                  style={{ width: cardWidth, maxWidth: cardWidth }}
-                                >
-                                  <CardHeader className="pb-3">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center space-x-3">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                                          {interview.interviewRound || 1}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                          <CardTitle className="text-base text-slate-800">
-                                            Round {interview.interviewRound || 1}
-                                          </CardTitle>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center space-x-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            // Populate the form with existing interview data
-                                            const eventDate = new Date(interview.eventDate)
-                                            const formattedDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}T${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes())}`
-
-                                            setNewInterview({
-                                              round: interview.interviewRound || 1,
-                                              type: interview.interviewType || "technical",
-                                              scheduledDate: formattedDate,
-                                              interviewLink: interview.interviewLink || "",
-                                              notes: interview.notes || "",
-                                            })
-                                            setEditingInterview(interview)
-                                            setShowNewInterviewForm(true)
-                                          }}
-                                          className="text-slate-600 hover:text-blue-600 h-6 w-6 p-0"
-                                        >
-                                          <Edit className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => deleteInterview(interview.id!)}
-                                          className="text-slate-600 hover:text-red-600 h-6 w-6 p-0"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </CardHeader>
-
-                                  {!isEditing && (
-                                    <CardContent className="pt-0 space-y-3">
-                                      {/* Type and Result Badges */}
-                                      <div className="flex flex-col space-y-2">
-                                        <Badge className={`${typeConfig.color} border font-medium text-xs w-fit`}>
-                                          {typeConfig.icon}
-                                          <span className="ml-1">{typeConfig.label}</span>
-                                        </Badge>
-                                        <Select
-                                          value={interview.interviewResult || "pending"}
-                                          onValueChange={(value) =>
-                                            updateEvent(interview.id!, { interviewResult: value as any })
-                                          }
-                                        >
-                                          <SelectTrigger
-                                            className={`w-fit h-6 text-xs border-0 ${resultConfig.color} font-medium px-2 rounded-full`}
-                                          >
-                                            <div className="flex items-center">
-                                              {resultConfig.icon}
-                                              <span className="ml-1">{resultConfig.label}</span>
-                                            </div>
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="pending">Pending</SelectItem>
-                                            <SelectItem value="passed">Passed</SelectItem>
-                                            <SelectItem value="failed">Failed</SelectItem>
-                                            <SelectItem value="waiting">Waiting</SelectItem>
-                                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-
-                                      {/* Date and Link */}
-                                      <div className="space-y-2 text-xs">
-                                        <div className="flex items-center text-slate-600">
-                                          <Calendar className="w-3 h-3 mr-2 text-slate-400" />
-                                          <span className="truncate">
-                                            {new Date(interview.eventDate).toLocaleString("en-US", {
-                                              weekday: "short",
-                                              month: "short",
-                                              day: "numeric",
-                                              hour: "2-digit",
-                                              minute: "2-digit",
-                                            })}
-                                          </span>
-                                        </div>
-                                        {interview.interviewLink && (
-                                          <div className="flex items-center text-slate-600">
-                                            <MessageSquare className="w-3 h-3 mr-2 text-slate-400 flex-shrink-0" />
-                                            <a
-                                              href={interview.interviewLink}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-blue-600 hover:text-blue-800 hover:underline truncate text-xs"
-                                            >
-                                              Interview Link
-                                            </a>
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      {/* Notes */}
-                                      {interview.notes && (
-                                        <div className="p-2 bg-slate-50 rounded-lg">
-                                          <p className="text-xs text-slate-600 line-clamp-2">{interview.notes}</p>
-                                        </div>
-                                      )}
-                                    </CardContent>
-                                  )}
-                                </Card>
-
-                                {(index < rowInterviews.length - 1 ||
-                                  (hasMoreInterviews && index === rowInterviews.length - 1)) && (
-                                  <div className="flex items-center justify-center flex-shrink-0 w-6">
-                                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                                  <div className="flex flex-col gap-2 mb-2">
+                                    <Badge
+                                      className={`${getTypeConfig(interview.interviewType).color} border font-medium text-xs w-fit`}
+                                    >
+                                      {getTypeConfig(interview.interviewType).icon}
+                                      <span className="ml-1">{getTypeConfig(interview.interviewType).label}</span>
+                                    </Badge>
+                                    <Badge
+                                      className={`${getResultConfig(interview.interviewResult).color} border font-medium text-xs w-fit`}
+                                    >
+                                      {getResultConfig(interview.interviewResult).icon}
+                                      <span className="ml-1">{getResultConfig(interview.interviewResult).label}</span>
+                                    </Badge>
                                   </div>
-                                )}
-                              </React.Fragment>
-                            )
-                          })}
-                        </div>,
-                      )
-                    }
 
-                    return rows
-                  })()}
+                                  <div className="flex items-center gap-1 text-xs text-slate-600 mb-2">
+                                    <Calendar className="w-3 h-3 mr-1 text-slate-400" />
+                                    <span>
+                                      {(() => {
+                                        try {
+                                          return interview.eventDate
+                                            ? format(new Date(interview.eventDate), "EEE, MMM d, h:mm a")
+                                            : "Not scheduled"
+                                        } catch (error) {
+                                          console.warn("Failed to format interview date:", interview.eventDate, error)
+                                          return "Invalid date"
+                                        }
+                                      })()}
+                                    </span>
+                                  </div>
+
+                                  {interview.notes && (
+                                    <p className="text-xs text-slate-600 line-clamp-2">{interview.notes}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-slate-100"
+                                  onClick={() => {
+                                            // Populate the form with existing interview data
+                                            try {
+                                              const eventDate = new Date(interview.eventDate)
+                                              if (isNaN(eventDate.getTime())) {
+                                                console.warn("Invalid interview date:", interview.eventDate)
+                                                return
+                                              }
+                                              const formattedDate = formatDateTimeLocal(eventDate)
+
+                                              setNewInterview({
+                                                round: interview.interviewRound || 1,
+                                                type: interview.interviewType || "technical",
+                                                scheduledDate: formattedDate,
+                                                interviewLink: interview.interviewLink || "",
+                                                notes: interview.notes || "",
+                                              })
+                                              setEditingInterview(interview)
+                                              setShowNewInterviewForm(true)
+                                            } catch (error) {
+                                              console.error("Failed to edit interview:", error)
+                                            }
+                                          }}
+                                >
+                                  <Edit2 className="h-3 w-3 text-slate-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+                                  onClick={() => deleteInterview(interview.id!)}
+                                >
+                                  <Trash2 className="h-3 w-3 text-slate-500" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        {index < sortedArray.length - 1 && (
+                          <div className="flex items-center justify-center">
+                            <ChevronRight className="w-6 h-6 text-slate-400" />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
                 </div>
-              </div>
+
+                <div className="md:hidden space-y-2">
+                  {interviews
+                    .sort((a, b) => (b.interviewRound || 1) - (a.interviewRound || 1)) // Mobile: descending order
+                    .map((interview) => (
+                      <Card key={interview.id} className="border-slate-200 hover:border-slate-300 transition-colors">
+                        <CardContent className="p-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start space-x-2 flex-1 min-w-0">
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">
+                                {interview.interviewRound || 1}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <CardTitle className="text-sm text-slate-800 mb-0.5">
+                                  Round {interview.interviewRound || 1}
+                                </CardTitle>
+
+                                <div className="flex flex-col gap-1 mb-1">
+                                  <Badge
+                                    className={`${getTypeConfig(interview.interviewType).color} border font-medium text-xs w-fit`}
+                                  >
+                                    {getTypeConfig(interview.interviewType).icon}
+                                    <span className="ml-1">{getTypeConfig(interview.interviewType).label}</span>
+                                  </Badge>
+                                  <Badge
+                                    className={`${getResultConfig(interview.interviewResult).color} border font-medium text-xs w-fit`}
+                                  >
+                                    {getResultConfig(interview.interviewResult).icon}
+                                    <span className="ml-1">{getResultConfig(interview.interviewResult).label}</span>
+                                  </Badge>
+                                </div>
+
+                                <div className="flex items-center gap-1 text-xs text-slate-600">
+                                  <Calendar className="w-3 h-3 mr-1 text-slate-400" />
+                                  <span>
+                                    {(() => {
+                                      try {
+                                        return interview.eventDate
+                                          ? format(new Date(interview.eventDate), "EEE, MMM d, h:mm a")
+                                          : "Not scheduled"
+                                      } catch (error) {
+                                        console.warn("Failed to format interview date:", interview.eventDate, error)
+                                        return "Invalid date"
+                                      }
+                                    })()}
+                                  </span>
+                                </div>
+
+                                {interview.notes && (
+                                  <p className="text-xs text-slate-600 line-clamp-2 mt-1">{interview.notes}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-slate-100"
+                                onClick={() => {
+                                            // Populate the form with existing interview data
+                                            try {
+                                              const eventDate = new Date(interview.eventDate)
+                                              if (isNaN(eventDate.getTime())) {
+                                                console.warn("Invalid interview date:", interview.eventDate)
+                                                return
+                                              }
+                                              const formattedDate = formatDateTimeLocal(eventDate)
+
+                                              setNewInterview({
+                                                round: interview.interviewRound || 1,
+                                                type: interview.interviewType || "technical",
+                                                scheduledDate: formattedDate,
+                                                interviewLink: interview.interviewLink || "",
+                                                notes: interview.notes || "",
+                                              })
+                                              setEditingInterview(interview)
+                                              setShowNewInterviewForm(true)
+                                            } catch (error) {
+                                              console.error("Failed to edit interview:", error)
+                                            }
+                                          }}
+                              >
+                                <Edit2 className="h-3 w-3 text-slate-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+                                onClick={() => deleteInterview(interview.id!)}
+                              >
+                                <Trash2 className="h-3 w-3 text-slate-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              </>
             )}
           </div>
 
           {showNewInterviewForm && (
             <Card className="border-blue-200 bg-blue-50/30">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-2 sm:pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                   <div>
-                    <CardTitle className="text-xl text-slate-800">
+                    <CardTitle className="text-sm sm:text-lg text-slate-800">
                       {editingInterview ? "Edit Interview" : "Schedule New Interview"}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                       {editingInterview ? "Update interview details" : "Add a new interview round to your application"}
                     </CardDescription>
                   </div>
@@ -735,16 +823,16 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowNewInterviewForm(false)}
-                    className="h-8 w-8 rounded-full hover:bg-slate-100"
+                    className="h-6 w-6 sm:h-8 sm:w-8 self-end sm:self-auto"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3 sm:w-4 sm:h-4" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="round" className="text-sm font-medium text-slate-700">
+              <CardContent className="space-y-2 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="round" className="text-xs sm:text-sm font-medium text-slate-700">
                       Round Number
                     </Label>
                     <Input
@@ -752,12 +840,12 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       type="number"
                       value={newInterview.round}
                       onChange={(e) => setNewInterview({ ...newInterview, round: Number.parseInt(e.target.value) })}
-                      className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-9 sm:h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="type" className="text-sm font-medium text-slate-700">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="type" className="text-xs sm:text-sm font-medium text-slate-700">
                       Interview Type
                     </Label>
                     <Select
@@ -766,7 +854,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                         setNewInterview({ ...newInterview, type: value as JobEvent["interviewType"] })
                       }
                     >
-                      <SelectTrigger className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500">
+                      <SelectTrigger className="h-9 sm:h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -782,35 +870,37 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduledDate" className="text-sm font-medium text-slate-700">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="scheduledDate" className="text-xs sm:text-sm font-medium text-slate-700">
                       Scheduled Date & Time
                     </Label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             className={cn(
-                              "h-11 flex-1 justify-start text-left font-normal border-slate-300 focus:border-blue-500",
+                              "h-9 sm:h-11 flex-1 justify-start text-left font-normal border-slate-300 focus:border-blue-500",
                               !newInterview.scheduledDate && "text-muted-foreground",
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {newInterview.scheduledDate
-                              ? format(new Date(newInterview.scheduledDate), "PPP")
-                              : "Pick a date"}
+                            {(() => {
+                              const parsedDate = parseScheduledDate(newInterview.scheduledDate)
+                              return parsedDate ? format(parsedDate, "PPP") : "Pick a date"
+                            })()}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <CalendarComponent
                             mode="single"
-                            selected={newInterview.scheduledDate ? new Date(newInterview.scheduledDate) : undefined}
+                            selected={parseScheduledDate(newInterview.scheduledDate) || undefined}
                             onSelect={(date) => {
                               if (date) {
-                                const currentTime = newInterview.scheduledDate
-                                  ? new Date(newInterview.scheduledDate).toTimeString().slice(0, 5)
-                                  : "09:00"
+                                const currentTime = (() => {
+                                  const parsedDate = parseScheduledDate(newInterview.scheduledDate)
+                                  return parsedDate ? `${String(parsedDate.getHours()).padStart(2, "0")}:${String(parsedDate.getMinutes()).padStart(2, "0")}` : "09:00"
+                                })()
                                 const dateTimeString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${currentTime}`
                                 setNewInterview({ ...newInterview, scheduledDate: dateTimeString })
                               }
@@ -821,25 +911,22 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       </Popover>
                       <Input
                         type="time"
-                        value={
-                          newInterview.scheduledDate
-                            ? new Date(newInterview.scheduledDate).toTimeString().slice(0, 5)
-                            : "09:00"
-                        }
+                        value={(() => {
+                          const parsedDate = parseScheduledDate(newInterview.scheduledDate)
+                          return parsedDate ? `${String(parsedDate.getHours()).padStart(2, "0")}:${String(parsedDate.getMinutes()).padStart(2, "0")}` : "09:00"
+                        })()}
                         onChange={(e) => {
-                          const currentDate = newInterview.scheduledDate
-                            ? new Date(newInterview.scheduledDate)
-                            : new Date()
+                          const currentDate = parseScheduledDate(newInterview.scheduledDate) || new Date()
                           const dateTimeString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}T${e.target.value}`
                           setNewInterview({ ...newInterview, scheduledDate: dateTimeString })
                         }}
-                        className="w-32 h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                        className="w-24 sm:w-32 h-9 sm:h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="interviewLink" className="text-sm font-medium text-slate-700">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="interviewLink" className="text-xs sm:text-sm font-medium text-slate-700">
                       Interview Link
                     </Label>
                     <Input
@@ -848,13 +935,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       value={newInterview.interviewLink}
                       onChange={(e) => setNewInterview({ ...newInterview, interviewLink: e.target.value })}
                       placeholder="Meeting link, phone number, or location"
-                      className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-9 sm:h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-sm font-medium text-slate-700">
+                <div className="space-y-1 sm:space-y-2">
+                  <Label htmlFor="notes" className="text-xs sm:text-sm font-medium text-slate-700">
                     Notes
                   </Label>
                   <Textarea
@@ -862,24 +949,37 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                     value={newInterview.notes}
                     onChange={(e) => setNewInterview({ ...newInterview, notes: e.target.value })}
                     placeholder="Preparation notes, topics to discuss, etc..."
-                    rows={3}
-                    className="h-24 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    rows={2}
+                    className="h-16 sm:h-24 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
+                <div className="flex justify-end space-x-2 sm:space-x-3 pt-4 sm:pt-6 border-t border-slate-200">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowNewInterviewForm(false)}
-                    className="px-6 py-2 border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
+                    onClick={() => {
+                      setShowNewInterviewForm(false)
+                      setEditingInterview(null)
+                      setNewInterview({
+                        round: interviews.length + 1,
+                        type: "technical",
+                        scheduledDate: "",
+                        interviewLink: "",
+                        notes: "",
+                      })
+                    }}
+                    className="px-4 sm:px-6 py-1 sm:py-2 border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
                   >
                     Cancel
                   </Button>
                   <Button
-                    type="submit"
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    type="button"
+                    onClick={editingInterview ? saveEditingInterview : addInterview}
+                    disabled={!newInterview.scheduledDate}
+                    className="px-4 sm:px-6 py-1 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <Calendar className="w-4 h-4 mr-2" />
                     {editingInterview ? "Update Interview" : "Schedule Interview"}
                   </Button>
                 </div>
@@ -888,16 +988,18 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           )}
 
           {/* Added clear dividing line between sections */}
-          <div className="border-t-2 border-slate-200 my-8"></div>
+          <div className="border-t-2 border-slate-200 my-6 sm:my-8"></div>
 
           <Card className="border-slate-200">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="pb-2 sm:pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                 <div>
-                  <CardTitle className="text-xl text-slate-800">Event Timeline</CardTitle>
-                  <CardDescription>Track all events related to this job application</CardDescription>
+                  <CardTitle className="text-sm sm:text-lg text-slate-800">Event Timeline</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Track all events related to this job application
+                  </CardDescription>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                   {/* Sort Button */}
                   <Button
                     variant="outline"
@@ -1083,7 +1185,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               )}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {editingEvent.eventDate ? format(new Date(editingEvent.eventDate), "PPP") : "Pick a date"}
+                              {(() => {
+                                try {
+                                  return editingEvent.eventDate ? format(new Date(editingEvent.eventDate), "PPP") : "Pick a date"
+                                } catch (error) {
+                                  console.warn("Failed to format editing event date:", editingEvent.eventDate, error)
+                                  return "Pick a date"
+                                }
+                              })()}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
@@ -1185,12 +1294,19 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                       {getEventTypeLabel(event.eventType)}
                                     </span>
                                     <span className="text-xs text-slate-500 font-medium">
-                                      {new Date(event.eventDate).toLocaleString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
+                                      {(() => {
+                                        try {
+                                          return new Date(event.eventDate).toLocaleString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })
+                                        } catch (error) {
+                                          console.warn("Failed to format event date:", event.eventDate, error)
+                                          return "Invalid date"
+                                        }
+                                      })()}
                                     </span>
                                   </div>
                                   <div className="flex items-center space-x-1">
@@ -1238,8 +1354,20 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
               </div>
             </CardContent>
           </Card>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }
