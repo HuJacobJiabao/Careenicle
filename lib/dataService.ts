@@ -319,6 +319,44 @@ export class DataService {
         updatedAt: new Date(),
       }
       mockJobEvents.unshift(newEvent)
+
+      const job = mockJobs.find((j) => j.id === eventData.jobId)
+      if (job) {
+        switch (eventData.eventType) {
+          case "interview_scheduled":
+          case "interview":
+            job.status = "interview"
+            break
+          case "rejected":
+            job.status = "rejected"
+            break
+          case "offer_received":
+            job.status = "offer"
+            break
+          case "offer_accepted":
+            job.status = "accepted"
+            break
+          case "interview_result":
+            if (eventData.interviewResult === "failed") {
+              // Check if this is the latest interview result
+              const jobEvents = mockJobEvents
+                .filter(
+                  (e) =>
+                    e.jobId === eventData.jobId &&
+                    (e.eventType === "interview" || e.eventType === "interview_result") &&
+                    e.interviewResult,
+                )
+                .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+
+              if (jobEvents.length > 0 && jobEvents[0].interviewResult === "failed") {
+                job.status = "rejected"
+              }
+            }
+            break
+        }
+        job.updatedAt = new Date()
+      }
+
       return newEvent
     } else if (provider === "supabase") {
       return await SupabaseService.createJobEvent({

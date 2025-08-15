@@ -6,31 +6,34 @@ export class SupabaseService {
   private static checkConfiguration(): void {
     if (!isSupabaseConfigured) {
       throw new Error(
-        "Supabase is not properly configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables."
+        "Supabase is not properly configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables.",
       )
     }
   }
 
   // Get current user ID from Supabase auth
   private static async getCurrentUserId(): Promise<string> {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
     if (error || !user) {
       throw new Error("User not authenticated")
     }
-    
+
     return user.id
   }
 
   // Helper function to convert camelCase to snake_case for database
   private static toSnakeCase(obj: any): any {
-    if (!obj || typeof obj !== 'object') return obj
-    
+    if (!obj || typeof obj !== "object") return obj
+
     const converted: any = {}
     for (const [key, value] of Object.entries(obj)) {
       // If the key already contains underscores, keep it as is
       // Otherwise, convert camelCase to snake_case
-      const snakeKey = key.includes('_') ? key : key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+      const snakeKey = key.includes("_") ? key : key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
       converted[snakeKey] = value
     }
     return converted
@@ -38,8 +41,8 @@ export class SupabaseService {
 
   // Helper function to convert snake_case to camelCase from database
   private static toCamelCase(obj: any): any {
-    if (!obj || typeof obj !== 'object') return obj
-    
+    if (!obj || typeof obj !== "object") return obj
+
     const converted: any = {}
     for (const [key, value] of Object.entries(obj)) {
       const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
@@ -57,34 +60,29 @@ export class SupabaseService {
     favorites?: boolean
   }): Promise<{ jobs: Job[]; pagination?: any }> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
     const page = params?.page || 1
     const limit = params?.limit || 10
     const offset = (page - 1) * limit
 
-    let query = supabase
-      .from("jobs")
-      .select("*", { count: 'exact' })
-      .eq("user_id", userId) // Filter by current user
-    
+    let query = supabase.from("jobs").select("*", { count: "exact" }).eq("user_id", userId) // Filter by current user
+
     // Apply filters
     if (params?.search) {
       query = query.or(`company.ilike.%${params.search}%,position.ilike.%${params.search}%`)
     }
-    
+
     if (params?.status && params.status !== "all") {
       query = query.eq("status", params.status)
     }
-    
+
     if (params?.favorites) {
       query = query.eq("is_favorite", true)
     }
 
     // Apply pagination and ordering
-    query = query
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1)
+    query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1)
 
     const { data, error, count } = await query
 
@@ -96,7 +94,7 @@ export class SupabaseService {
     const total = count || 0
 
     return {
-      jobs: (data || []).map(job => this.toCamelCase(job)),
+      jobs: (data || []).map((job) => this.toCamelCase(job)),
       pagination: {
         page,
         limit,
@@ -114,10 +112,10 @@ export class SupabaseService {
 
   static async createJob(job: Omit<Job, "id" | "created_at" | "updated_at">): Promise<Job> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
     const jobData = this.toSnakeCase({ ...job, userId })
-    
+
     const { data, error } = await supabase.from("jobs").insert([jobData]).select().single()
 
     if (error) {
@@ -148,10 +146,10 @@ export class SupabaseService {
 
   static async updateJob(id: number, job: Partial<Job>): Promise<Job> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
     const jobData = this.toSnakeCase(job)
-    
+
     const { data, error } = await supabase
       .from("jobs")
       .update({ ...jobData, updated_at: new Date().toISOString() })
@@ -170,13 +168,9 @@ export class SupabaseService {
 
   static async deleteJob(id: number): Promise<void> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
-    const { error } = await supabase
-      .from("jobs")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId) // Ensure user can only delete their own jobs
+    const { error } = await supabase.from("jobs").delete().eq("id", id).eq("user_id", userId) // Ensure user can only delete their own jobs
 
     if (error) {
       console.error("Error deleting job from Supabase:", error)
@@ -186,9 +180,9 @@ export class SupabaseService {
 
   static async toggleFavorite(id: number): Promise<Job> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
-    
+
     // First get the current favorite status
     const { data: currentJob, error: fetchError } = await supabase
       .from("jobs")
@@ -230,14 +224,14 @@ export class SupabaseService {
   }
 
   static async fetchJobEventsPaginated(
-    jobId?: number, 
+    jobId?: number,
     params?: {
       page?: number
       limit?: number
-    }
+    },
   ): Promise<{ events: JobEvent[]; pagination?: any }> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
     const page = params?.page || 1
     const limit = params?.limit || 50 // Higher default for events
@@ -245,14 +239,17 @@ export class SupabaseService {
 
     let query = supabase
       .from("job_events")
-      .select(`
+      .select(
+        `
         *,
         jobs (
           company,
           position,
           location
         )
-      `, { count: 'exact' })
+      `,
+        { count: "exact" },
+      )
       .eq("user_id", userId) // Filter by current user
       .order("event_date", { ascending: false })
 
@@ -296,10 +293,10 @@ export class SupabaseService {
 
   static async createJobEvent(event: Omit<JobEvent, "id" | "created_at" | "updated_at">): Promise<JobEvent> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
     const eventData = this.toSnakeCase({ ...event, userId })
-    
+
     const { data, error } = await supabase
       .from("job_events")
       .insert([eventData])
@@ -318,6 +315,13 @@ export class SupabaseService {
       throw new Error("Failed to create job event")
     }
 
+    try {
+      await this.updateJobStatusBasedOnEvent(event.jobId, event.eventType, event.interviewResult)
+    } catch (statusError) {
+      console.error("Error updating job status:", statusError)
+      // Don't throw error here - event was created successfully, status update is secondary
+    }
+
     const camelEvent = this.toCamelCase(data)
     return {
       ...camelEvent,
@@ -329,10 +333,10 @@ export class SupabaseService {
 
   static async updateJobEvent(id: number, event: Partial<JobEvent>): Promise<JobEvent> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
     const eventData = this.toSnakeCase(event)
-    
+
     const { data, error } = await supabase
       .from("job_events")
       .update({ ...eventData, updated_at: new Date().toISOString() })
@@ -364,17 +368,89 @@ export class SupabaseService {
 
   static async deleteJobEvent(id: number): Promise<void> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
-    const { error } = await supabase
-      .from("job_events")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId) // Ensure user can only delete their own events
+    const { error } = await supabase.from("job_events").delete().eq("id", id).eq("user_id", userId) // Ensure user can only delete their own events
 
     if (error) {
       console.error("Error deleting job event from Supabase:", error)
       throw new Error("Failed to delete job event")
     }
+  }
+
+  // Helper function to update job status based on event type
+  private static async updateJobStatusBasedOnEvent(
+    jobId: number,
+    eventType: string,
+    interviewResult?: string,
+  ): Promise<void> {
+    let newStatus: string | null = null
+
+    // Determine new job status based on event type
+    switch (eventType) {
+      case "interview_scheduled":
+      case "interview":
+        newStatus = "interview"
+        break
+      case "rejected":
+        newStatus = "rejected"
+        break
+      case "offer_received":
+        newStatus = "offer"
+        break
+      case "offer_accepted":
+        newStatus = "accepted"
+        break
+      case "interview_result":
+        // For interview results, check if it's failed
+        if (interviewResult === "failed") {
+          // Check if this is the latest interview result
+          const isLatestFailed = await this.isLatestInterviewResultFailed(jobId)
+          if (isLatestFailed) {
+            newStatus = "rejected"
+          }
+        }
+        break
+    }
+
+    // Update job status if needed
+    if (newStatus) {
+      const userId = await this.getCurrentUserId()
+      const { error } = await supabase
+        .from("jobs")
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId)
+        .eq("user_id", userId)
+
+      if (error) {
+        console.error("Error updating job status:", error)
+        throw new Error("Failed to update job status")
+      }
+    }
+  }
+
+  // Helper function to check if latest interview result is failed
+  private static async isLatestInterviewResultFailed(jobId: number): Promise<boolean> {
+    const userId = await this.getCurrentUserId()
+
+    const { data, error } = await supabase
+      .from("job_events")
+      .select("interview_result")
+      .eq("job_id", jobId)
+      .eq("user_id", userId)
+      .in("event_type", ["interview", "interview_result"])
+      .not("interview_result", "is", null)
+      .order("event_date", { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error("Error fetching latest interview result:", error)
+      return false
+    }
+
+    return data && data.length > 0 && data[0].interview_result === "failed"
   }
 }
