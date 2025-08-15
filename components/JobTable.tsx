@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, JobEvent, UpcomingInterviewJob } from "@/lib/types"
 import { DataService } from "@/lib/dataService"
@@ -455,6 +455,21 @@ const JobTable: React.FC = () => {
     )
   }
 
+  const formatLocalDate = (dateString: string | Date, options?: Intl.DateTimeFormatOptions): string => {
+    if (!dateString) return ""
+
+    let date: Date
+    if (typeof dateString === "string") {
+      // Parse as local date to avoid timezone conversion
+      const [year, month, day] = dateString.split("T")[0].split("-")
+      date = new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day))
+    } else {
+      date = dateString
+    }
+
+    return date.toLocaleDateString("en-US", options)
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8 animate-slide-in-up">
       {/* Header */}
@@ -670,9 +685,7 @@ const JobTable: React.FC = () => {
                   : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 shadow-sm hover:shadow-md"
               }`}
             >
-              <Star
-                className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : "text-gray-500"}`}
-              />
+              <Star className={`w-5 h-5 mr-2 ${showFavorites ? "fill-yellow-500 text-yellow-500" : "text-gray-500"}`} />
               Favorites
             </button>
 
@@ -783,7 +796,7 @@ const JobTable: React.FC = () => {
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center text-sm font-medium text-gray-900">
                           <Calendar className="w-5 h-5 mr-3 text-gray-400" />
-                          {new Date(job.applicationDate).toLocaleDateString("en-US", {
+                          {formatLocalDate(job.applicationDate, {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
@@ -803,7 +816,7 @@ const JobTable: React.FC = () => {
                             {upcomingInterview && (
                               <div className="text-xs text-amber-600 font-semibold">
                                 Next:{" "}
-                                {new Date(upcomingInterview.eventDate).toLocaleDateString("en-US", {
+                                {formatLocalDate(upcomingInterview.eventDate, {
                                   month: "short",
                                   day: "numeric",
                                 })}
@@ -939,9 +952,7 @@ const JobTable: React.FC = () => {
                     >
                       <Star
                         className={`w-5 h-5 transition-colors duration-200 ${
-                          job.isFavorite
-                            ? "fill-yellow-500 text-yellow-500"
-                            : "text-gray-300 hover:text-yellow-400"
+                          job.isFavorite ? "fill-yellow-500 text-yellow-500" : "text-gray-300 hover:text-yellow-400"
                         }`}
                       />
                     </button>
@@ -969,16 +980,12 @@ const JobTable: React.FC = () => {
                           </svg>
                         </div>
                       </div>
-                      <span className="text-sm text-gray-500">
-                        {new Date(job.applicationDate).toLocaleDateString()}
-                      </span>
+                      <span className="text-sm text-gray-500">{formatLocalDate(job.applicationDate)}</span>
                     </div>
 
                     {/* Interview Status */}
                     <div className="text-sm">
-                      <span className={`font-medium ${interviewSummary.color}`}>
-                        {interviewSummary.text}
-                      </span>
+                      <span className={`font-medium ${interviewSummary.color}`}>{interviewSummary.text}</span>
                     </div>
 
                     {/* Location */}
@@ -1037,10 +1044,7 @@ const JobTable: React.FC = () => {
                   : "Start tracking your job applications by adding your first job."}
               </p>
               {statusFilter === "all" && !searchTerm && !showFavorites && (
-                <button
-                  onClick={() => setShowAddJobModal(true)}
-                  className="btn-primary inline-flex items-center"
-                >
+                <button onClick={() => setShowAddJobModal(true)} className="btn-primary inline-flex items-center">
                   <Plus className="w-5 h-5 mr-2" />
                   Add Your First Job
                 </button>
