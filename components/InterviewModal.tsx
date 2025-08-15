@@ -15,6 +15,7 @@ import {
   XCircle,
   AlertCircle,
   Pause,
+  Edit,
   Edit2,
   Trash2,
   FileText,
@@ -28,6 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import ConfirmDialog from "./ConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 
@@ -235,13 +237,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     if (!newEvent.eventDate || !newEvent.title) return
 
     try {
-      // Instead of creating a Date object that gets converted to UTC,
-      // create a date string that represents the local date
-      const eventDateString = newEvent.eventDate + "T12:00:00" // Add noon time to avoid timezone edge cases
+      const [year, month, day] = newEvent.eventDate.split("-").map(Number)
+      const localDate = new Date(year, month - 1, day) // month is 0-indexed
+      // localDate will be converted to UTC in createJobEvent
 
       await createJobEvent({
         eventType: newEvent.eventType,
-        eventDate: eventDateString as any, // Send as string to avoid Date object UTC conversion
+        eventDate: localDate,
         title: newEvent.title,
         description: newEvent.description,
         notes: newEvent.notes,
@@ -1210,13 +1212,27 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                 )}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {newEvent.eventDate ? format(new Date(newEvent.eventDate), "PPP") : "Pick a date"}
+                                {newEvent.eventDate
+                                  ? (() => {
+                                      // Parse date string as local date to avoid timezone issues
+                                      const [year, month, day] = newEvent.eventDate.split("-").map(Number)
+                                      const localDate = new Date(year, month - 1, day) // month is 0-indexed
+                                      return format(localDate, "PPP")
+                                    })()
+                                  : "Pick a date"}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                               <CalendarComponent
                                 mode="single"
-                                selected={newEvent.eventDate ? new Date(newEvent.eventDate) : undefined}
+                                selected={
+                                  newEvent.eventDate
+                                    ? (() => {
+                                        const [year, month, day] = newEvent.eventDate.split("-").map(Number)
+                                        return new Date(year, month - 1, day) // month is 0-indexed
+                                      })()
+                                    : undefined
+                                }
                                 onSelect={(date) => {
                                   if (date) {
                                     const year = date.getFullYear()
@@ -1336,29 +1352,16 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                     console.warn("Failed to format editing event date:", editingEvent.eventDate, error)
                                     return "Pick a date"
                                   }
-                                })()}\
+                                })()}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                               <CalendarComponent
                                 mode="single"
-                                selected={(() => {
-                                  try {
-                                    return editingEvent.eventDate ? new Date(editingEvent.eventDate) : undefined
-                                  } catch (error) {
-                                    console.warn("Failed to parse editing event date:", editingEvent.eventDate, error)
-                                    return undefined
-                                  }
-                                })()}
+                                selected={editingEvent.eventDate ? new Date(editingEvent.eventDate) : undefined}
                                 onSelect={(date) => {
                                   if (date) {
-                                    const year = date.getFullYear()
-                                    const month = String(date.getMonth() + 1).padStart(2, "0")
-                                    const day = String(date.getDate()).padStart(2, "0")
-                                    setEditingEvent({
-                                      ...editingEvent,
-                                      eventDate: `${year}-${month}-${day}T12:00:00` as any,
-                                    })
+                                    setEditingEvent({ ...editingEvent, eventDate: date })
                                   }
                                 }}
                                 initialFocus
@@ -1392,6 +1395,19 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                           />
                         </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="editEventNotes" className="text-sm font-medium text-slate-700">
+                            Notes
+                          </Label>
+                          <Textarea
+                            id="editEventNotes"
+                            value={editingEvent.notes || ""}
+                            onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
+                            placeholder="Additional notes"
+                            rows={2}
+                            className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
                       </div>
                       <div className="flex gap-3 pt-4">
                         <Button
@@ -1399,7 +1415,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                           disabled={!editingEvent.eventDate || !editingEvent.title}
                           className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                         >
-                          <Edit2 className="w-4 h-4 mr-2" />
+                          <Calendar className="w-4 h-4 mr-2" />
                           Update Event
                         </Button>
                         <Button
@@ -1414,75 +1430,87 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                   </Card>
                 )}
 
-                {/* Timeline Events */}
-                <div className="space-y-4">
-                  {getSortedEvents().map((event, index) => (
-                    <div key={event.id} className="flex items-start space-x-4 relative">
-                      {/* Timeline line */}
-                      {index < getSortedEvents().length - 1 && (
-                        <div className="absolute left-4 top-8 w-0.5 h-16 bg-slate-200"></div>
-                      )}
-
-                      {/* Event dot */}
-                      <div
-                        className={`w-8 h-8 rounded-full border-2 ${getEventTypeDotColor(event.eventType)} bg-white flex items-center justify-center flex-shrink-0 z-10`}
-                      >
-                        <div
-                          className={`w-3 h-3 rounded-full ${getEventTypeDotColor(event.eventType).replace("border-", "bg-")}`}
-                        ></div>
+                {/* Added clear dividing line before event list */}
+                <div className="border-t border-slate-200 pt-6">
+                  <div className="relative">
+                    {jobEvents.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-slate-500 italic">No events recorded yet</p>
                       </div>
+                    ) : (
+                      <div className="relative">
+                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-400 to-pink-300"></div>
 
-                      {/* Event content */}
-                      <div className="flex-1 min-w-0">
-                        <Card className="border-slate-200 hover:border-slate-300 transition-colors">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge className={getEventTypeBadgeColor(event.eventType)}>
-                                    {getEventTypeLabel(event.eventType)}
-                                  </Badge>
-                                  <span className="text-xs text-slate-500">
-                                    {(() => {
-                                      try {
-                                        return format(new Date(event.eventDate), "MMM d, yyyy 'at' h:mm a")
-                                      } catch (error) {
-                                        console.warn("Failed to format event date:", event.eventDate, error)
-                                        return "Invalid date"
-                                      }
-                                    })()}
-                                  </span>
-                                </div>
-                                <h4 className="font-semibold text-slate-800 mb-1">{event.title}</h4>
-                                {event.description && (
-                                  <p className="text-sm text-slate-600 mb-2">{event.description}</p>
-                                )}
-                                {event.notes && <p className="text-xs text-slate-500 italic">{event.notes}</p>}
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 hover:bg-slate-100"
-                                  onClick={() => setEditingEvent(event)}
-                                >
-                                  <Edit2 className="h-3 w-3 text-slate-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
-                                  onClick={() => deleteEvent(event.id!)}
-                                >
-                                  <Trash2 className="h-3 w-3 text-slate-500" />
-                                </Button>
-                              </div>
+                        <div className="space-y-4">
+                          {getSortedEvents().map((event, index) => (
+                            <div key={event.id} className="relative">
+                              <Card className="border-slate-100 hover:border-slate-200 transition-all duration-200 ml-12 hover:shadow-md">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <span
+                                        className={`px-2 py-1 text-xs font-medium rounded-full ${getEventTypeBadgeColor(event.eventType)}`}
+                                      >
+                                        {getEventTypeLabel(event.eventType)}
+                                      </span>
+                                      <span className="text-xs right-0 text-slate-500 font-medium">
+                                        {(() => {
+                                          try {
+                                            return new Date(event.eventDate).toLocaleString("en-US", {
+                                              month: "short",
+                                              day: "numeric",
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })
+                                          } catch (error) {
+                                            console.warn("Failed to format event date:", event.eventDate, error)
+                                            return "Invalid date"
+                                          }
+                                        })()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingEvent(event)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteEvent(event.id!)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start space-x-3">
+                                    <div className="flex-grow min-w-0">
+                                      <h5 className="text-sm font-semibold text-slate-800 mb-1">{event.title}</h5>
+                                      {event.description && (
+                                        <p className="text-sm text-slate-600 mb-1">{event.description}</p>
+                                      )}
+                                      {event.notes && <p className="text-xs text-slate-500">{event.notes}</p>}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <div
+                                className={`absolute w-3 h-3 border-2 rounded-full bg-white shadow-sm ${getEventTypeDotColor(event.eventType)}`}
+                                style={{ left: "calc(1.5rem + 1px)", top: "1.5rem", transform: "translateX(-50%)" }}
+                              ></div>
                             </div>
-                          </CardContent>
-                        </Card>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </div>
               </CardContent>
             )}
@@ -1490,37 +1518,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         </div>
       </div>
 
-      {/* Confirmation Dialog */}
-      {confirmDialog.isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-          <Card className="max-w-md w-full">
-            <CardHeader>
-              <CardTitle className="text-lg text-slate-800">{confirmDialog.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-slate-600 mb-6">{confirmDialog.message}</p>
-              <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                  className="border-slate-300 text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    confirmDialog.onConfirm()
-                    setConfirmDialog({ ...confirmDialog, isOpen: false })
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }
