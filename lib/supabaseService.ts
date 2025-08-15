@@ -336,8 +336,7 @@ export class SupabaseService {
 
     const userId = await this.getCurrentUserId()
 
-    const { company, position, location, ...eventDataOnly } = event
-    const eventData = this.toSnakeCase(eventDataOnly)
+    const eventData = this.toSnakeCase(event)
 
     const { data: updatedEvent, error: updateError } = await supabase
       .from("job_events")
