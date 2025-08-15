@@ -203,7 +203,6 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: newInterview.notes,
       })
 
-      // Create the actual interview event with the scheduled time (convert to UTC)
       await createJobEvent({
         eventType: "interview",
         eventDate: localDate, // Will be converted to UTC in createJobEvent
@@ -212,6 +211,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         interviewRound: newInterview.round,
         interviewType: newInterview.type,
         interviewLink: newInterview.interviewLink,
+        interviewResult: "pending", // Default to pending
         notes: newInterview.notes,
       })
 
@@ -524,11 +524,63 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     })
   }
 
+  const findInterviewResultEvent = (interviewRound: number, interviewType: string) => {
+    return jobEvents.find(
+      (event) =>
+        event.eventType === "interview_result" &&
+        event.interviewRound === interviewRound &&
+        event.interviewType === interviewType,
+    )
+  }
+
   const updateInterviewResult = async (interviewId: number, newResult: JobEvent["interviewResult"]) => {
     try {
+      // Find the interview event to get its details
+      const interviewEvent = jobEvents.find((event) => event.id === interviewId)
+      if (!interviewEvent) {
+        console.error("Interview event not found")
+        return
+      }
+
+      const currentResult = interviewEvent.interviewResult
+      const interviewRound = interviewEvent.interviewRound!
+      const interviewType = interviewEvent.interviewType!
+
+      // Update the main interview event
       await DataService.updateJobEvent(interviewId, {
         interviewResult: newResult,
       })
+
+      // Handle state transitions
+      if (currentResult === "pending" && newResult !== "pending") {
+        // From pending to other status: create interview_result event
+        await createJobEvent({
+          eventType: "interview_result",
+          eventDate: new Date(), // Current time
+          title: `Round ${interviewRound} ${getTypeConfig(interviewType).label} - ${newResult.charAt(0).toUpperCase() + newResult.slice(1)}`,
+          description: `Interview result: ${newResult}`,
+          interviewRound: interviewRound,
+          interviewType: interviewType,
+          interviewResult: newResult,
+        })
+      } else if (currentResult !== "pending" && newResult === "pending") {
+        // From other status to pending: delete interview_result event
+        const resultEvent = findInterviewResultEvent(interviewRound, interviewType)
+        if (resultEvent && resultEvent.id) {
+          await DataService.deleteJobEvent(resultEvent.id)
+        }
+      } else if (currentResult !== "pending" && newResult !== "pending") {
+        // Between non-pending statuses: update existing interview_result event
+        const resultEvent = findInterviewResultEvent(interviewRound, interviewType)
+        if (resultEvent && resultEvent.id) {
+          await DataService.updateJobEvent(resultEvent.id, {
+            interviewResult: newResult,
+            title: `Round ${interviewRound} ${getTypeConfig(interviewType).label} - ${newResult.charAt(0).toUpperCase() + newResult.slice(1)}`,
+            description: `Interview result: ${newResult}`,
+          })
+        }
+      }
+
       onUpdate() // Call parent update first
       fetchJobEvents() // Then refresh local data
     } catch (error) {
