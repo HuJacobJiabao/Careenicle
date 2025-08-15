@@ -28,13 +28,24 @@ export class SupabaseService {
   // Helper function to convert camelCase to snake_case for database
   private static toSnakeCase(obj: any): any {
     if (!obj || typeof obj !== "object") return obj
+    if (obj instanceof Date) return obj
+    if (Array.isArray(obj)) return obj.map(item => this.toSnakeCase(item))
 
     const converted: any = {}
     for (const [key, value] of Object.entries(obj)) {
+      // Skip non-serializable properties
+      if (typeof value === 'function' || typeof value === 'symbol') continue
+      
       // If the key already contains underscores, keep it as is
       // Otherwise, convert camelCase to snake_case
       const snakeKey = key.includes("_") ? key : key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
-      converted[snakeKey] = value
+      
+      // Recursively convert nested objects, but avoid circular references
+      if (value && typeof value === 'object' && !(value instanceof Date)) {
+        converted[snakeKey] = this.toSnakeCase(value)
+      } else {
+        converted[snakeKey] = value
+      }
     }
     return converted
   }
@@ -295,19 +306,28 @@ export class SupabaseService {
     this.checkConfiguration()
 
     const userId = await this.getCurrentUserId()
-    const eventData = this.toSnakeCase({ ...event, userId })
+
+    // Define allowed fields for job_events table to ensure we only send valid columns
+    const allowedFields = [
+      'jobId', 'eventType', 'eventDate', 'title', 'description',
+      'interviewRound', 'interviewType', 'interviewLink', 'interviewResult',
+      'notes', 'metadata'
+    ]
+
+    // Filter and clean the event data to only include allowed fields
+    const cleanEvent: any = {}
+    for (const field of allowedFields) {
+      if (event.hasOwnProperty(field) && (event as any)[field] !== undefined) {
+        cleanEvent[field] = (event as any)[field]
+      }
+    }
+
+    const eventData = this.toSnakeCase({ ...cleanEvent, userId })
 
     const { data, error } = await supabase
       .from("job_events")
       .insert([eventData])
-      .select(`
-        *,
-        jobs (
-          company,
-          position,
-          location
-        )
-      `)
+      .select("*")
       .single()
 
     if (error) {
@@ -323,12 +343,7 @@ export class SupabaseService {
     }
 
     const camelEvent = this.toCamelCase(data)
-    return {
-      ...camelEvent,
-      company: data.jobs?.company || "",
-      position: data.jobs?.position || "",
-      location: data.jobs?.location || "",
-    }
+    return camelEvent
   }
 
   static async updateJobEvent(id: number, event: Partial<JobEvent>): Promise<JobEvent> {
@@ -336,16 +351,41 @@ export class SupabaseService {
 
     const userId = await this.getCurrentUserId()
 
-    const eventData = this.toSnakeCase(event)
+    // Define allowed fields for job_events table to ensure we only send valid columns
+    // These must match the actual database schema exactly
+    const allowedFields = [
+      'jobId',           // converts to job_id
+      'eventType',       // converts to event_type  
+      'eventDate',       // converts to event_date
+      'title', 
+      'description',
+      'interviewRound',  // converts to interview_round
+      'interviewType',   // converts to interview_type
+      'interviewLink',   // converts to interview_link
+      'interviewResult', // converts to interview_result
+      'notes', 
+      'metadata'
+    ]
+
+    // Filter and clean the event data to only include allowed fields
+    const cleanEvent: any = {}
+    for (const field of allowedFields) {
+      if (event.hasOwnProperty(field) && event[field as keyof JobEvent] !== undefined) {
+        cleanEvent[field] = event[field as keyof JobEvent]
+      }
+    }
+
+    console.log("Clean event data being sent:", cleanEvent)
+    
+    const eventData = this.toSnakeCase(cleanEvent)
+    console.log("Snake case event data:", eventData)
 
     const { data: updatedEvent, error: updateError } = await supabase
       .from("job_events")
       .update({ ...eventData, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId)
-      .select(
-        "id, job_id, event_type, event_date, title, description, interview_result, created_at, updated_at, user_id",
-      )
+      .select("*")
       .single()
 
     if (updateError) {
