@@ -5,7 +5,18 @@ import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { DataService } from "@/lib/dataService"
 import { useAuth } from "@/lib/auth-context"
-import { Database, TestTube, Briefcase, TimerIcon as Timeline, Map, Settings, ChevronDown, Unlock, LogOut, User, LogIn } from "lucide-react"
+import {
+  Database,
+  TestTube,
+  Briefcase,
+  TimerIcon as Timeline,
+  Map,
+  ChevronDown,
+  Unlock,
+  LogOut,
+  User,
+  LogIn,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,29 +32,29 @@ const Header: React.FC = () => {
     // Set the database provider during initialization
     setDatabaseProvider(DataService.getDatabaseProvider())
     setIsClientInitialized(true)
-    
+
     // Listen for data source changes
     const handleDataSourceChange = () => {
       setDatabaseProvider(DataService.getDatabaseProvider())
     }
-    
+
     window.addEventListener("dataSourceChanged", handleDataSourceChange)
     return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
   }, [])
 
   const handleProviderChange = (provider: "mock" | "postgresql" | "supabase") => {
     // Ignore if switching to supabase but the user is not logged in
-    if (provider === 'supabase' && !user) return
+    if (provider === "supabase" && !user) return
     // Ignore if there is no change
     if (provider === databaseProvider) return
-    
+
     setDatabaseProvider(provider)
     DataService.setDatabaseProvider(provider)
     window.dispatchEvent(new CustomEvent("dataSourceChanged"))
   }
 
   const handleResetPassword = () => {
-    router.push('/reset-password?type=recovery')
+    router.push("/reset-password?type=recovery")
   }
 
   const handleSignOut = async () => {
@@ -52,7 +63,7 @@ const Header: React.FC = () => {
   }
 
   const handleSignIn = () => {
-    window.location.href = '/login'
+    window.location.href = "/login"
   }
 
   const getProviderInfo = (provider: "mock" | "postgresql" | "supabase") => {
@@ -63,6 +74,8 @@ const Header: React.FC = () => {
         return { icon: Database, label: "PostgreSQL", color: "text-green-500" }
       case "supabase":
         return { icon: Database, label: "Supabase", color: "text-blue-500" }
+      default:
+        return { icon: TestTube, label: "Mock Data", color: "text-orange-500" }
     }
   }
 
@@ -73,18 +86,18 @@ const Header: React.FC = () => {
   }
 
   const currentProvider = getProviderInfo(databaseProvider)
-  const CurrentIcon = currentProvider.icon
+  const CurrentIcon = currentProvider?.icon || TestTube
   const configuredProviders = DataService.getAvailableProviders()
-  
+
   // Determine available database providers
   const getAvailableProviders = () => {
     // If currently using supabase but the user is not logged in, only show mock
-    if (databaseProvider === 'supabase' && !user) {
-      return ['mock']
+    if (databaseProvider === "supabase" && !user) {
+      return ["mock"]
     }
     return configuredProviders
   }
-  
+
   const availableProviders = getAvailableProviders()
 
   // Show a simplified version before the client is initialized to avoid hydration errors
@@ -178,11 +191,7 @@ const Header: React.FC = () => {
               </Popover>
             ) : (
               // Login button for unauthenticated users
-              <Button
-                variant="outline"
-                onClick={handleSignIn}
-                className="flex items-center space-x-2"
-              >
+              <Button variant="outline" onClick={handleSignIn} className="flex items-center space-x-2 bg-transparent">
                 <LogIn className="w-4 h-4" />
                 <span>Sign In</span>
               </Button>
@@ -222,7 +231,7 @@ const Header: React.FC = () => {
                 </SelectContent>
               </Select>
             )}
-            
+
             {/* Display current data source status (when the user is logged in) */}
             {user && (
               <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200">

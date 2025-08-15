@@ -87,13 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.warn("Failed to get session:", error)
           updateAuthState(null, null)
-          DataService.setDatabaseProvider("mock")
+          await DataService.setDatabaseProvider("mock")
         } else {
           updateAuthState(session?.user ?? null, session)
 
           if (session?.user) {
             setIsProviderSwitching(true)
-            DataService.setDatabaseProvider("supabase")
+            await DataService.setDatabaseProvider("supabase")
             setTimeout(() => {
               setIsProviderSwitching(false)
               if (typeof window !== "undefined") {
@@ -101,13 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }, 300)
           } else {
-            DataService.setDatabaseProvider("mock")
+            await DataService.setDatabaseProvider("mock")
           }
         }
       } catch (error) {
         console.error("Auth initialization error:", error)
         updateAuthState(null, null)
-        DataService.setDatabaseProvider("mock")
+        await DataService.setDatabaseProvider("mock")
       } finally {
         setIsInitialized(true)
       }
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // On successful login, update state
         updateAuthState(data.user, data.session)
 
-        DataService.setDatabaseProvider("supabase")
+        await DataService.setDatabaseProvider("supabase")
         setTimeout(() => {
           setIsProviderSwitching(false)
           if (typeof window !== "undefined") {
@@ -152,11 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsProviderSwitching(true)
 
-      DataService.setDatabaseProvider("mock")
-
       await supabase.auth.signOut()
-      // Clear state after logout
       updateAuthState(null, null)
+
+      // Switch to mock data after clearing auth
+      await DataService.setDatabaseProvider("mock")
 
       setTimeout(() => {
         setIsProviderSwitching(false)

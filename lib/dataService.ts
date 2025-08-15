@@ -5,6 +5,17 @@ import { supabase } from "./supabase/client"
 
 export type DatabaseProvider = "mock" | "postgresql" | "supabase"
 
+const isUserAuthenticated = async (): Promise<boolean> => {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    return !!session?.user
+  } catch {
+    return false
+  }
+}
+
 export class DataService {
   private static databaseProvider: DatabaseProvider = "mock"
 
@@ -21,7 +32,7 @@ export class DataService {
   // Get available providers based on environment configuration
   static getAvailableProviders(): DatabaseProvider[] {
     const configuredProvider = this.getConfiguredProvider()
-    
+
     switch (configuredProvider) {
       case "supabase":
         return ["mock", "supabase"] // Only show mock and supabase options
@@ -32,13 +43,20 @@ export class DataService {
     }
   }
 
-  static setDatabaseProvider(provider: DatabaseProvider) {
+  static async setDatabaseProvider(provider: DatabaseProvider) {
+    // Check if user is authenticated - if so, force Supabase
+    const isAuthenticated = await isUserAuthenticated()
+    if (isAuthenticated && provider !== "supabase") {
+      console.warn("User is authenticated - forcing Supabase provider")
+      provider = "supabase"
+    }
+
     const availableProviders = this.getAvailableProviders()
     if (!availableProviders.includes(provider)) {
       console.warn(`Provider ${provider} is not available in current configuration`)
       return
     }
-    
+
     this.databaseProvider = provider
     // Delay saving to localStorage to avoid hydration errors
     if (typeof window !== "undefined") {
@@ -48,7 +66,17 @@ export class DataService {
     }
   }
 
-  static getDatabaseProvider(): DatabaseProvider {
+  static async getDatabaseProvider(): Promise<DatabaseProvider> {
+    // Check if user is authenticated first
+    const isAuthenticated = await isUserAuthenticated()
+    if (isAuthenticated) {
+      this.databaseProvider = "supabase"
+      if (typeof window !== "undefined") {
+        localStorage.setItem("databaseProvider", "supabase")
+      }
+      return "supabase"
+    }
+
     // If already set, return directly
     if (this.databaseProvider !== "mock") {
       return this.databaseProvider
@@ -63,31 +91,39 @@ export class DataService {
           return stored
         }
       } catch (error) {
-        console.warn('Failed to read from localStorage:', error)
+        console.warn("Failed to read from localStorage:", error)
       }
     }
-    
+
     // Fallback to the configured provider
     const configuredProvider = this.getConfiguredProvider()
     this.databaseProvider = configuredProvider
     return configuredProvider
   }
 
-  static setUseMockData(useMock: boolean) {
+  static async setUseMockData(useMock: boolean) {
+    // Check if user is authenticated - if so, prevent switching to mock data
+    const isAuthenticated = await isUserAuthenticated()
+    if (isAuthenticated && useMock) {
+      console.warn("User is authenticated - cannot switch to mock data")
+      return
+    }
+
     const availableProviders = this.getAvailableProviders()
     if (useMock) {
-      this.setDatabaseProvider("mock")
+      await this.setDatabaseProvider("mock")
     } else {
       // Choose the first non-mock provider available
-      const nonMockProvider = availableProviders.find(p => p !== "mock")
+      const nonMockProvider = availableProviders.find((p) => p !== "mock")
       if (nonMockProvider) {
-        this.setDatabaseProvider(nonMockProvider)
+        await this.setDatabaseProvider(nonMockProvider)
       }
     }
   }
 
-  static getUseMockData(): boolean {
-    return this.getDatabaseProvider() === "mock"
+  static async getUseMockData(): Promise<boolean> {
+    const provider = await this.getDatabaseProvider()
+    return provider === "mock"
   }
 
   static async fetchJobs(params?: {
@@ -97,7 +133,7 @@ export class DataService {
     status?: string
     favorites?: boolean
   }): Promise<{ jobs: Job[]; pagination?: any }> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       let filteredJobs = [...mockJobs]
@@ -158,7 +194,7 @@ export class DataService {
   }
 
   static async createJob(jobData: Partial<Job>): Promise<Job> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const newJob: Job = {
@@ -206,7 +242,7 @@ export class DataService {
   }
 
   static async updateJob(jobId: number, updates: Partial<Job>): Promise<void> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const jobIndex = mockJobs.findIndex((job) => job.id === jobId)
@@ -225,7 +261,7 @@ export class DataService {
   }
 
   static async deleteJob(jobId: number): Promise<void> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const jobIndex = mockJobs.findIndex((job) => job.id === jobId)
@@ -240,7 +276,7 @@ export class DataService {
   }
 
   static async fetchJobEvents(jobId?: number): Promise<JobEvent[]> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       let events = [...mockJobEvents]
@@ -263,7 +299,7 @@ export class DataService {
   }
 
   static async createJobEvent(eventData: Partial<JobEvent>): Promise<JobEvent> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const newEvent: JobEvent = {
@@ -309,7 +345,7 @@ export class DataService {
   }
 
   static async updateJobEvent(eventId: number, updates: Partial<JobEvent>): Promise<void> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const eventIndex = mockJobEvents.findIndex((event) => event.id === eventId)
@@ -328,7 +364,7 @@ export class DataService {
   }
 
   static async deleteJobEvent(eventId: number): Promise<void> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const eventIndex = mockJobEvents.findIndex((event) => event.id === eventId)
@@ -343,7 +379,7 @@ export class DataService {
   }
 
   static async toggleFavorite(jobId: number, isFavorite: boolean): Promise<void> {
-    const provider = this.getDatabaseProvider()
+    const provider = await this.getDatabaseProvider()
 
     if (provider === "mock") {
       const job = mockJobs.find((job) => job.id === jobId)

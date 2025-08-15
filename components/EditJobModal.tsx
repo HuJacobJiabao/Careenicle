@@ -38,13 +38,20 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
     isFavorite: job.isFavorite || false,
   })
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>(job.place_id || "")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    setError(null)
+
     try {
-      // Get geographic coordinates if location changed
       let locationData = null
-      if (formData.location && formData.location !== job.location) {
+      const companyChanged = formData.company !== job.company
+      const locationChanged = formData.location !== job.location
+
+      if (formData.location && (companyChanged || locationChanged)) {
         if (formData.company && formData.location) {
           // Try to find company-specific location first
           locationData = await googlePlacesService.geocodeCompanyLocation(formData.company, formData.location)
@@ -67,9 +74,17 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
       }
 
       await DataService.updateJob(job.id!, updateData)
+
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
       onUpdate()
+
+      onClose()
     } catch (error) {
       console.error("Failed to update job:", error)
+      setError("Failed to update job. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -114,6 +129,12 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -129,6 +150,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   placeholder="e.g., Google, Microsoft, Apple"
                   className="h-11"
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -145,6 +167,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   placeholder="e.g., Senior Software Engineer"
                   className="h-11"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -162,6 +185,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 }}
                 placeholder="e.g., San Francisco, CA or New York, NY"
                 className="h-11 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -178,6 +202,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                   onChange={(e) => setFormData({ ...formData, jobUrl: e.target.value })}
                   placeholder="https://... (optional)"
                   className="h-11"
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -194,6 +219,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                         "h-11 w-full justify-start text-left font-normal",
                         !formData.applicationDate && "text-muted-foreground",
                       )}
+                      disabled={isSubmitting}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {formData.applicationDate ? format(formData.applicationDate, "PPP") : "Pick a date"}
@@ -216,6 +242,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value as Job["status"] })}
+                disabled={isSubmitting}
               >
                 <SelectTrigger className="h-11">
                   <SelectValue />
@@ -242,6 +269,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 placeholder="Job requirements, company culture, salary range, etc..."
                 rows={4}
                 className="resize-none"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -251,6 +279,7 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
                 checked={formData.isFavorite}
                 onCheckedChange={(checked) => setFormData({ ...formData, isFavorite: checked as boolean })}
                 className="data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
+                disabled={isSubmitting}
               />
               <Label htmlFor="isFavorite" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
                 <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
@@ -259,11 +288,17 @@ const EditJobModal: React.FC<EditJobModalProps> = ({ job, onClose, onUpdate }) =
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-              <Button type="button" variant="outline" onClick={onClose} className="px-6 bg-transparent">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="px-6 bg-transparent"
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="px-6 bg-blue-600 hover:bg-blue-700">
-                Update Job Application
+              <Button type="submit" className="px-6 bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                {isSubmitting ? "Updating..." : "Update Job Application"}
               </Button>
             </div>
           </form>
