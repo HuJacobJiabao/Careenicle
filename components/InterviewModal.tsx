@@ -1174,7 +1174,10 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                               selected={newEvent.eventDate ? new Date(newEvent.eventDate) : undefined}
                               onSelect={(date) => {
                                 if (date) {
-                                  setNewEvent({ ...newEvent, eventDate: date.toISOString().split("T")[0] })
+                                  const year = date.getFullYear()
+                                  const month = String(date.getMonth() + 1).padStart(2, "0")
+                                  const day = String(date.getDate()).padStart(2, "0")
+                                  setNewEvent({ ...newEvent, eventDate: `${year}-${month}-${day}` })
                                 }
                               }}
                               initialFocus

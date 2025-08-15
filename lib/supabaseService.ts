@@ -337,32 +337,37 @@ export class SupabaseService {
     const userId = await this.getCurrentUserId()
     const eventData = this.toSnakeCase(event)
 
-    const { data, error } = await supabase
+    const { data: updatedEvent, error: updateError } = await supabase
       .from("job_events")
       .update({ ...eventData, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId) // Ensure user can only update their own events
-      .select(`
-        *,
-        jobs (
-          company,
-          position,
-          location
-        )
-      `)
+      .select()
       .single()
 
-    if (error) {
-      console.error("Error updating job event in Supabase:", error)
+    if (updateError) {
+      console.error("Error updating job event in Supabase:", updateError)
       throw new Error("Failed to update job event")
     }
 
-    const camelEvent = this.toCamelCase(data)
+    const { data: jobData, error: jobError } = await supabase
+      .from("jobs")
+      .select("company, position, location")
+      .eq("id", updatedEvent.job_id)
+      .eq("user_id", userId)
+      .single()
+
+    if (jobError) {
+      console.error("Error fetching job details:", jobError)
+      // Don't throw error here, return event without job details
+    }
+
+    const camelEvent = this.toCamelCase(updatedEvent)
     return {
       ...camelEvent,
-      company: data.jobs?.company || "",
-      position: data.jobs?.position || "",
-      location: data.jobs?.location || "",
+      company: jobData?.company || "",
+      position: jobData?.position || "",
+      location: jobData?.location || "",
     }
   }
 
