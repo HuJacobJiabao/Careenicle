@@ -47,6 +47,7 @@ interface InterviewModalProps {
 
 const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate }) => {
   const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
+  const [loading, setLoading] = useState(true)
   const interviews = jobEvents.filter((event) => event.eventType === "interview")
   const [newInterview, setNewInterview] = useState({
     round: interviews.length + 1,
@@ -153,10 +154,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
 
   const fetchJobEvents = async () => {
     try {
+      setLoading(true)
       const events = await DataService.fetchJobEvents(job.id)
       setJobEvents(events)
     } catch (error) {
       console.error("Failed to fetch job events:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -669,7 +673,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           <div className="mb-4 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2 sm:mb-4">
               <h3 className="text-base sm:text-xl font-semibold text-slate-800">Interview Rounds</h3>
-              {!showNewInterviewForm && (
+              {!showNewInterviewForm && !loading && (
                 <Button
                   onClick={() => setShowNewInterviewForm(true)}
                   className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
@@ -680,7 +684,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
               )}
             </div>
 
-            {interviews.length === 0 && !showNewInterviewForm ? (
+            {loading ? (
+              <Card className="border-slate-200">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="relative mb-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+                  </div>
+                  <p className="text-slate-600">Loading interview data...</p>
+                </CardContent>
+              </Card>
+            ) : interviews.length === 0 && !showNewInterviewForm ? (
               <Card className="border-dashed border-2 border-slate-300 bg-slate-50/50">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
@@ -1088,370 +1102,399 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
             <CardHeader className="pb-2 sm:pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                 <div>
-                  <CardTitle className="text-sm sm:text-lg text-slate-800">Event Timeline</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Track all events related to this job application
-                  </CardDescription>
+                  <h3 className="text-base sm:text-xl font-semibold text-slate-800">Event Timeline</h3>
+                  <p className="text-xs sm:text-sm text-slate-600">Track all events related to this job application</p>
                 </div>
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  {/* Sort Button */}
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={toggleSortOrder}
-                    className="flex items-center space-x-2 border-slate-300 hover:border-slate-400 bg-transparent"
+                    className="w-full sm:w-auto border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 bg-transparent"
+                    disabled={loading}
                   >
-                    <ArrowUpDown className="w-4 h-4" />
-                    <span className="text-sm">{sortOrder === "desc" ? "Newest First" : "Oldest First"}</span>
+                    <ArrowUpDown className="w-4 h-4 mr-2" />
+                    {sortOrder === "desc" ? "Newest First" : "Oldest First"}
                   </Button>
-                  {/* Made Add Event button solid like Schedule New Interview */}
-                  <Button
-                    onClick={() => setShowEventForm(!showEventForm)}
-                    className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Event
-                  </Button>
+                  {!showEventForm && !loading && (
+                    <Button
+                      onClick={() => setShowEventForm(true)}
+                      size="sm"
+                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      <span className="text-sm">Add Event</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-              {/* Custom Event Form */}
-              {showEventForm && (
-                <Card className="border-green-200 bg-green-50/30">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-slate-800">Add Custom Event</CardTitle>
-                    <CardDescription>Record important milestones in your application process</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="eventType" className="text-sm font-medium text-slate-700">
-                          Event Type
-                        </Label>
-                        <Select
-                          value={newEvent.eventType}
-                          onValueChange={(value) =>
-                            setNewEvent({ ...newEvent, eventType: value as JobEvent["eventType"] })
-                          }
+            {loading ? (
+              <Card className="border-slate-200">
+                <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="relative mb-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-green-200"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-green-600 border-t-transparent absolute top-0 left-0"></div>
+                  </div>
+                  <p className="text-slate-600 text-sm">Loading events...</p>
+                </CardContent>
+              </Card>
+            ) : getSortedEvents().length === 0 && !showEventForm ? (
+              <Card className="border-dashed border-2 border-slate-300 bg-slate-50/50">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
+                    <Calendar className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-700 mb-2">No events recorded yet</h3>
+                  <p className="text-slate-500 mb-6 max-w-md">
+                    Start tracking your application process by adding your first event.
+                  </p>
+                  <Button onClick={() => setShowEventForm(true)} className="bg-green-600 hover:bg-green-700 text-white">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add First Event
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <CardContent className="space-y-6">
+                {/* Custom Event Form */}
+                {showEventForm && (
+                  <Card className="border-green-200 bg-green-50/30">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-slate-800">Add Custom Event</CardTitle>
+                      <CardDescription>Record important milestones in your application process</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="eventType" className="text-sm font-medium text-slate-700">
+                            Event Type
+                          </Label>
+                          <Select
+                            value={newEvent.eventType}
+                            onValueChange={(value) =>
+                              setNewEvent({ ...newEvent, eventType: value as JobEvent["eventType"] })
+                            }
+                          >
+                            <SelectTrigger className="border-slate-300 focus:border-green-500 focus:ring-green-500">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="applied">Applied</SelectItem>
+                              <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
+                              <SelectItem value="interview">Interview</SelectItem>
+                              <SelectItem value="interview_result">Interview Result</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                              <SelectItem value="offer_received">Offer Received</SelectItem>
+                              <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
+                              <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                              <SelectItem value="ghosted">Ghosted</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="eventDate" className="text-sm font-medium text-slate-700">
+                            Event Date
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal border-slate-300 focus:border-green-500",
+                                  !newEvent.eventDate && "text-muted-foreground",
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {newEvent.eventDate ? format(new Date(newEvent.eventDate), "PPP") : "Pick a date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={newEvent.eventDate ? new Date(newEvent.eventDate) : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    const year = date.getFullYear()
+                                    const month = String(date.getMonth() + 1).padStart(2, "0")
+                                    const day = String(date.getDate()).padStart(2, "0")
+                                    setNewEvent({ ...newEvent, eventDate: `${year}-${month}-${day}` })
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="eventTitle" className="text-sm font-medium text-slate-700">
+                            Title
+                          </Label>
+                          <Input
+                            id="eventTitle"
+                            type="text"
+                            value={newEvent.title}
+                            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                            placeholder="Event title"
+                            className="border-slate-300 focus:border-green-500 focus:ring-green-500"
+                          />
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="eventDescription" className="text-sm font-medium text-slate-700">
+                            Description
+                          </Label>
+                          <Input
+                            id="eventDescription"
+                            type="text"
+                            value={newEvent.description}
+                            onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                            placeholder="Event description"
+                            className="border-slate-300 focus:border-green-500 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          onClick={addCustomEvent}
+                          disabled={!newEvent.eventDate || !newEvent.title}
+                          className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                         >
-                          <SelectTrigger className="border-slate-300 focus:border-green-500 focus:ring-green-500">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="applied">Applied</SelectItem>
-                            <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
-                            <SelectItem value="interview">Interview</SelectItem>
-                            <SelectItem value="interview_result">Interview Result</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                            <SelectItem value="offer_received">Offer Received</SelectItem>
-                            <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
-                            <SelectItem value="withdrawn">Withdrawn</SelectItem>
-                            <SelectItem value="ghosted">Ghosted</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="eventDate" className="text-sm font-medium text-slate-700">
-                          Event Date
-                        </Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal border-slate-300 focus:border-green-500",
-                                !newEvent.eventDate && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {newEvent.eventDate ? format(new Date(newEvent.eventDate), "PPP") : "Pick a date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <CalendarComponent
-                              mode="single"
-                              selected={newEvent.eventDate ? new Date(newEvent.eventDate) : undefined}
-                              onSelect={(date) => {
-                                if (date) {
-                                  const year = date.getFullYear()
-                                  const month = String(date.getMonth() + 1).padStart(2, "0")
-                                  const day = String(date.getDate()).padStart(2, "0")
-                                  setNewEvent({ ...newEvent, eventDate: `${year}-${month}-${day}` })
-                                }
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="eventTitle" className="text-sm font-medium text-slate-700">
-                          Title
-                        </Label>
-                        <Input
-                          id="eventTitle"
-                          type="text"
-                          value={newEvent.title}
-                          onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                          placeholder="Event title"
-                          className="border-slate-300 focus:border-green-500 focus:ring-green-500"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="eventDescription" className="text-sm font-medium text-slate-700">
-                          Description
-                        </Label>
-                        <Input
-                          id="eventDescription"
-                          type="text"
-                          value={newEvent.description}
-                          onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                          placeholder="Event description"
-                          className="border-slate-300 focus:border-green-500 focus:ring-green-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-3 pt-4">
-                      <Button
-                        onClick={addCustomEvent}
-                        disabled={!newEvent.eventDate || !newEvent.title}
-                        className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Event
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowEventForm(false)}
-                        className="border-slate-300 text-slate-700 hover:bg-slate-50"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Edit Event Form */}
-              {editingEvent && (
-                <Card className="border-blue-200 bg-blue-50/30">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-slate-800">Edit Event</CardTitle>
-                    <CardDescription>Update event details</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="editEventType" className="text-sm font-medium text-slate-700">
-                          Event Type
-                        </Label>
-                        <Select
-                          value={editingEvent.eventType}
-                          onValueChange={(value) =>
-                            setEditingEvent({ ...editingEvent, eventType: value as JobEvent["eventType"] })
-                          }
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Event
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowEventForm(false)}
+                          className="border-slate-300 text-slate-700 hover:bg-slate-50"
                         >
-                          <SelectTrigger className="border-slate-300 focus:border-blue-500 focus:ring-blue-500">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="applied">Applied</SelectItem>
-                            <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
-                            <SelectItem value="interview">Interview</SelectItem>
-                            <SelectItem value="interview_result">Interview Result</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                            <SelectItem value="offer_received">Offer Received</SelectItem>
-                            <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
-                            <SelectItem value="withdrawn">Withdrawn</SelectItem>
-                            <SelectItem value="ghosted">Ghosted</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          Cancel
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editEventDate" className="text-sm font-medium text-slate-700">
-                          Event Date
-                        </Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal border-slate-300 focus:border-blue-500",
-                                !editingEvent.eventDate && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {(() => {
-                                try {
-                                  return editingEvent.eventDate
-                                    ? format(new Date(editingEvent.eventDate), "PPP")
-                                    : "Pick a date"
-                                } catch (error) {
-                                  console.warn("Failed to format editing event date:", editingEvent.eventDate, error)
-                                  return "Pick a date"
-                                }
-                              })()}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <CalendarComponent
-                              mode="single"
-                              selected={editingEvent.eventDate ? new Date(editingEvent.eventDate) : undefined}
-                              onSelect={(date) => {
-                                if (date) {
-                                  setEditingEvent({ ...editingEvent, eventDate: date })
-                                }
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="editEventTitle" className="text-sm font-medium text-slate-700">
-                          Title
-                        </Label>
-                        <Input
-                          id="editEventTitle"
-                          type="text"
-                          value={editingEvent.title}
-                          onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                          placeholder="Event title"
-                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="editEventDescription" className="text-sm font-medium text-slate-700">
-                          Description
-                        </Label>
-                        <Input
-                          id="editEventDescription"
-                          type="text"
-                          value={editingEvent.description || ""}
-                          onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                          placeholder="Event description"
-                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="editEventNotes" className="text-sm font-medium text-slate-700">
-                          Notes
-                        </Label>
-                        <Textarea
-                          id="editEventNotes"
-                          value={editingEvent.notes || ""}
-                          onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
-                          placeholder="Additional notes"
-                          rows={2}
-                          className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-3 pt-4">
-                      <Button
-                        onClick={() => updateEvent(editingEvent.id!, editingEvent)}
-                        disabled={!editingEvent.eventDate || !editingEvent.title}
-                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Update Event
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setEditingEvent(null)}
-                        className="border-slate-300 text-slate-700 hover:bg-slate-50"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Added clear dividing line before event list */}
-              <div className="border-t border-slate-200 pt-6">
-                <div className="relative">
-                  {jobEvents.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-slate-500 italic">No events recorded yet</p>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-400 to-pink-300"></div>
+                {/* Edit Event Form */}
+                {editingEvent && (
+                  <Card className="border-blue-200 bg-blue-50/30">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-slate-800">Edit Event</CardTitle>
+                      <CardDescription>Update event details</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="editEventType" className="text-sm font-medium text-slate-700">
+                            Event Type
+                          </Label>
+                          <Select
+                            value={editingEvent.eventType}
+                            onValueChange={(value) =>
+                              setEditingEvent({ ...editingEvent, eventType: value as JobEvent["eventType"] })
+                            }
+                          >
+                            <SelectTrigger className="border-slate-300 focus:border-blue-500 focus:ring-blue-500">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="applied">Applied</SelectItem>
+                              <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
+                              <SelectItem value="interview">Interview</SelectItem>
+                              <SelectItem value="interview_result">Interview Result</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                              <SelectItem value="offer_received">Offer Received</SelectItem>
+                              <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
+                              <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                              <SelectItem value="ghosted">Ghosted</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="editEventDate" className="text-sm font-medium text-slate-700">
+                            Event Date
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal border-slate-300 focus:border-blue-500",
+                                  !editingEvent.eventDate && "text-muted-foreground",
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {(() => {
+                                  try {
+                                    return editingEvent.eventDate
+                                      ? format(new Date(editingEvent.eventDate), "PPP")
+                                      : "Pick a date"
+                                  } catch (error) {
+                                    console.warn("Failed to format editing event date:", editingEvent.eventDate, error)
+                                    return "Pick a date"
+                                  }
+                                })()}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={editingEvent.eventDate ? new Date(editingEvent.eventDate) : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    setEditingEvent({ ...editingEvent, eventDate: date })
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="editEventTitle" className="text-sm font-medium text-slate-700">
+                            Title
+                          </Label>
+                          <Input
+                            id="editEventTitle"
+                            type="text"
+                            value={editingEvent.title}
+                            onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                            placeholder="Event title"
+                            className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="editEventDescription" className="text-sm font-medium text-slate-700">
+                            Description
+                          </Label>
+                          <Input
+                            id="editEventDescription"
+                            type="text"
+                            value={editingEvent.description || ""}
+                            onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                            placeholder="Event description"
+                            className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="editEventNotes" className="text-sm font-medium text-slate-700">
+                            Notes
+                          </Label>
+                          <Textarea
+                            id="editEventNotes"
+                            value={editingEvent.notes || ""}
+                            onChange={(e) => setEditingEvent({ ...editingEvent, notes: e.target.value })}
+                            placeholder="Additional notes"
+                            rows={2}
+                            className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          onClick={() => updateEvent(editingEvent.id!, editingEvent)}
+                          disabled={!editingEvent.eventDate || !editingEvent.title}
+                          className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Update Event
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setEditingEvent(null)}
+                          className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                      <div className="space-y-4">
-                        {getSortedEvents().map((event, index) => (
-                          <div key={event.id} className="relative">
-                            <Card className="border-slate-100 hover:border-slate-200 transition-all duration-200 ml-12 hover:shadow-md">
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center space-x-2">
-                                    <span
-                                      className={`px-2 py-1 text-xs font-medium rounded-full ${getEventTypeBadgeColor(event.eventType)}`}
-                                    >
-                                      {getEventTypeLabel(event.eventType)}
-                                    </span>
-                                    <span className="text-xs text-slate-500 font-medium">
-                                      {(() => {
-                                        try {
-                                          return new Date(event.eventDate).toLocaleString("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          })
-                                        } catch (error) {
-                                          console.warn("Failed to format event date:", event.eventDate, error)
-                                          return "Invalid date"
-                                        }
-                                      })()}
-                                    </span>
+                {/* Added clear dividing line before event list */}
+                <div className="border-t border-slate-200 pt-6">
+                  <div className="relative">
+                    {jobEvents.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-slate-500 italic">No events recorded yet</p>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-400 to-pink-300"></div>
+
+                        <div className="space-y-4">
+                          {getSortedEvents().map((event, index) => (
+                            <div key={event.id} className="relative">
+                              <Card className="border-slate-100 hover:border-slate-200 transition-all duration-200 ml-12 hover:shadow-md">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <span
+                                        className={`px-2 py-1 text-xs font-medium rounded-full ${getEventTypeBadgeColor(event.eventType)}`}
+                                      >
+                                        {getEventTypeLabel(event.eventType)}
+                                      </span>
+                                      <span className="text-xs text-slate-500 font-medium">
+                                        {(() => {
+                                          try {
+                                            return new Date(event.eventDate).toLocaleString("en-US", {
+                                              month: "short",
+                                              day: "numeric",
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })
+                                          } catch (error) {
+                                            console.warn("Failed to format event date:", event.eventDate, error)
+                                            return "Invalid date"
+                                          }
+                                        })()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingEvent(event)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteEvent(event.id!)}
+                                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center space-x-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setEditingEvent(event)}
-                                      className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600"
-                                    >
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteEvent(event.id!)}
-                                      className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                </div>
 
-                                <div className="flex items-start space-x-3">
-                                  <div className="flex-grow min-w-0">
-                                    <h5 className="text-sm font-semibold text-slate-800 mb-1">{event.title}</h5>
-                                    {event.description && (
-                                      <p className="text-sm text-slate-600 mb-1">{event.description}</p>
-                                    )}
-                                    {event.notes && <p className="text-xs text-slate-500">{event.notes}</p>}
+                                  <div className="flex items-start space-x-3">
+                                    <div className="flex-grow min-w-0">
+                                      <h5 className="text-sm font-semibold text-slate-800 mb-1">{event.title}</h5>
+                                      {event.description && (
+                                        <p className="text-sm text-slate-600 mb-1">{event.description}</p>
+                                      )}
+                                      {event.notes && <p className="text-xs text-slate-500">{event.notes}</p>}
+                                    </div>
                                   </div>
-                                </div>
-                              </CardContent>
-                            </Card>
+                                </CardContent>
+                              </Card>
 
-                            <div
-                              className={`absolute w-3 h-3 border-2 rounded-full bg-white shadow-sm ${getEventTypeDotColor(event.eventType)}`}
-                              style={{ left: "calc(1.5rem + 1px)", top: "1.5rem", transform: "translateX(-50%)" }}
-                            ></div>
-                          </div>
-                        ))}
+                              <div
+                                className={`absolute w-3 h-3 border-2 rounded-full bg-white shadow-sm ${getEventTypeDotColor(event.eventType)}`}
+                                style={{ left: "calc(1.5rem + 1px)", top: "1.5rem", transform: "translateX(-50%)" }}
+                              ></div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
+              </CardContent>
+            )}
           </Card>
         </div>
       </div>
