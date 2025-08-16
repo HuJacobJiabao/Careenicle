@@ -5,12 +5,18 @@ import { useEffect, useRef, useState } from "react"
 import type { Job } from "@/lib/types"
 import { useAuth } from "@/lib/auth-context"
 import { Lock } from "lucide-react"
-import { google } from "google-maps"
+import type { google } from "google-maps"
 
 interface GoogleJobMapProps {
   jobs: Job[]
   selectedStatuses: string[]
   onStatusFilterChange: (statuses: string[]) => void
+}
+
+declare global {
+  interface Window {
+    google: typeof google
+  }
 }
 
 interface MarkerWithJob extends google.maps.Marker {
@@ -65,7 +71,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onS
   useEffect(() => {
     if (!isLoaded || !mapRef.current) return
 
-    mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
       zoom: 4,
       center: { lat: 39.8283, lng: -98.5795 }, // Center of USA
       styles: [
@@ -82,7 +88,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onS
       ],
     })
 
-    infoWindowRef.current = new google.maps.InfoWindow({
+    infoWindowRef.current = new window.google.maps.InfoWindow({
       disableAutoPan: false,
       maxWidth: 280,
     })
@@ -192,7 +198,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onS
   // Create custom marker icon
   const createMarkerIcon = (status: string) => {
     return {
-      path: google.maps.SymbolPath.CIRCLE,
+      path: window.google.maps.SymbolPath.CIRCLE,
       fillColor: statusColors[status as keyof typeof statusColors] || "#6B7280",
       fillOpacity: 0.8,
       strokeColor: "#FFFFFF",
@@ -226,7 +232,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onS
         return
       }
 
-      const marker = new google.maps.Marker({
+      const marker = new window.google.maps.Marker({
         position: { lat, lng },
         map: mapInstanceRef.current,
         icon: createMarkerIcon(job.status),
@@ -254,7 +260,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onS
 
     // Adjust map bounds to show all markers
     if (filteredJobs.length > 0) {
-      const bounds = new google.maps.LatLngBounds()
+      const bounds = new window.google.maps.LatLngBounds()
       filteredJobs.forEach((job) => {
         const lat = Number(job.latitude)
         const lng = Number(job.longitude)
@@ -267,7 +273,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onS
       mapInstanceRef.current!.fitBounds(bounds)
 
       // Prevent over-zooming for single markers
-      google.maps.event.addListenerOnce(mapInstanceRef.current!, "bounds_changed", () => {
+      window.google.maps.event.addListenerOnce(mapInstanceRef.current!, "bounds_changed", () => {
         if (mapInstanceRef.current && mapInstanceRef.current.getZoom()! > 15) {
           mapInstanceRef.current.setZoom(15)
         }
