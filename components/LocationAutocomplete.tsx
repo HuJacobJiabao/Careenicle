@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { MapPin } from "lucide-react"
 import { googlePlacesService, type PlaceAutocomplete } from "@/lib/googlePlacesService"
+import { useAuth } from "@/lib/auth-context"
 
 interface LocationAutocompleteProps {
   value: string
@@ -18,6 +19,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   placeholder = "e.g., San Francisco, CA",
   className = "",
 }) => {
+  const { user } = useAuth()
   const [suggestions, setSuggestions] = useState<PlaceAutocomplete[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -29,7 +31,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!isFocused || value.length < 2) {
+      if (!user || !isFocused || value.length < 2) {
         setSuggestions([])
         setSelectedIndex(-1)
         return
@@ -52,7 +54,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
     const debounceTimer = setTimeout(fetchSuggestions, 300)
     return () => clearTimeout(debounceTimer)
-  }, [value, isFocused])
+  }, [value, isFocused, user])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,7 +72,6 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Scroll selected item into view
   useEffect(() => {
     if (selectedIndex >= 0 && suggestionRefs.current[selectedIndex]) {
       suggestionRefs.current[selectedIndex]?.scrollIntoView({
@@ -83,7 +84,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     onChange(newValue)
-    if (newValue.length < 2) {
+    if (!user || newValue.length < 2) {
       setIsOpen(false)
       setSelectedIndex(-1)
     }
@@ -153,12 +154,13 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           onBlur={handleInputBlur}
           onKeyDown={handleKeyDown}
           className={`form-input pr-10 ${className}`}
-          placeholder={placeholder}
+          placeholder={user ? placeholder : "Login required for location autocomplete"}
           autoComplete="off"
           role="combobox"
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           aria-autocomplete="list"
+          disabled={!user}
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
           {loading ? (
@@ -169,7 +171,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         </div>
       </div>
 
-      {isOpen && suggestions.length > 0 && (
+      {user && isOpen && suggestions.length > 0 && (
         <div
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"

@@ -153,22 +153,17 @@ export default function MapPage() {
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
             <Lock className="w-8 h-8 text-blue-600" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">登录后获取Google Map访问</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">Login Required for Google Map Access</h2>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            请登录您的账户以查看工作申请的地理位置分布和详细的地图可视化功能。
+            Please log in to your account to view the geographic distribution of your job applications and detailed map
+            visualization features.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex justify-center">
             <a
               href="/login"
               className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
             >
-              立即登录
-            </a>
-            <a
-              href="/register"
-              className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-            >
-              注册账户
+              Login Now
             </a>
           </div>
         </div>
