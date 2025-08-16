@@ -1,7 +1,11 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react'
-import type { Job } from '@/lib/types'
+import type React from "react"
+import { useEffect, useRef, useState } from "react"
+import type { Job } from "@/lib/types"
+import { useAuth } from "@/lib/auth-context"
+import { Lock } from "lucide-react"
+import { google } from "google-maps"
 
 interface GoogleJobMapProps {
   jobs: Job[]
@@ -13,11 +17,9 @@ interface MarkerWithJob extends google.maps.Marker {
   jobData?: Job
 }
 
-const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ 
-  jobs, 
-  selectedStatuses, 
-  onStatusFilterChange 
-}) => {
+const GoogleJobMap: React.FC<GoogleJobMapProps> = ({ jobs, selectedStatuses, onStatusFilterChange }) => {
+  const { user, loading } = useAuth()
+
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<MarkerWithJob[]>([])
@@ -25,19 +27,19 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
   const [isLoaded, setIsLoaded] = useState(false)
 
   const statusColors = {
-    applied: '#3B82F6',
-    interview: '#F59E0B',
-    offer: '#10B981',
-    rejected: '#EF4444',
-    accepted: '#8B5CF6',
+    applied: "#3B82F6",
+    interview: "#F59E0B",
+    offer: "#10B981",
+    rejected: "#EF4444",
+    accepted: "#8B5CF6",
   }
 
   const statusLabels = {
-    applied: 'Applied',
-    interview: 'Interview',
-    offer: 'Offer',
-    rejected: 'Rejected',
-    accepted: 'Accepted',
+    applied: "Applied",
+    interview: "Interview",
+    offer: "Offer",
+    rejected: "Rejected",
+    accepted: "Accepted",
   }
 
   // Load Google Maps script
@@ -49,12 +51,12 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
 
     // Only add script if it doesn't exist
     if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
-      const script = document.createElement('script')
+      const script = document.createElement("script")
       script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=en&region=US`
       script.async = true
       script.defer = true
       script.onload = () => setIsLoaded(true)
-      script.onerror = () => console.error('Failed to load Google Maps script')
+      script.onerror = () => console.error("Failed to load Google Maps script")
       document.head.appendChild(script)
     }
   }, [])
@@ -68,14 +70,14 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
       center: { lat: 39.8283, lng: -98.5795 }, // Center of USA
       styles: [
         {
-          featureType: 'water',
-          elementType: 'geometry',
-          stylers: [{ color: '#e9e9e9' }, { lightness: 17 }],
+          featureType: "water",
+          elementType: "geometry",
+          stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
         },
         {
-          featureType: 'landscape',
-          elementType: 'geometry',
-          stylers: [{ color: '#f5f5f5' }, { lightness: 20 }],
+          featureType: "landscape",
+          elementType: "geometry",
+          stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
         },
       ],
     })
@@ -86,7 +88,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
     })
 
     // Hide the close button and fix InfoWindow styling
-    const style = document.createElement('style')
+    const style = document.createElement("style")
     style.textContent = `
       .gm-ui-hover-effect {
         display: none !important;
@@ -128,7 +130,7 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
             src="${logoUrl}"
             alt="${job.company} logo"
             style="height: 40px; width: 40px; border-radius: 8px; object-fit: cover; border: 1px solid #e5e7eb;"
-            onerror="this.src='/placeholder.svg?height=40&width=40&text=${job.company?.charAt(0) ?? '·'}'"
+            onerror="this.src='/placeholder.svg?height=40&width=40&text=${job.company?.charAt(0) ?? "·"}'"
           />
           <div style="min-width: 0; flex: 1;">
             <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827; line-height: 1.2; word-wrap: break-word;">
@@ -159,22 +161,30 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
             ${statusLabels[job.status]}
           </span>
 
-          ${job.location ? `
+          ${
+            job.location
+              ? `
             <span style="display: flex; align-items: center; gap: 4px; font-size: 14px; color: #6b7280; flex-shrink: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" style="height: 12px; width: 12px;" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
               </svg>
               <span style="word-wrap: break-word; max-width: 120px;" title="${job.location}">${job.location}</span>
             </span>
-          ` : ``}
+          `
+              : ``
+          }
         </div>
 
         <!-- Notes -->
-        ${job.notes ? `
+        ${
+          job.notes
+            ? `
           <p style="margin: 8px 0 0 0; font-size: 14px; line-height: 1.4; color: #374151; word-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
             ${job.notes}
           </p>
-        ` : ``}
+        `
+            : ``
+        }
       </div>
     `
   }
@@ -183,9 +193,9 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
   const createMarkerIcon = (status: string) => {
     return {
       path: google.maps.SymbolPath.CIRCLE,
-      fillColor: statusColors[status as keyof typeof statusColors] || '#6B7280',
+      fillColor: statusColors[status as keyof typeof statusColors] || "#6B7280",
       fillOpacity: 0.8,
-      strokeColor: '#FFFFFF',
+      strokeColor: "#FFFFFF",
       strokeWeight: 2,
       scale: 8,
     }
@@ -196,21 +206,21 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
     if (!mapInstanceRef.current || !infoWindowRef.current) return
 
     // Clear existing markers
-    markersRef.current.forEach(marker => marker.setMap(null))
+    markersRef.current.forEach((marker) => marker.setMap(null))
     markersRef.current = []
     // Filter jobs by selected statuses and location data
-    const filteredJobs = jobs.filter(job => {
+    const filteredJobs = jobs.filter((job) => {
       const hasCoords = job.latitude != null && job.longitude != null
       const statusMatch = selectedStatuses.length === 0 || selectedStatuses.includes(job.status)
       return hasCoords && statusMatch
     })
 
     // Create new markers
-    filteredJobs.forEach(job => {
+    filteredJobs.forEach((job) => {
       // Convert and validate coordinates
       const lat = Number(job.latitude)
       const lng = Number(job.longitude)
-      
+
       if (isNaN(lat) || isNaN(lng)) {
         console.warn(`Invalid coordinates for job ${job.id}: lat=${job.latitude}, lng=${job.longitude}`)
         return
@@ -226,14 +236,14 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
       marker.jobData = job
 
       // Add hover listeners for info window
-      marker.addListener('mouseover', () => {
+      marker.addListener("mouseover", () => {
         if (infoWindowRef.current) {
           infoWindowRef.current.setContent(createMarkerContent(job))
           infoWindowRef.current.open(mapInstanceRef.current, marker)
         }
       })
 
-      marker.addListener('mouseout', () => {
+      marker.addListener("mouseout", () => {
         if (infoWindowRef.current) {
           infoWindowRef.current.close()
         }
@@ -245,19 +255,19 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
     // Adjust map bounds to show all markers
     if (filteredJobs.length > 0) {
       const bounds = new google.maps.LatLngBounds()
-      filteredJobs.forEach(job => {
+      filteredJobs.forEach((job) => {
         const lat = Number(job.latitude)
         const lng = Number(job.longitude)
-        
+
         if (!isNaN(lat) && !isNaN(lng)) {
           bounds.extend({ lat, lng })
         }
       })
-      
+
       mapInstanceRef.current!.fitBounds(bounds)
-      
+
       // Prevent over-zooming for single markers
-      google.maps.event.addListenerOnce(mapInstanceRef.current!, 'bounds_changed', () => {
+      google.maps.event.addListenerOnce(mapInstanceRef.current!, "bounds_changed", () => {
         if (mapInstanceRef.current && mapInstanceRef.current.getZoom()! > 15) {
           mapInstanceRef.current.setZoom(15)
         }
@@ -268,9 +278,36 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
   // Handle status filter changes
   const handleStatusToggle = (status: string) => {
     const newStatuses = selectedStatuses.includes(status)
-      ? selectedStatuses.filter(s => s !== status)
+      ? selectedStatuses.filter((s) => s !== status)
       : [...selectedStatuses, status]
     onStatusFilterChange(newStatuses)
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+            <Lock className="w-8 h-8 text-gray-400" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-gray-900">Login Required</h3>
+            <p className="text-gray-500 max-w-md">
+              Please log in to access the interactive job map and location-based features.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
@@ -296,18 +333,24 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
               onClick={() => handleStatusToggle(status)}
               className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 selectedStatuses.length === 0 || selectedStatuses.includes(status)
-                  ? 'text-white'
-                  : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                  ? "text-white"
+                  : "text-gray-600 bg-gray-100 hover:bg-gray-200"
               }`}
               style={{
-                backgroundColor: selectedStatuses.length === 0 || selectedStatuses.includes(status) 
-                  ? statusColors[status as keyof typeof statusColors] 
-                  : undefined
+                backgroundColor:
+                  selectedStatuses.length === 0 || selectedStatuses.includes(status)
+                    ? statusColors[status as keyof typeof statusColors]
+                    : undefined,
               }}
             >
-              <div 
+              <div
                 className="w-2 h-2 rounded-full mr-2"
-                style={{ backgroundColor: selectedStatuses.length === 0 || selectedStatuses.includes(status) ? 'white' : statusColors[status as keyof typeof statusColors] }}
+                style={{
+                  backgroundColor:
+                    selectedStatuses.length === 0 || selectedStatuses.includes(status)
+                      ? "white"
+                      : statusColors[status as keyof typeof statusColors],
+                }}
               />
               {label}
             </button>
@@ -332,11 +375,10 @@ const GoogleJobMap: React.FC<GoogleJobMapProps> = ({
       <div className="p-4 bg-gray-50 border-t border-gray-200">
         <div className="flex items-center justify-between text-sm text-gray-600">
           <span>
-            Showing {markersRef.current.length} of {jobs.filter(j => j.latitude && j.longitude).length} jobs with location data
+            Showing {markersRef.current.length} of {jobs.filter((j) => j.latitude && j.longitude).length} jobs with
+            location data
           </span>
-          <span>
-            {jobs.filter(j => !j.latitude || !j.longitude).length} jobs without coordinates
-          </span>
+          <span>{jobs.filter((j) => !j.latitude || !j.longitude).length} jobs without coordinates</span>
         </div>
       </div>
     </div>
