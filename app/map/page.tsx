@@ -3,9 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { DataService } from "@/lib/dataService"
 import GoogleJobMap from "@/components/GoogleJobMap"
-import { MapPin, Building2, Target, Globe, Lock } from "lucide-react"
+import { MapPin, Building2, Target, Globe } from "lucide-react"
 import type { Job } from "@/lib/types"
-import { useAuth } from "@/lib/auth-context"
 
 interface LocationData {
   city: string
@@ -17,7 +16,6 @@ interface LocationData {
 }
 
 export default function MapPage() {
-  const { user, loading: authLoading, isInitialized } = useAuth()
   const [jobs, setJobs] = useState<Job[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null)
@@ -125,51 +123,6 @@ export default function MapPage() {
       statesCovered,
     }
   }, [locationData, jobs])
-
-  if (!isInitialized || authLoading) {
-    return (
-      <div className="animate-fade-in flex items-center justify-center min-h-screen px-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
-          <p className="text-sm sm:text-base text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3 sm:mb-4">Job Applications Map</h1>
-          <p className="text-base sm:text-lg text-gray-600 px-2 sm:px-0">
-            Visualize your job applications across different locations with real geographic data.
-          </p>
-        </div>
-
-        {/* Login Required Message */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-            <Lock className="w-8 h-8 text-blue-600" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">Login Required for Google Map Access</h2>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Please log in to your account to view the geographic distribution of your job applications and detailed map
-            visualization features.
-          </p>
-          <div className="flex justify-center">
-            <a
-              href="/login"
-              className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-            >
-              Login Now
-            </a>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (loading) {
     return (
