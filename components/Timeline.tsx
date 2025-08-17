@@ -339,7 +339,7 @@ const Timeline: React.FC = () => {
                                 {formatDate(event.date)}
                               </div>
                               <div className="flex items-center text-sm font-semibold text-gray-900 mt-1">
-                                <span className="text-right break-words">{event.position}</span>
+                                <span className="text-right break-words max-w-32">{event.position}</span>
                                 <Briefcase className="w-4 h-4 ml-2 text-gray-400 flex-shrink-0" />
                               </div>
                             </div>
