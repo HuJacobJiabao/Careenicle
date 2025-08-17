@@ -102,13 +102,45 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         jobId: job.id,
       })
     },
-    onSuccess: () => {
-      // Invalidate and refetch job events
-      queryClient.invalidateQueries({ queryKey: ["jobEvents", job.id] })
-      onUpdate() // Call parent update
+    onMutate: async (newEvent) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["jobEvents", job.id] })
+
+      // Snapshot the previous value
+      const previousEvents = queryClient.getQueryData<JobEvent[]>(["jobEvents", job.id])
+
+      // Optimistically update the cache
+      if (previousEvents) {
+        const optimisticEvent: JobEvent = {
+          ...newEvent,
+          id: Date.now(), // Temporary ID
+          jobId: job.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as JobEvent
+
+        queryClient.setQueryData<JobEvent[]>(["jobEvents", job.id], [...previousEvents, optimisticEvent])
+      }
+
+      return { previousEvents }
     },
-    onError: (error) => {
-      console.error("Failed to create job event:", error)
+    onError: (err, newEvent, context) => {
+      // Rollback on error
+      if (context?.previousEvents) {
+        queryClient.setQueryData(["jobEvents", job.id], context.previousEvents)
+      }
+      console.error("Failed to create job event:", err)
+    },
+    onSuccess: (data) => {
+      // Update with real data from server
+      const previousEvents = queryClient.getQueryData<JobEvent[]>(["jobEvents", job.id])
+      if (previousEvents) {
+        const updatedEvents = previousEvents.map((event) =>
+          event.id === data.id || (typeof event.id === "number" && event.id > 1000000000000) ? data : event,
+        )
+        queryClient.setQueryData<JobEvent[]>(["jobEvents", job.id], updatedEvents)
+      }
+      onUpdate() // Call parent update
     },
   })
 
@@ -121,25 +153,67 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       }
       return DataService.updateJobEvent(eventId, dataToSend)
     },
-    onSuccess: () => {
-      // Invalidate and refetch job events
-      queryClient.invalidateQueries({ queryKey: ["jobEvents", job.id] })
-      onUpdate() // Call parent update
+    onMutate: async ({ eventId, updates }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["jobEvents", job.id] })
+
+      // Snapshot the previous value
+      const previousEvents = queryClient.getQueryData<JobEvent[]>(["jobEvents", job.id])
+
+      // Optimistically update the cache
+      if (previousEvents) {
+        const updatedEvents = previousEvents.map((event) =>
+          event.id === eventId ? { ...event, ...updates, updatedAt: new Date().toISOString() } : event,
+        )
+        queryClient.setQueryData<JobEvent[]>(["jobEvents", job.id], updatedEvents)
+      }
+
+      return { previousEvents }
     },
-    onError: (error) => {
-      console.error("Failed to update job event:", error)
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousEvents) {
+        queryClient.setQueryData(["jobEvents", job.id], context.previousEvents)
+      }
+      console.error("Failed to update job event:", err)
+    },
+    onSuccess: (data) => {
+      // Update with real data from server
+      const previousEvents = queryClient.getQueryData<JobEvent[]>(["jobEvents", job.id])
+      if (previousEvents) {
+        const updatedEvents = previousEvents.map((event) => (event.id === data.id ? data : event))
+        queryClient.setQueryData<JobEvent[]>(["jobEvents", job.id], updatedEvents)
+      }
+      onUpdate() // Call parent update
     },
   })
 
   const deleteJobEventMutation = useMutation({
     mutationFn: (eventId: number) => DataService.deleteJobEvent(eventId),
-    onSuccess: () => {
-      // Invalidate and refetch job events
-      queryClient.invalidateQueries({ queryKey: ["jobEvents", job.id] })
-      onUpdate() // Call parent update
+    onMutate: async (eventId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["jobEvents", job.id] })
+
+      // Snapshot the previous value
+      const previousEvents = queryClient.getQueryData<JobEvent[]>(["jobEvents", job.id])
+
+      // Optimistically remove from cache
+      if (previousEvents) {
+        const filteredEvents = previousEvents.filter((event) => event.id !== eventId)
+        queryClient.setQueryData<JobEvent[]>(["jobEvents", job.id], filteredEvents)
+      }
+
+      return { previousEvents }
     },
-    onError: (error) => {
-      console.error("Failed to delete job event:", error)
+    onError: (err, eventId, context) => {
+      // Rollback on error
+      if (context?.previousEvents) {
+        queryClient.setQueryData(["jobEvents", job.id], context.previousEvents)
+      }
+      console.error("Failed to delete job event:", err)
+    },
+    onSuccess: () => {
+      onUpdate() // Call parent update
     },
   })
 
