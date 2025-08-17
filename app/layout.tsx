@@ -5,6 +5,8 @@ import "./globals.css"
 import Header from "@/components/Header"
 import { AuthProvider } from "@/lib/auth-context"
 import AuthGuard from "@/components/AuthGuard"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { queryClient } from "@/lib/query-client"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,7 +30,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
 }
 
@@ -43,12 +45,14 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.png " />
       </head>
       <body className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-sans antialiased">
-        <AuthProvider>
-          <AuthGuard>
-            <Header />
-            <main className="relative">{children}</main>
-          </AuthGuard>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AuthGuard>
+              <Header />
+              <main className="relative">{children}</main>
+            </AuthGuard>
+          </AuthProvider>
+        </QueryClientProvider>
       </body>
     </html>
   )
