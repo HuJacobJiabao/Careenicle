@@ -4,6 +4,8 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import type { Job, JobEvent, UpcomingInterviewJob } from "@/lib/types"
 import { DataService } from "@/lib/dataService"
+import { useJobs } from "@/lib/hooks/useJobs"
+import { useJobEvents } from "@/lib/hooks/useJobEvents"
 import InterviewModal from "./InterviewModal"
 import AddJobModal from "./AddJobModal"
 import EditJobModal from "./EditJobModal"
@@ -30,20 +32,48 @@ import {
   Star,
 } from "lucide-react"
 
-const JobTable: React.FC = () => {
+export default function JobTable() {
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  })
+  const [statusFilter, setStatusFilter] = useState<Job["status"] | "all">("all")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showFavorites, setShowFavorites] = useState(false)
+
+  const {
+    data: jobsData,
+    isLoading: jobsLoading,
+    error: jobsError,
+    refetch: refetchJobs,
+  } = useJobs({
+    page: pagination.page,
+    limit: pagination.limit,
+    search: searchTerm,
+    status: statusFilter,
+    favorites: showFavorites,
+  })
+
+  const { data: jobEvents = [], isLoading: eventsLoading, refetch: refetchJobEvents } = useJobEvents()
+
+  const jobs = jobsData?.jobs || []
+  const loading = jobsLoading || eventsLoading
+
+  useEffect(() => {
+    if (jobsData?.pagination) {
+      setPagination(jobsData.pagination)
+    }
+  }, [jobsData?.pagination])
+
   const { isInitialized, isProviderSwitching } = useAuth()
 
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [showInterviewModal, setShowInterviewModal] = useState(false)
   const [showAddJobModal, setShowAddJobModal] = useState(false)
   const [showEditJobModal, setShowEditJobModal] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [databaseStatus, setDatabaseStatus] = useState<"checking" | "connected" | "no-tables" | "failed">("checking")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [showFavorites, setShowFavorites] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
     title: string
@@ -54,12 +84,6 @@ const JobTable: React.FC = () => {
     title: "",
     message: "",
     onConfirm: () => {},
-  })
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0,
   })
 
   const [currentProvider, setCurrentProvider] = useState<string>("mock")
@@ -189,49 +213,18 @@ const JobTable: React.FC = () => {
     return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
   }, [isProviderSwitching]) // 添加切换状态依赖
 
-  const fetchJobs = async () => {
-    try {
-      const data = await DataService.fetchJobs({
-        page: pagination.page,
-        limit: pagination.limit,
-        search: searchTerm,
-        status: statusFilter,
-        favorites: showFavorites,
-      })
-
-      // Ensure jobs is always an array
-      if (data && data.jobs && Array.isArray(data.jobs)) {
-        setJobs(data.jobs)
-      } else {
-        console.warn("Invalid jobs data received:", data)
-        setJobs([])
-      }
-
-      if (data && data.pagination) {
-        setPagination(data.pagination)
-      }
-    } catch (error) {
-      console.error("Failed to fetch jobs:", error)
-      setJobs([]) // Set empty array on error
-    } finally {
-      setLoading(false)
-    }
+  const fetchJobs = () => {
+    refetchJobs()
   }
 
-  const fetchJobEvents = async () => {
-    try {
-      // Use DataService to fetch job events (this will handle mock vs real data)
-      const data = await DataService.fetchJobEvents()
-      setJobEvents(data)
-    } catch (error) {
-      console.error("Failed to fetch job events:", error)
-    }
+  const fetchJobEvents = () => {
+    refetchJobEvents()
   }
 
   const updateJobStatus = async (jobId: number, status: Job["status"]) => {
     try {
       await DataService.updateJob(jobId, { status })
-      fetchJobs()
+      refetchJobs()
     } catch (error) {
       console.error("Failed to update job status:", error)
     }
@@ -240,7 +233,7 @@ const JobTable: React.FC = () => {
   const toggleFavorite = async (jobId: number, isFavorite: boolean) => {
     try {
       await DataService.toggleFavorite(jobId, isFavorite)
-      fetchJobs()
+      refetchJobs()
     } catch (error) {
       console.error("Failed to toggle favorite:", error)
     }
@@ -593,7 +586,7 @@ const JobTable: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => {
-                    setStatusFilter(e.target.value)
+                    setStatusFilter(e.target.value as Job["status"] | "all")
                   }}
                   className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-xl appearance-none bg-white cursor-pointer text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
@@ -658,7 +651,7 @@ const JobTable: React.FC = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value)
+                  setStatusFilter(e.target.value as Job["status"] | "all")
                 }}
                 className="w-full pl-14 pr-10 py-3 border border-gray-300 rounded-xl appearance-none bg-white cursor-pointer text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -1198,5 +1191,3 @@ const JobTable: React.FC = () => {
     </div>
   )
 }
-
-export default JobTable
