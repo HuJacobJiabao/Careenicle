@@ -339,7 +339,7 @@ const Timeline: React.FC = () => {
                                 {formatDate(event.date)}
                               </div>
                               <div className="flex items-center text-sm font-semibold text-gray-900 mt-1">
-                                <span className="text-right truncate max-w-32">{event.position}</span>
+                                <span className="text-right break-words">{event.position}</span>
                                 <Briefcase className="w-4 h-4 ml-2 text-gray-400 flex-shrink-0" />
                               </div>
                             </div>
@@ -388,7 +388,7 @@ const Timeline: React.FC = () => {
 
                               <div className="flex items-center text-xs text-gray-600 mb-1">
                                 <Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />
-                                <span className="truncate pr-2">{event.position}</span>
+                                <span className="break-words pr-2">{event.position}</span>
                               </div>
 
                               <div className="flex items-center justify-between">
@@ -426,7 +426,7 @@ const Timeline: React.FC = () => {
                                 </div>
                                 <div className="flex items-center text-sm font-semibold text-gray-900 mt-1">
                                   <Briefcase className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
-                                  <span className="text-left break-words max-w-32">{event.position}</span>
+                                  <span className="text-left break-words">{event.position}</span>
                                 </div>
                               </div>
 
