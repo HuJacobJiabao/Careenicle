@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { DataService } from "@/lib/dataService"
+import { useState } from "react"
+import { useMapData } from "@/lib/hooks/useMapData"
 import GoogleJobMap from "@/components/GoogleJobMap"
 import { MapPin, Building2, Target, Globe } from "lucide-react"
-import type { Job } from "@/lib/types"
 
 interface LocationData {
   city: string
@@ -12,117 +11,26 @@ interface LocationData {
   lat: number
   lng: number
   count: number
-  jobs: Job[]
+  jobs: any[]
 }
 
 export default function MapPage() {
-  const [jobs, setJobs] = useState<Job[]>([])
+  const { data, isLoading: loading, error } = useMapData()
+  const jobs = data?.jobs || []
+  const locationData = data?.locationData || []
+  const stats = data?.stats || {
+    totalLocations: 0,
+    totalApplications: 0,
+    topLocation: "N/A",
+    statesCovered: 0,
+  }
+
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await DataService.fetchJobs({ limit: 1000 }) // Get all jobs for map
-      setJobs(data.jobs)
-    } catch (error) {
-      console.error("Failed to fetch jobs:", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchJobs()
-  }, [fetchJobs])
-
-  // Listen for data source changes from Header
-  useEffect(() => {
-    const handleStorageChange = () => {
-      fetchJobs()
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    // Also listen for custom events
-    window.addEventListener("dataSourceChanged", handleStorageChange)
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange)
-      window.removeEventListener("dataSourceChanged", handleStorageChange)
-    }
-  }, [fetchJobs])
-
-  // Process location data for statistics and city display
-  const locationData = useMemo(() => {
-    const locationMap = new Map<string, LocationData>()
-
-    jobs.forEach((job) => {
-      // Skip jobs without location data
-      if (!job.latitude || !job.longitude) return
-
-      let city = "Unknown"
-      let state = "Unknown"
-
-      // Try to extract city and state from formatted_address first
-      if (job.formatted_address) {
-        const addressParts = job.formatted_address.split(", ")
-        if (addressParts.length >= 2) {
-          city = addressParts[0] || "Unknown"
-          // Handle state extraction - look for state abbreviation pattern
-          const stateMatch = addressParts.find((part: string) => /^[A-Z]{2}(\s|$)/.test(part))
-          if (stateMatch) {
-            state = stateMatch.split(" ")[0]
-          } else if (addressParts.length >= 2) {
-            state = addressParts[1] || "Unknown"
-          }
-        }
-      } else if (job.location) {
-        // Fallback to location field
-        const locationParts = job.location.split(", ")
-        city = locationParts[0] || "Unknown"
-        state = locationParts[1] || "Unknown"
-      }
-
-      const key = `${city}, ${state}`
-
-      if (locationMap.has(key)) {
-        const existing = locationMap.get(key)!
-        existing.count += 1
-        existing.jobs.push(job)
-      } else {
-        locationMap.set(key, {
-          city,
-          state,
-          lat: job.latitude,
-          lng: job.longitude,
-          count: 1,
-          jobs: [job],
-        })
-      }
-    })
-
-    return Array.from(locationMap.values())
-  }, [jobs])
-
-  // Statistics calculations
-  const stats = useMemo(() => {
-    const totalLocations = locationData.length
-    const totalApplications = jobs.length
-    const jobsWithLocation = jobs.filter((job) => job.latitude && job.longitude).length
-    const topLocation =
-      locationData.length > 0
-        ? locationData.reduce((prev, current) => (prev.count > current.count ? prev : current))
-        : null
-    const statesCovered = new Set(locationData.map((loc) => loc.state).filter((state) => state !== "Unknown")).size
-
-    return {
-      totalLocations,
-      totalApplications: jobsWithLocation, // Show jobs with location data
-      topLocation: topLocation ? `${topLocation.city}, ${topLocation.state}` : "N/A",
-      statesCovered,
-    }
-  }, [locationData, jobs])
+  if (error) {
+    console.error("Failed to fetch map data:", error)
+  }
 
   if (loading) {
     return (

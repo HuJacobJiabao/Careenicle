@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
-import type { Job, JobEvent } from "@/lib/types"
+import { useTimelineEvents } from "@/lib/hooks/useTimelineEvents"
+import type { JobEvent } from "@/lib/types"
 import { MapPin, Briefcase, CheckCircle, XCircle, Trophy, Send, MessageSquare, Building } from "lucide-react"
-import { DataService } from "@/lib/dataService"
 
 interface TimelineEventDisplay {
   id: string
@@ -16,79 +15,15 @@ interface TimelineEventDisplay {
   location?: string
   priority: number
   side: "left" | "right"
-  // 面试相关字段
   interviewType?: string
   interviewRound?: number
 }
 
 const Timeline: React.FC = () => {
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEventDisplay[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: timelineEvents = [], isLoading: loading, error } = useTimelineEvents()
 
-  useEffect(() => {
-    fetchTimelineData()
-  }, [])
-
-  // Listen for data source changes
-  useEffect(() => {
-    const handleDataSourceChange = () => {
-      fetchTimelineData()
-    }
-
-    window.addEventListener("dataSourceChanged", handleDataSourceChange)
-    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
-  }, [])
-
-  const fetchTimelineData = async () => {
-    try {
-      const jobsData = await DataService.fetchJobs({ limit: 1000 })
-      const jobs: Job[] = jobsData.jobs || []
-
-      const events: TimelineEventDisplay[] = []
-
-      for (const job of jobs) {
-        if (!job.id) continue // 跳过没有ID的工作
-        const jobEvents = await DataService.fetchJobEvents(job.id)
-
-        jobEvents.forEach((event: JobEvent) => {
-          // 只包含指定的5种事件类型
-          const allowedEvents: JobEvent["eventType"][] = [
-            "applied",
-            "interview",
-            "rejected",
-            "offer_received",
-            "offer_accepted",
-          ]
-
-          if (!allowedEvents.includes(event.eventType)) return
-
-          const priority = getEventPriority(event.eventType)
-          const side = getEventSide(event.eventType)
-
-          events.push({
-            id: `event-${event.id}`,
-            type: event.eventType,
-            company: job.company,
-            position: job.position,
-            date: new Date(event.eventDate),
-            eventType: event.eventType,
-            location: job.location,
-            priority,
-            side,
-            interviewType: event.interviewType,
-            interviewRound: event.interviewRound,
-          })
-        })
-      }
-
-      // 按日期排序 (最新的在前)
-      events.sort((a, b) => b.date.getTime() - a.date.getTime())
-      setTimelineEvents(events)
-    } catch (error) {
-      console.error("Failed to fetch timeline data:", error)
-    } finally {
-      setLoading(false)
-    }
+  if (error) {
+    console.error("Failed to fetch timeline data:", error)
   }
 
   const getEventPriority = (eventType: JobEvent["eventType"]): number => {
@@ -102,9 +37,7 @@ const Timeline: React.FC = () => {
     return priorities[eventType] || 1
   }
 
-  // 决定事件显示在时间轴的哪一侧
   const getEventSide = (eventType: JobEvent["eventType"]): "left" | "right" => {
-    // rejected, offer_received, offer_accepted 在左边；applied, interview 在右边
     const leftSideEvents = ["rejected", "offer_received", "offer_accepted"]
     return leftSideEvents.includes(eventType) ? "left" : "right"
   }
