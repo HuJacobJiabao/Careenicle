@@ -257,8 +257,19 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     setIsAddingEvent(true)
     try {
       const [year, month, day] = newEvent.eventDate.split("-").map(Number)
-      const localDate = new Date(year, month - 1, day) // month is 0-indexed
-      // localDate will be converted to UTC in createJobEvent
+
+      const today = new Date()
+      const selectedDate = new Date(year, month - 1, day)
+      const isToday = selectedDate.toDateString() === today.toDateString()
+
+      let localDate: Date
+      if (isToday) {
+        // Use current time for today
+        localDate = new Date()
+      } else {
+        // Use 12:00 AM for other dates
+        localDate = new Date(year, month - 1, day)
+      }
 
       await createJobEvent({
         eventType: newEvent.eventType,
@@ -1503,9 +1514,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                                               hour: "2-digit",
                                               minute: "2-digit",
                                             })
-                                          } catch (error) {
-                                            console.warn("Failed to format event date:", event.eventDate, error)
-                                            return "Invalid date"
+                                          } catch (e) {
+                                            return "Invalid Date"
                                           }
                                         })()}
                                       </span>
