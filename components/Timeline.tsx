@@ -426,7 +426,7 @@ const Timeline: React.FC = () => {
                                 </div>
                                 <div className="flex items-center text-sm font-semibold text-gray-900 mt-1">
                                   <Briefcase className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
-                                  <span className="text-left break-words">{event.position}</span>
+                                  <span className="text-left break-words max-w-32">{event.position}</span>
                                 </div>
                               </div>
 
