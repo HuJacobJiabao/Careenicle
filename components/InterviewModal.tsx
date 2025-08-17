@@ -1,9 +1,11 @@
 "use client"
 
 import React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import type { Job, JobEvent } from "@/lib/types"
 import { DataService } from "@/lib/dataService"
+import { useJobEvents } from "@/lib/hooks/useJobEvents"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   X,
   Calendar,
@@ -46,8 +48,9 @@ interface InterviewModalProps {
 }
 
 const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate }) => {
-  const [jobEvents, setJobEvents] = useState<JobEvent[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: jobEvents = [], isLoading: loading, error } = useJobEvents(job.id)
+  const queryClient = useQueryClient()
+
   const interviews = jobEvents.filter((event) => event.eventType === "interview")
   const [newInterview, setNewInterview] = useState({
     round: interviews.length + 1,
@@ -80,8 +83,65 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     notes: "",
   })
 
-  const [isAddingInterview, setIsAddingInterview] = useState(false)
-  const [isAddingEvent, setIsAddingEvent] = useState(false)
+  const createJobEventMutation = useMutation({
+    mutationFn: async (eventData: Partial<JobEvent>) => {
+      const dataToSend = { ...eventData }
+      if (dataToSend.eventDate) {
+        if (dataToSend.eventDate instanceof Date) {
+          // Convert local Date to UTC ISO string for database storage
+          dataToSend.eventDate = dataToSend.eventDate.toISOString() as any
+        } else if (typeof dataToSend.eventDate === "string") {
+          // If it's a local datetime string, convert to UTC
+          const localDate = new Date(dataToSend.eventDate)
+          dataToSend.eventDate = localDate.toISOString() as any
+        }
+      }
+
+      return DataService.createJobEvent({
+        ...dataToSend,
+        jobId: job.id,
+      })
+    },
+    onSuccess: () => {
+      // Invalidate and refetch job events
+      queryClient.invalidateQueries({ queryKey: ["jobEvents", job.id] })
+      onUpdate() // Call parent update
+    },
+    onError: (error) => {
+      console.error("Failed to create job event:", error)
+    },
+  })
+
+  const updateJobEventMutation = useMutation({
+    mutationFn: async ({ eventId, updates }: { eventId: number; updates: Partial<JobEvent> }) => {
+      const dataToSend = { ...updates }
+      if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
+        // Convert local Date to UTC ISO string for database storage
+        dataToSend.eventDate = dataToSend.eventDate.toISOString() as any
+      }
+      return DataService.updateJobEvent(eventId, dataToSend)
+    },
+    onSuccess: () => {
+      // Invalidate and refetch job events
+      queryClient.invalidateQueries({ queryKey: ["jobEvents", job.id] })
+      onUpdate() // Call parent update
+    },
+    onError: (error) => {
+      console.error("Failed to update job event:", error)
+    },
+  })
+
+  const deleteJobEventMutation = useMutation({
+    mutationFn: (eventId: number) => DataService.deleteJobEvent(eventId),
+    onSuccess: () => {
+      // Invalidate and refetch job events
+      queryClient.invalidateQueries({ queryKey: ["jobEvents", job.id] })
+      onUpdate() // Call parent update
+    },
+    onError: (error) => {
+      console.error("Failed to delete job event:", error)
+    },
+  })
 
   const getEventTypeBadgeColor = (eventType: string) => {
     const colors = {
@@ -141,60 +201,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
   }
 
-  useEffect(() => {
-    fetchJobEvents()
-  }, [job.id])
-
-  // Listen for data source changes
-  useEffect(() => {
-    const handleDataSourceChange = () => {
-      fetchJobEvents()
-    }
-
-    window.addEventListener("dataSourceChanged", handleDataSourceChange)
-    return () => window.removeEventListener("dataSourceChanged", handleDataSourceChange)
-  }, [job.id])
-
-  const fetchJobEvents = async () => {
-    try {
-      setLoading(true)
-      const events = await DataService.fetchJobEvents(job.id)
-      setJobEvents(events)
-    } catch (error) {
-      console.error("Failed to fetch job events:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const createJobEvent = async (eventData: Partial<JobEvent>) => {
-    try {
-      const dataToSend = { ...eventData }
-      if (dataToSend.eventDate) {
-        if (dataToSend.eventDate instanceof Date) {
-          // Convert local Date to UTC ISO string for database storage
-          dataToSend.eventDate = dataToSend.eventDate.toISOString() as any
-        } else if (typeof dataToSend.eventDate === "string") {
-          // If it's a local datetime string, convert to UTC
-          const localDate = new Date(dataToSend.eventDate)
-          dataToSend.eventDate = localDate.toISOString() as any
-        }
-      }
-
-      await DataService.createJobEvent({
-        ...dataToSend,
-        jobId: job.id,
-      })
-      fetchJobEvents()
-    } catch (error) {
-      console.error("Failed to create job event:", error)
-    }
+    createJobEventMutation.mutate(eventData)
   }
 
   const addInterview = async () => {
-    if (!newInterview.scheduledDate || isAddingInterview) return
+    if (!newInterview.scheduledDate || createJobEventMutation.isPending) return
 
-    setIsAddingInterview(true)
     try {
       const localDateTimeString = newInterview.scheduledDate
       const localDate = new Date(localDateTimeString + ":00") // Add seconds
@@ -231,11 +244,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: "",
       })
       setShowNewInterviewForm(false) // Hide the form after successful creation
-      onUpdate() // Call parent update after local state changes
     } catch (error) {
       console.error("Failed to add interview:", error)
-    } finally {
-      setIsAddingInterview(false)
     }
   }
 
@@ -252,9 +262,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
   }
 
   const addCustomEvent = async () => {
-    if (!newEvent.eventDate || !newEvent.title || isAddingEvent) return
+    if (!newEvent.eventDate || !newEvent.title || createJobEventMutation.isPending) return
 
-    setIsAddingEvent(true)
     try {
       const [year, month, day] = newEvent.eventDate.split("-").map(Number)
 
@@ -287,30 +296,14 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         notes: "",
       })
       setShowEventForm(false)
-      onUpdate() // Call parent update after local state changes
-      fetchJobEvents() // Refresh the local data
     } catch (error) {
       console.error("Failed to add custom event:", error)
-    } finally {
-      setIsAddingEvent(false)
     }
   }
 
   const updateEvent = async (eventId: number, updates: Partial<JobEvent>) => {
-    try {
-      const dataToSend = { ...updates }
-      if (dataToSend.eventDate && dataToSend.eventDate instanceof Date) {
-        // Convert local Date to UTC ISO string for database storage
-        dataToSend.eventDate = dataToSend.eventDate.toISOString() as any
-      }
-
-      await DataService.updateJobEvent(eventId, dataToSend)
-      onUpdate()
-      fetchJobEvents() // Refresh the local data
-      setEditingEvent(null)
-    } catch (error) {
-      console.error("Failed to update event:", error)
-    }
+    updateJobEventMutation.mutate({ eventId, updates })
+    setEditingEvent(null)
   }
 
   const deleteEvent = async (eventId: number) => {
@@ -319,13 +312,7 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       title: "Delete Event",
       message: "Are you sure you want to delete this event? This action cannot be undone.",
       onConfirm: async () => {
-        try {
-          await DataService.deleteJobEvent(eventId)
-          onUpdate() // Call parent update first
-          fetchJobEvents() // Then refresh local data
-        } catch (error) {
-          console.error("Failed to delete event:", error)
-        }
+        deleteJobEventMutation.mutate(eventId)
       },
     })
   }
@@ -346,11 +333,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
           )
 
           for (const event of relatedEvents) {
-            await DataService.deleteJobEvent(event.id!)
+            deleteJobEventMutation.mutate(event.id!)
           }
-
-          onUpdate() // Call parent update first
-          fetchJobEvents() // Then refresh local data
         } catch (error) {
           console.error("Failed to delete interview events:", error)
         }
@@ -372,20 +356,21 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       const eventDateToSend = `${scheduledLocalDate.getFullYear()}-${String(scheduledLocalDate.getMonth() + 1).padStart(2, "0")}-${String(scheduledLocalDate.getDate()).padStart(2, "0")}T${String(scheduledLocalDate.getHours()).padStart(2, "0")}:${String(scheduledLocalDate.getMinutes()).padStart(2, "0")}:${String(scheduledLocalDate.getSeconds()).padStart(2, "0")}`
 
       // Update the interview event with the new form data
-      await DataService.updateJobEvent(editingInterview.id!, {
-        eventType: editingInterview.eventType,
-        eventDate: eventDateToSend as any,
-        title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
-        description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
-        interviewRound: newInterview.round,
-        interviewType: newInterview.type,
-        interviewLink: newInterview.interviewLink,
-        interviewResult: editingInterview.interviewResult,
-        notes: newInterview.notes,
+      updateJobEventMutation.mutate({
+        eventId: editingInterview.id!,
+        updates: {
+          eventType: editingInterview.eventType,
+          eventDate: eventDateToSend as any,
+          title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
+          description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
+          interviewRound: newInterview.round,
+          interviewType: newInterview.type,
+          interviewLink: newInterview.interviewLink,
+          interviewResult: editingInterview.interviewResult,
+          notes: newInterview.notes,
+        },
       })
 
-      onUpdate() // Call parent update first
-      fetchJobEvents() // Then refresh local data
       setEditingInterview(null)
       setShowNewInterviewForm(false)
       setNewInterview({
@@ -545,11 +530,8 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
             )
 
             for (const event of relatedEvents) {
-              await DataService.deleteJobEvent(event.id!)
+              deleteJobEventMutation.mutate(event.id!)
             }
-
-            onUpdate() // Call parent update first
-            fetchJobEvents() // Then refresh local data
           } else {
             console.warn("Interview event not found for deletion.")
           }
@@ -583,8 +565,9 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       const interviewType = interviewEvent.interviewType!
 
       // Update the main interview event
-      await DataService.updateJobEvent(interviewId, {
-        interviewResult: newResult,
+      updateJobEventMutation.mutate({
+        eventId: interviewId,
+        updates: { interviewResult: newResult },
       })
 
       // Handle state transitions
@@ -603,22 +586,22 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
         // From other status to pending: delete interview_result event
         const resultEvent = findInterviewResultEvent(interviewRound, interviewType)
         if (resultEvent && resultEvent.id) {
-          await DataService.deleteJobEvent(resultEvent.id)
+          deleteJobEventMutation.mutate(resultEvent.id)
         }
       } else if (currentResult !== "pending" && newResult !== "pending") {
         // Between non-pending statuses: update existing interview_result event
         const resultEvent = findInterviewResultEvent(interviewRound, interviewType)
         if (resultEvent && resultEvent.id) {
-          await DataService.updateJobEvent(resultEvent.id, {
-            interviewResult: newResult,
-            title: `Round ${interviewRound} ${getTypeConfig(interviewType).label} - ${newResult.charAt(0).toUpperCase() + newResult.slice(1)}`,
-            description: `Interview result: ${newResult}`,
+          updateJobEventMutation.mutate({
+            eventId: resultEvent.id,
+            updates: {
+              interviewResult: newResult,
+              title: `Round ${interviewRound} ${getTypeConfig(interviewType).label} - ${newResult.charAt(0).toUpperCase() + newResult.slice(1)}`,
+              description: `Interview result: ${newResult}`,
+            },
           })
         }
       }
-
-      onUpdate() // Call parent update first
-      fetchJobEvents() // Then refresh local data
     } catch (error) {
       console.error("Failed to update interview result:", error)
     }
@@ -1111,17 +1094,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                       })
                     }}
                     className="flex-1 sm:flex-none px-4 py-2 text-sm border-slate-300 text-slate-700 hover:bg-slate-50"
-                    disabled={isAddingInterview}
+                    disabled={createJobEventMutation.isPending}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="button"
                     onClick={editingInterview ? saveEditingInterview : addInterview}
-                    disabled={isAddingInterview || !newInterview.scheduledDate}
+                    disabled={createJobEventMutation.isPending || !newInterview.scheduledDate}
                     className="flex-1 sm:flex-none px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isAddingInterview ? (
+                    {createJobEventMutation.isPending ? (
                       <div className="flex items-center">
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                         {editingInterview ? "Updating..." : "Scheduling..."}
@@ -1320,17 +1303,17 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
                             })
                           }}
                           className="flex-1 sm:flex-none px-4 py-2 text-sm border-slate-300 text-slate-700 hover:bg-slate-50"
-                          disabled={isAddingEvent}
+                          disabled={createJobEventMutation.isPending}
                         >
                           Cancel
                         </Button>
                         <Button
                           type="button"
                           onClick={editingEvent ? () => updateEvent(editingEvent.id!, newEvent) : addCustomEvent}
-                          disabled={isAddingEvent || !newEvent.eventDate || !newEvent.title}
+                          disabled={createJobEventMutation.isPending || !newEvent.eventDate || !newEvent.title}
                           className="flex-1 sm:flex-none px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isAddingEvent ? (
+                          {createJobEventMutation.isPending ? (
                             <div className="flex items-center">
                               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                               {editingEvent ? "Updating..." : "Adding..."}
