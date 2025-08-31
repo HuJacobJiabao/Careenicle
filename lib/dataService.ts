@@ -3,6 +3,16 @@ import { mockJobs, mockJobEvents } from "./mockData"
 import { SupabaseService } from "./supabaseService"
 import { supabase } from "./supabase/client"
 
+interface Stats {
+  totalApplications: number
+  activeInterviews: number
+  offersReceived: number
+  favorites: number
+  appliedCount: number
+  rejectedCount: number
+  acceptedCount: number
+}
+
 export type DatabaseProvider = "mock" | "postgresql" | "supabase"
 
 const isUserAuthenticated = async (): Promise<boolean> => {
@@ -433,6 +443,33 @@ export class DataService {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isFavorite: !isFavorite, provider }),
       })
+    }
+  }
+
+  static async fetchStats(): Promise<Stats> {
+    const provider = await this.getDatabaseProvider()
+
+    if (provider === "mock") {
+      // Calculate stats from mock data
+      const stats: Stats = {
+        totalApplications: mockJobs.length,
+        activeInterviews: mockJobs.filter(job => job.status === "interview").length,
+        offersReceived: mockJobs.filter(job => job.status === "offer").length,
+        favorites: mockJobs.filter(job => job.isFavorite === true).length,
+        appliedCount: mockJobs.filter(job => job.status === "applied").length,
+        rejectedCount: mockJobs.filter(job => job.status === "rejected").length,
+        acceptedCount: mockJobs.filter(job => job.status === "accepted").length,
+      }
+      return stats
+    } else if (provider === "supabase") {
+      return await SupabaseService.fetchStats()
+    } else {
+      // Use PostgreSQL API
+      const response = await fetch(`/api/stats?provider=${provider}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch stats")
+      }
+      return await response.json()
     }
   }
 }

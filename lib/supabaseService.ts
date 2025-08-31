@@ -1,6 +1,16 @@
 import { supabase, isSupabaseConfigured } from "./supabase/client"
 import type { Job, JobEvent } from "./types"
 
+interface Stats {
+  totalApplications: number
+  activeInterviews: number
+  offersReceived: number
+  favorites: number
+  appliedCount: number
+  rejectedCount: number
+  acceptedCount: number
+}
+
 export class SupabaseService {
   // Check if Supabase is configured before any operation
   private static checkConfiguration(): void {
@@ -483,5 +493,35 @@ export class SupabaseService {
     }
 
     return data && data.length > 0 && data[0].interview_result === "failed"
+  }
+
+  static async fetchStats(): Promise<Stats> {
+    this.checkConfiguration()
+    
+    const userId = await this.getCurrentUserId()
+    
+    // Get job statistics from Supabase
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("status, is_favorite")
+      .eq("user_id", userId)
+    
+    if (error) {
+      console.error("Error fetching stats from Supabase:", error)
+      throw new Error("Failed to fetch stats")
+    }
+    
+    // Calculate statistics
+    const stats: Stats = {
+      totalApplications: data.length,
+      activeInterviews: data.filter(job => job.status === "interview").length,
+      offersReceived: data.filter(job => job.status === "offer").length,
+      favorites: data.filter(job => job.is_favorite === true).length,
+      appliedCount: data.filter(job => job.status === "applied").length,
+      rejectedCount: data.filter(job => job.status === "rejected").length,
+      acceptedCount: data.filter(job => job.status === "accepted").length,
+    }
+    
+    return stats
   }
 }

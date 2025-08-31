@@ -6,6 +6,8 @@ import type { Job, JobEvent, UpcomingInterviewJob } from "@/lib/types"
 import { DataService } from "@/lib/dataService"
 import { useJobs } from "@/lib/hooks/useJobs"
 import { useJobEvents } from "@/lib/hooks/useJobEvents"
+import { useStats } from "@/lib/hooks/useStats"
+import { useQueryClient } from "@tanstack/react-query"
 import InterviewModal from "./InterviewModal"
 import AddJobModal from "./AddJobModal"
 import EditJobModal from "./EditJobModal"
@@ -70,6 +72,8 @@ export default function JobTableContent() {
   })
 
   const { data: jobEvents = [], isLoading: eventsLoading, refetch: refetchJobEvents } = useJobEvents()
+  const { data: stats, isLoading: statsLoading } = useStats()
+  const queryClient = useQueryClient()
 
   const jobs = jobsData?.jobs || []
   const isSearching = jobsLoading
@@ -121,6 +125,7 @@ export default function JobTableContent() {
     try {
       await DataService.updateJob(jobId, { status })
       refetchJobs()
+      queryClient.invalidateQueries({ queryKey: ["stats"] })
     } catch (error) {
       console.error("Failed to update job status:", error)
     }
@@ -130,6 +135,7 @@ export default function JobTableContent() {
     try {
       await DataService.toggleFavorite(jobId, isFavorite)
       refetchJobs()
+      queryClient.invalidateQueries({ queryKey: ["stats"] })
     } catch (error) {
       console.error("Failed to toggle favorite:", error)
     }
@@ -146,6 +152,7 @@ export default function JobTableContent() {
           await DataService.deleteJob(jobId)
           fetchJobs()
           fetchJobEvents()
+          queryClient.invalidateQueries({ queryKey: ["stats"] })
         } catch (error) {
           console.error("Failed to delete job:", error)
         }
@@ -275,7 +282,7 @@ export default function JobTableContent() {
         {[
           {
             label: "Total Applications",
-            value: pagination.total,
+            value: stats?.totalApplications || 0,
             color: "from-blue-500 to-blue-600",
             icon: <TrendingUp className="w-4 h-4 md:w-6 md:h-6" />,
             bgColor: "bg-blue-50",
@@ -283,7 +290,7 @@ export default function JobTableContent() {
           },
           {
             label: "Active Interviews",
-            value: jobs ? jobs.filter((j) => j.status === "interview").length : 0,
+            value: stats?.activeInterviews || 0,
             color: "from-amber-500 to-orange-500",
             icon: <Target className="w-4 h-4 md:w-6 md:h-6" />,
             bgColor: "bg-amber-50",
@@ -291,7 +298,7 @@ export default function JobTableContent() {
           },
           {
             label: "Offers Received",
-            value: jobs ? jobs.filter((j) => j.status === "offer").length : 0,
+            value: stats?.offersReceived || 0,
             color: "from-green-500 to-emerald-500",
             icon: <Award className="w-4 h-4 md:w-6 md:h-6" />,
             bgColor: "bg-green-50",
@@ -299,7 +306,7 @@ export default function JobTableContent() {
           },
           {
             label: "Favorites",
-            value: jobs ? jobs.filter((j) => j.isFavorite).length : 0,
+            value: stats?.favorites || 0,
             color: "from-yellow-500 to-amber-500",
             icon: <Star className="w-4 h-4 md:w-6 md:h-6" />,
             bgColor: "bg-yellow-50",
@@ -1004,6 +1011,7 @@ export default function JobTableContent() {
           onAdd={() => {
             fetchJobs()
             fetchJobEvents()
+            queryClient.invalidateQueries({ queryKey: ["stats"] })
             setShowAddJobModal(false)
           }}
         />
@@ -1018,6 +1026,7 @@ export default function JobTableContent() {
           }}
           onUpdate={() => {
             fetchJobs()
+            queryClient.invalidateQueries({ queryKey: ["stats"] })
             setShowEditJobModal(false)
           }}
         />
