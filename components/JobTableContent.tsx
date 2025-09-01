@@ -125,6 +125,9 @@ export default function JobTableContent() {
     try {
       await DataService.updateJob(jobId, { status })
       refetchJobs()
+      refetchJobEvents() // Refresh global job events 
+      // Also refresh job-specific events cache for InterviewModal
+      queryClient.invalidateQueries({ queryKey: ["job-events", jobId] })
       queryClient.invalidateQueries({ queryKey: ["stats"] })
     } catch (error) {
       console.error("Failed to update job status:", error)

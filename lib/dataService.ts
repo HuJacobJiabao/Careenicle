@@ -33,7 +33,7 @@ export class DataService {
   static getConfiguredProvider(): DatabaseProvider {
     const envProvider = process.env.NEXT_PUBLIC_DATABASE_PROVIDER as DatabaseProvider
     if (envProvider && ["mock", "postgresql", "supabase"].includes(envProvider)) {
-      console.log(`Using configured database provider: ${envProvider}`)
+      // console.log(`Using configured database provider: ${envProvider}`)
       return envProvider
     }
     return "mock" // default fallback
@@ -254,6 +254,12 @@ export class DataService {
   static async updateJob(jobId: number, updates: Partial<Job>): Promise<void> {
     const provider = await this.getDatabaseProvider()
 
+    // If status is being updated, handle status change events BEFORE updating
+    if (updates.status) {
+      await this.handleStatusChangeEvents(jobId, updates.status, provider)
+    }
+
+    // Now update the job
     if (provider === "mock") {
       const jobIndex = mockJobs.findIndex((job) => job.id === jobId)
       if (jobIndex !== -1) {
@@ -266,6 +272,116 @@ export class DataService {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...updates, provider }),
+      })
+    }
+  }
+
+  // Handle status change events based on the rules
+  private static async handleStatusChangeEvents(jobId: number, newStatus: Job["status"], provider: DatabaseProvider): Promise<void> {
+    // Get current job to determine old status
+    const currentJob = await this.getCurrentJob(jobId, provider)
+    if (!currentJob || currentJob.status === newStatus) {
+      return // No change needed
+    }
+
+    const oldStatus = currentJob.status
+    const eventsToDelete: string[] = []
+    let eventToCreate: { type: string; title: string; description: string } | null = null
+
+    // Determine which events to delete and create based on status transition
+    switch (newStatus) {
+      case "applied":
+      case "interview":
+        // Only delete result events, don't create new ones
+        eventsToDelete.push("rejected", "offer_received", "offer_accepted")
+        break
+
+      case "rejected":
+        // Delete offer/accepted events, create rejected event
+        eventsToDelete.push("offer_received", "offer_accepted")
+        eventToCreate = {
+          type: "rejected",
+          title: `Application rejected by ${currentJob.company}`,
+          description: `Unfortunately, your application for ${currentJob.position} at ${currentJob.company} was rejected.`
+        }
+        break
+
+      case "offer":
+        // Delete rejected/accepted events, create offer event
+        eventsToDelete.push("rejected", "offer_accepted")
+        eventToCreate = {
+          type: "offer_received", 
+          title: `Job offer received from ${currentJob.company}`,
+          description: `Congratulations! You received a job offer for ${currentJob.position} at ${currentJob.company}.`
+        }
+        break
+
+      case "accepted":
+        // Delete rejected events, create accepted event
+        // Keep offer_received event if transitioning from offer
+        if (oldStatus !== "offer") {
+          eventsToDelete.push("rejected", "offer_received")
+        } else {
+          eventsToDelete.push("rejected")
+        }
+        eventToCreate = {
+          type: "offer_accepted",
+          title: `Job offer accepted at ${currentJob.company}`,
+          description: `You accepted the job offer for ${currentJob.position} at ${currentJob.company}. Congratulations!`
+        }
+        break
+    }
+
+    // Delete old events
+    if (eventsToDelete.length > 0) {
+      await this.deleteJobEventsByType(jobId, eventsToDelete, provider)
+    }
+
+    // Create new event if needed
+    if (eventToCreate) {
+      await this.createJobEvent({
+        jobId: jobId,
+        eventType: eventToCreate.type as JobEvent["eventType"],
+        eventDate: new Date(),
+        title: eventToCreate.title,
+        description: eventToCreate.description,
+      })
+    }
+  }
+
+  // Helper function to get current job
+  private static async getCurrentJob(jobId: number, provider: DatabaseProvider): Promise<Job | null> {
+    if (provider === "mock") {
+      return mockJobs.find(job => job.id === jobId) || null
+    } else if (provider === "supabase") {
+      return await SupabaseService.getJobById(jobId)
+    } else {
+      const response = await fetch(`/api/jobs/${jobId}?provider=${provider}`)
+      if (response.ok) {
+        return await response.json()
+      }
+      return null
+    }
+  }
+
+  // Helper function to delete job events by type
+  private static async deleteJobEventsByType(jobId: number, eventTypes: string[], provider: DatabaseProvider): Promise<void> {
+    if (provider === "mock") {
+      // Remove events from mock data
+      for (let i = mockJobEvents.length - 1; i >= 0; i--) {
+        const event = mockJobEvents[i]
+        if (event.jobId === jobId && eventTypes.includes(event.eventType)) {
+          mockJobEvents.splice(i, 1)
+        }
+      }
+    } else if (provider === "supabase") {
+      await SupabaseService.deleteJobEventsByType(jobId, eventTypes)
+    } else {
+      // Call API to delete events
+      await fetch(`/api/job-events/bulk-delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, eventTypes, provider })
       })
     }
   }

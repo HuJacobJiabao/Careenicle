@@ -1,6 +1,62 @@
 import { type NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/database"
 
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const provider = searchParams.get("provider") || "postgresql"
+    const { id } = await params
+    const jobId = Number.parseInt(id)
+
+    if (isNaN(jobId)) {
+      return NextResponse.json({ error: "Invalid job ID" }, { status: 400 })
+    }
+
+    // Only handle PostgreSQL here
+    if (provider !== "postgresql") {
+      return NextResponse.json({ error: "Invalid provider for this API" }, { status: 400 })
+    }
+
+    const result = await pool.query(
+      `
+      SELECT 
+        id,
+        company,
+        position,
+        job_url as "jobUrl",
+        application_date as "applicationDate",
+        status,
+        location,
+        CAST(latitude AS FLOAT) as latitude,
+        CAST(longitude AS FLOAT) as longitude,
+        formatted_address,
+        place_id,
+        notes,
+        is_favorite as "isFavorite",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM jobs 
+      WHERE id = $1
+    `,
+      [jobId]
+    )
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 })
+    }
+
+    const job = result.rows[0]
+    return NextResponse.json({
+      ...job,
+      latitude: job.latitude ? parseFloat(job.latitude) : null,
+      longitude: job.longitude ? parseFloat(job.longitude) : null,
+    })
+  } catch (error) {
+    console.error("Database error:", error)
+    return NextResponse.json({ error: "Failed to fetch job" }, { status: 500 })
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()

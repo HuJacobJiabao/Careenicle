@@ -524,4 +524,42 @@ export class SupabaseService {
     
     return stats
   }
+
+  static async getJobById(id: number): Promise<Job | null> {
+    this.checkConfiguration()
+    
+    const userId = await this.getCurrentUserId()
+    
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single()
+    
+    if (error) {
+      console.error("Error fetching job by ID from Supabase:", error)
+      return null
+    }
+    
+    return this.toCamelCase(data)
+  }
+
+  static async deleteJobEventsByType(jobId: number, eventTypes: string[]): Promise<void> {
+    this.checkConfiguration()
+    
+    const userId = await this.getCurrentUserId()
+    
+    const { error } = await supabase
+      .from("job_events")
+      .delete()
+      .eq("job_id", jobId)
+      .eq("user_id", userId)
+      .in("event_type", eventTypes)
+    
+    if (error) {
+      console.error("Error deleting job events by type from Supabase:", error)
+      throw new Error("Failed to delete job events")
+    }
+  }
 }

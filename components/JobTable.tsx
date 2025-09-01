@@ -33,7 +33,7 @@ export default function JobTable() {
             // Database is working and has tables
             DataService.setUseMockData(false)
             setDatabaseStatus("connected")
-            console.log("Using PostgreSQL database")
+            // console.log("Using PostgreSQL database")
           } else {
             // Database connected but no tables or unexpected response
             setDatabaseStatus("no-tables")

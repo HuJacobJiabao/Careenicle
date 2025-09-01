@@ -6,7 +6,7 @@ import JobTable from "@/components/JobTable"
 export default function HomePage() {
   useEffect(() => {
     // Initialize any mock data or startup logic here
-    console.log("Home page initialized")
+    // console.log("Home page initialized")
   }, [])
 
   return (
