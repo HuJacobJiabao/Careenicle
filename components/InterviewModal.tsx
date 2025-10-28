@@ -368,15 +368,13 @@ const InterviewModal: React.FC<InterviewModalProps> = ({ job, onClose, onUpdate 
       const [hour, minute] = timeStr.split(":").map(Number)
       const scheduledLocalDate = new Date(year, month - 1, day, hour, minute)
 
-      // Convert to local ISO string for the API
-      const eventDateToSend = `${scheduledLocalDate.getFullYear()}-${String(scheduledLocalDate.getMonth() + 1).padStart(2, "0")}-${String(scheduledLocalDate.getDate()).padStart(2, "0")}T${String(scheduledLocalDate.getHours()).padStart(2, "0")}:${String(scheduledLocalDate.getMinutes()).padStart(2, "0")}:${String(scheduledLocalDate.getSeconds()).padStart(2, "0")}`
-
       // Update the interview event with the new form data
+      // Pass Date object directly - updateEvent will convert to UTC ISO string
       await updateJobEventMutation.mutateAsync({
         eventId: editingInterview.id!,
         updates: {
           eventType: editingInterview.eventType,
-          eventDate: eventDateToSend as any,
+          eventDate: scheduledLocalDate as any,
           title: `Round ${newInterview.round} ${getTypeConfig(newInterview.type).label}`,
           description: `${getTypeConfig(newInterview.type).label}${newInterview.interviewLink ? ` - ${newInterview.interviewLink}` : ""}`,
           interviewRound: newInterview.round,
