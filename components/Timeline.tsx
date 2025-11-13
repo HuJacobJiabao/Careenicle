@@ -208,7 +208,7 @@ const Timeline: React.FC = () => {
         </div>
 
         <div className="relative">
-          <div className="absolute left-8 md:left-1/2 md:transform md:-translate-x-0.5 w-1 bg-gradient-to-b from-blue-400 via-purple-400 to-green-400 h-full rounded-full shadow-sm"></div>
+          <div className="absolute left-8 md:left-1/2 md:transform md:-translate-x-0.5 w-1 bg-gradient-to-b from-blue-400 via-purple-400 to-green-400 h-full rounded-full shadow-sm z-0"></div>
 
           <div className="space-y-8 md:space-y-16">
             {timelineEvents.map((event, index) => {
@@ -422,10 +422,10 @@ const Timeline: React.FC = () => {
 
           {/* End of Timeline Indicator */}
           {!hasNextPage && timelineEvents.length > 0 && (
-            <div className="flex justify-center mt-12">
+            <div className="flex justify-center mt-12 relative z-30">
               <div className="bg-white border-2 border-gray-200 rounded-full px-6 py-3 shadow-lg">
                 <span className="text-sm font-semibold text-gray-600">
-                  🎉 You've reached the beginning of your journey!
+                  You've reached the beginning of your journey!
                 </span>
               </div>
             </div>
