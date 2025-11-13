@@ -547,19 +547,143 @@ export class SupabaseService {
 
   static async deleteJobEventsByType(jobId: number, eventTypes: string[]): Promise<void> {
     this.checkConfiguration()
-    
+
     const userId = await this.getCurrentUserId()
-    
+
     const { error } = await supabase
       .from("job_events")
       .delete()
       .eq("job_id", jobId)
       .eq("user_id", userId)
       .in("event_type", eventTypes)
-    
+
     if (error) {
       console.error("Error deleting job events by type from Supabase:", error)
       throw new Error("Failed to delete job events")
+    }
+  }
+
+  // Fetch timeline events with pagination (optimized for timeline view)
+  static async fetchTimelineEvents(params?: {
+    page?: number
+    limit?: number
+    dateFrom?: string
+    dateTo?: string
+  }): Promise<{
+    events: Array<{
+      id: number
+      jobId: number
+      company: string
+      position: string
+      location?: string
+      eventType: string
+      eventDate: string
+      title?: string
+      description?: string
+      interviewRound?: number
+      interviewType?: string
+      interviewLink?: string
+      interviewResult?: string
+      notes?: string
+      metadata?: any
+    }>
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+      hasMore: boolean
+    }
+  }> {
+    this.checkConfiguration()
+
+    const userId = await this.getCurrentUserId()
+    const page = params?.page || 1
+    const limit = params?.limit || 50
+    const offset = (page - 1) * limit
+
+    // Allowed event types for timeline
+    const allowedEventTypes = ["applied", "interview", "rejected", "offer_received", "offer_accepted"]
+
+    let query = supabase
+      .from("job_events")
+      .select(
+        `
+        id,
+        job_id,
+        event_type,
+        event_date,
+        title,
+        description,
+        interview_round,
+        interview_type,
+        interview_link,
+        interview_result,
+        notes,
+        metadata,
+        jobs (
+          company,
+          position,
+          location
+        )
+      `,
+        { count: "exact" },
+      )
+      .eq("user_id", userId)
+      .in("event_type", allowedEventTypes)
+      .order("event_date", { ascending: false })
+
+    // Add date filters if provided
+    if (params?.dateFrom) {
+      query = query.gte("event_date", params.dateFrom)
+    }
+
+    if (params?.dateTo) {
+      query = query.lte("event_date", params.dateTo)
+    }
+
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1)
+
+    const { data, error, count } = await query
+
+    if (error) {
+      console.error("Error fetching timeline events from Supabase:", error)
+      throw new Error("Failed to fetch timeline events")
+    }
+
+    // Transform the data to match the expected format
+    const events = (data || []).map((event: any) => ({
+      id: event.id,
+      jobId: event.job_id,
+      company: event.jobs?.company || "",
+      position: event.jobs?.position || "",
+      location: event.jobs?.location,
+      eventType: event.event_type,
+      eventDate: event.event_date,
+      title: event.title,
+      description: event.description,
+      interviewRound: event.interview_round,
+      interviewType: event.interview_type,
+      interviewLink: event.interview_link,
+      interviewResult: event.interview_result,
+      notes: event.notes,
+      metadata: event.metadata,
+    }))
+
+    const total = count || 0
+    const totalPages = Math.ceil(total / limit)
+    const hasMore = page < totalPages
+
+    return {
+      events,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore,
+      },
     }
   }
 }
