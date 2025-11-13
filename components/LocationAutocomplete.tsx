@@ -28,10 +28,11 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([])
+  const justSelectedRef = useRef(false)
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!user || !isFocused || value.length < 2) {
+      if (!user || !isFocused || value.length < 2 || justSelectedRef.current) {
         setSuggestions([])
         setSelectedIndex(-1)
         return
@@ -84,6 +85,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     onChange(newValue)
+    justSelectedRef.current = false
     if (!user || newValue.length < 2) {
       setIsOpen(false)
       setSelectedIndex(-1)
@@ -91,14 +93,18 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   }
 
   const handleSuggestionClick = (suggestion: PlaceAutocomplete) => {
+    justSelectedRef.current = true
     onChange(suggestion.description, suggestion.place_id)
     setIsOpen(false)
     setSuggestions([])
     setSelectedIndex(-1)
+    setIsFocused(false)
+    inputRef.current?.blur()
   }
 
   const handleInputFocus = () => {
     setIsFocused(true)
+    justSelectedRef.current = false
     if (suggestions.length > 0) {
       setIsOpen(true)
     }
