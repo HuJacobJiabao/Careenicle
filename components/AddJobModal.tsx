@@ -5,7 +5,7 @@ import { useState } from "react"
 import { DataService } from "@/lib/dataService"
 import { googlePlacesService } from "@/lib/googlePlacesService"
 import LocationAutocomplete from "./LocationAutocomplete"
-import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star, CalendarIcon } from "lucide-react"
+import { X, Building2, Briefcase, Link, Calendar, FileText, MapPin, Star, CalendarIcon, Sparkles } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +35,53 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
   })
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [smartPasteText, setSmartPasteText] = useState("")
+  const [isParsing, setIsParsing] = useState(false)
+  const [showSmartPaste, setShowSmartPaste] = useState(true)
+
+  const handleSmartParse = async () => {
+    if (!smartPasteText.trim()) {
+      return
+    }
+
+    setIsParsing(true)
+    try {
+      const response = await fetch("/api/parse-job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: smartPasteText }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to parse job text")
+      }
+
+      const result = await response.json()
+      const parsedData = result.data
+
+      // Update form with parsed data
+      setFormData({
+        ...formData,
+        company: parsedData.company || formData.company,
+        position: parsedData.position || formData.position,
+        location: parsedData.location || formData.location,
+        notes:
+          (parsedData.salary ? `Salary: ${parsedData.salary}\n\n` : "") +
+          (parsedData.description || formData.notes),
+      })
+
+      // Clear smart paste text and hide the section
+      setSmartPasteText("")
+      setShowSmartPaste(false)
+    } catch (error) {
+      console.error("Error parsing job text:", error)
+      alert("Failed to parse job text. Please try again or fill in manually.")
+    } finally {
+      setIsParsing(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,6 +144,69 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ onClose, onAdd }) => {
 
         <CardContent className="space-y-4 sm:space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {showSmartPaste && (
+              <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+                <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
+                      <h3 className="text-sm sm:text-base font-bold text-purple-900">AI Smart Paste</h3>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSmartPaste(false)}
+                      className="h-6 w-6 p-0 hover:bg-purple-100"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs sm:text-sm text-purple-700">
+                    Copy and paste job posting details from anywhere. AI will automatically extract company, position,
+                    location, and more!
+                  </p>
+                  <Textarea
+                    value={smartPasteText}
+                    onChange={(e) => setSmartPasteText(e.target.value)}
+                    placeholder="Paste job description here... (e.g., 'Google is hiring Senior Software Engineer in Mountain View, CA. Salary: $150k-$200k...')"
+                    rows={4}
+                    className="resize-none text-sm border-purple-200 focus:border-purple-500 focus:ring-purple-500/20"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleSmartParse}
+                    disabled={!smartPasteText.trim() || isParsing}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isParsing ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                        Parsing with AI...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Parse with AI
+                      </div>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {!showSmartPaste && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSmartPaste(true)}
+                className="w-full border-dashed border-2 border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Show AI Smart Paste
+              </Button>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-2 sm:space-y-3">
                 <Label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 uppercase tracking-wide">
